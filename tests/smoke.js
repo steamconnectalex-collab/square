@@ -103,14 +103,58 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   // 3. login ok -> app
   await page.fill('#login-pw', 'Senha1234!');
   await page.click('button.btn[type=submit]');
-  await page.waitForSelector('.who strong', { timeout: 5000 });
-  ok('app abre com nome do perfil', (await page.textContent('.who strong')).includes('Tester Um'));
+  await page.waitForSelector('.hub', { timeout: 5000 });
+  ok('depois do login abre o painel inicial', true);
+  ok('painel mostra o nome do perfil', ((await page.getAttribute('.ubar .pic', 'aria-label')) || '').includes('Tester Um'));
+  ok('painel tem todos os blocos', (await page.locator('.w-fr, .w-chat, .w-most, .w-mus, .w-news, .ubar').count()) === 6);
+  await page.waitForTimeout(900);
   await page.screenshot({ path: OUT + '/2-app.png' });
+  // barra do usuário expande e recolhe
+  const w0 = (await page.locator('#ubar').boundingBox()).width;
+  await page.click('#b-dots');
+  await page.waitForTimeout(800);
+  const w1 = (await page.locator('#ubar').boundingBox()).width;
+  ok('barra do usuário expande ao clicar nos três pontos', w1 > w0 * 1.6);
+  ok('aparecem os 5 botões extras', (await page.locator('.xtra .tb').evaluateAll((l) => l.filter((b) => getComputedStyle(b).opacity === '1').length)) === 5);
+  await page.screenshot({ path: OUT + '/2b-barra.png' });
+  await page.click('.xtra .tb:last-child');
+  await page.waitForTimeout(800);
+  ok('seta recolhe a barra', (await page.locator('#ubar').boundingBox()).width < w1 * 0.7);
+  // abas de notícias
+  await page.click('#tab-free');
+  ok('aba Jogos grátis troca o conteúdo', await page.isVisible('#pane-free') && !(await page.isVisible('#pane-news')));
+  // player
+  ok('disco gira ao tocar', await page.locator('#disc.spin').count() === 1);
+  await page.click('#mplay');
+  ok('pausar para o disco', await page.locator('#disc.spin').count() === 0);
+  await page.click('#mplay');
+  // busca de amigos
+  await page.click('[data-act="gsearch"]');
+  await page.fill('#gsearch', 'marina');
+  ok('busca filtra os amigos', (await page.locator('.frow').count()) === 1);
+  await page.fill('#gsearch', '');
+  await page.click('[data-act="gsearch"]');
+  // conversa do painel
+  await page.fill('#hmsg', 'Oi pessoal');
+  await page.press('#hmsg', 'Enter');
+  ok('mensagem aparece na conversa do painel', /Oi pessoal/.test(await page.textContent('#hmsgs')));
+  // servidor pelo topo e volta ao painel
+  await page.click('.stile[data-id="s2"]');
+  await page.waitForSelector('.ap .chat');
+  ok('ícone do servidor abre o servidor', /Dunas/.test(await page.textContent('.top h1')));
+  await page.click('.tbh');
+  await page.waitForSelector('.hub');
+  ok('ícone de conversa volta ao painel', true);
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.waitForTimeout(300);
+  ok('painel no celular sem rolagem lateral', await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
+  await page.screenshot({ path: OUT + '/2c-painel-celular.png', fullPage: true });
+  await page.setViewportSize({ width: 1440, height: 900 });
   ok('sessão salva', !!(await page.evaluate(() => localStorage.getItem('sq.session'))));
 
   // 4. recarregar mantém sessão
   await page.reload();
-  await page.waitForSelector('.who strong', { timeout: 5000 });
+  await page.waitForSelector('.hub', { timeout: 5000 });
   ok('recarregar mantém a sessão', true);
 
   // 5. logout
@@ -144,7 +188,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await page.fill('#otp', 'abc-234');
   // o campo envia sozinho ao completar 6 caracteres; se ainda não enviou, clica
   await page.click('button.btn[type=submit]', { timeout: 1500 }).catch(() => {});
-  await page.waitForSelector('.who strong', { timeout: 5000 });
+  await page.waitForSelector('.hub', { timeout: 5000 });
   ok('código certo entra no app', true);
   await page.evaluate(() => { localStorage.clear(); });
 

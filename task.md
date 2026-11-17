@@ -2,7 +2,7 @@
 
 > **Para a IA:** este arquivo é a fonte da verdade sobre o projeto. Leia tudo antes de começar e atualize **na hora** em que algo acontecer (regras completas em `agents.md`). Não duplique tarefas: procure aqui antes de adicionar.
 >
-> Última atualização: 2026-11-16 (noite)
+> Última atualização: 2026-11-17
 
 ---
 
@@ -46,6 +46,7 @@ Fluxo de acesso: Home → "Entrar" → login (com painel de QR Code) → "Regist
 - [x] 2026-11-16 — **Etapa 3:** projeto completo enviado ao GitHub (branch `main`, 22 arquivos, nenhum segredo dentro). A pasta de trabalho `/home/claude/square` agora também é um repositório git ligado ao GitHub.
 
 - [x] 2026-11-17 — Regra nova no `agents.md` (item 8): enviar ao GitHub a cada tarefa concluída, para não perder trabalho se o limite da conta acabar.
+- [x] 2026-11-17 — **Tela principal nova** (layout da foto + animações dos vídeos, no design claro do Square): depois do login/cadastro abre o **painel inicial** (amigos online, conversa, festas fixadas, mais jogados, player de música, notícias/jogos grátis, barra do usuário que expande nos três pontinhos). Barra de cima com ícone de conversa (volta ao painel), os servidores (abrem o servidor de antes, com canais e chat) e busca animada. Dados ainda de demonstração. Testes de fumaça: 40 verificações OK. Código: `appView`/`hubHTML` em `site/app.js`, estilos "painel inicial" em `site/style.css`.
 - [x] 2026-11-16 — **Etapa 2:** site completo (home + login + app) publicado na Vercel em https://square-chat-silk.vercel.app (deployment `dpl_2wsLZ3h1f7CT3kGt3w8N5rdQS6KS`, commit `495cab0` do GitHub). Conferido: `index.html`, `app.js` e `home.js` no ar são idênticos, byte a byte, aos do repositório.
 
 ## Em andamento agora
@@ -74,7 +75,7 @@ Fluxo de acesso: Home → "Entrar" → login (com painel de QR Code) → "Regist
 
 ## Próximo passo
 
-A pessoa testa o site no ar (home → Entrar → login/cadastro/QR) e aponta ajustes. Depois, começar o chat com dados reais (primeiro: servidores e canais no banco).
+A pessoa testa o painel novo no ar e aponta ajustes (ex.: o que fazer com os botões "em breve" do painel). Depois, começar o chat com dados reais (primeiro: servidores e canais no banco).
 
 ---
 

@@ -83,7 +83,18 @@ const D = {
   dm: '<path d="M5 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-8l-5 4v-4H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/><path d="M8 9h8M8 12.5h5"/>',
   gift: '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M5 12v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8M7.5 8a2.5 2.5 0 1 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 1 1 0 5"/>',
   smile: '<circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9.5h.01M15 9.5h.01"/>',
-  send: '<path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/>'
+  send: '<path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/>',
+  dots: '<circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/>',
+  play: '<path d="M8 5.5v13l11-6.5z"/>',
+  pause: '<rect x="6.5" y="5" width="3.5" height="14" rx="1"/><rect x="14" y="5" width="3.5" height="14" rx="1"/>',
+  prev: '<path d="M6 5v14M18 5.5v13L8.5 12z"/>',
+  next: '<path d="M18 5v14M6 5.5v13l9.5-6.5z"/>',
+  edit: '<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
+  userPlus: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6 1.4 0 2.6.3 3.7.9M18 14v6M15 17h6"/>',
+  chevL: '<path d="m15 6-6 6 6 6"/>',
+  ext: '<path d="M14 4h6v6M20 4l-9 9M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/>',
+  clip: '<path d="m20 11-8.5 8.5a5 5 0 0 1-7-7L13 4a3.3 3.3 0 0 1 4.7 4.7L9.2 17.2a1.7 1.7 0 0 1-2.4-2.4L14.5 7"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'
 };
 const logoMark = (s = 18) => ic(D.bubble, s, '#FFFFFF', 1.8);
 const logo = (s = 18) => `<span class="logo" aria-hidden="true">${logoMark(s)}</span>`;
@@ -154,6 +165,7 @@ async function onSignedIn(d) {
   saveSession(d);
   S.lPw = ''; S.lBusy = false; S.lErr = '';
   S.r = freshR(); S.v = freshV(); S.pendingEmail = ''; tab.del('sq.pending');
+  A = null; // depois de entrar, a tela principal é sempre o painel inicial
   if (S.after) { const a = S.after; S.after = null; go(a); } else go('app');
 }
 
@@ -206,7 +218,7 @@ function route() {
   }
   if (authed && AUTH_ONLY.includes(view)) { go('app'); return; }
   S.view = view;
-  if (view === 'app') initApp();
+  if (view === 'app') { initApp(); startMusic(); }
   render({ top: true });
   setTimeout(() => { const el = document.querySelector('[data-autofocus]'); if (el) el.focus(); }, 0);
   if (view === 'login') qrEnsure();
@@ -222,12 +234,12 @@ function render(o = {}) {
     s: ae && typeof ae.selectionStart === 'number' ? [ae.selectionStart, ae.selectionEnd] : null,
     scroll: {}
   };
-  ['msgs', 'sscroll', 'mlist'].forEach((id) => { const el = document.getElementById(id); if (el) snap.scroll[id] = el.scrollTop; });
+  ['msgs', 'hmsgs', 'sscroll', 'mlist', 'flist'].forEach((id) => { const el = document.getElementById(id); if (el) snap.scroll[id] = el.scrollTop; });
   const views = { home: homeView, login: loginView, register: registerView, verify: verifyView, forgot: forgotView, forgotSent: forgotSentView, newPass: newPassView, passDone: passDoneView, approve: approveView, app: appView };
   $root.innerHTML = (views[S.view] || loginView)();
   if (o.top) window.scrollTo(0, 0);
   Object.keys(snap.scroll).forEach((id) => { const el = document.getElementById(id); if (el) el.scrollTop = snap.scroll[id]; });
-  if (o.scroll) { const el = document.getElementById('msgs'); if (el) el.scrollTop = el.scrollHeight; }
+  if (o.scroll) { ['msgs', 'hmsgs'].forEach((id) => { const el = document.getElementById(id); if (el) el.scrollTop = el.scrollHeight; }); }
   if (snap.id && !o.top) {
     const el = document.getElementById(snap.id);
     if (el) { el.focus(); if (snap.s && el.setSelectionRange) { try { el.setSelectionRange(snap.s[0], snap.s[1]); } catch (e) { /* tipo sem seleção */ } } }
@@ -722,12 +734,179 @@ function initApp() {
     owner: S.session && S.session.user && S.session.user.id,
     server: 's1', channel: 'geral', collapsed: { 's1:treino': true }, voice: 's1:sala', muted: false, deafened: false,
     panel: null, showMembers: true, onlineOpen: true, offlineOpen: true, draft: '', search: '', emojiOpen: false,
-    typing: null, typingKey: null, menu: false, threads: seedThreads(firstName()), t1: null, t2: null
+    typing: null, typingKey: null, menu: false, threads: seedThreads(firstName()), t1: null, t2: null,
+    view: 'hub', hubKey: 's1:geral', hdraft: '', gq: '', searchOpen: false, barOpen: false, playing: true, track: 0, prog: 34, ntab: 'news', entered: false
   };
 }
 function stopAppTimers() { if (A) { clearTimeout(A.t1); clearTimeout(A.t2); A.t1 = A.t2 = null; } }
 
 const curServer = () => SERVERS.find((s) => s.id === A.server) || SERVERS[0];
+
+/* ---------------------------------------------------------------------
+   PAINEL INICIAL (tela principal depois do login): amigos, conversa,
+   festas fixadas, mais jogados, player e notícias. Dados de demonstração.
+   --------------------------------------------------------------------- */
+const GAMES = [
+  { n: 'Arena Estelar', h: '312 h', i: 'A', g: 'linear-gradient(160deg,#F4C7D3,#B79BDB)' },
+  { n: 'Reinos de Vale', h: '188 h', i: 'R', g: 'linear-gradient(160deg,#CBE9D9,#78BE9D)' },
+  { n: 'Dunas', h: '141 h', i: 'D', g: 'linear-gradient(160deg,#F7DDB5,#E39B6B)' },
+  { n: 'Cidade Neon', h: '97 h', i: 'N', g: 'linear-gradient(160deg,#BFE3EE,#6C9AD0)' }
+];
+const TRACKS = [
+  { t: 'Fim de Tarde', a: 'Banda Lume', d: 261, g: G.rose },
+  { t: 'Noite em Neon', a: 'Os Faróis', d: 215, g: G.sky },
+  { t: 'Rota das Dunas', a: 'Vale Sonoro', d: 243, g: G.sand }
+];
+const NEWS = [
+  { src: 'Notícias Arena', t: 'Temporada nova chegou à Arena Estelar', s: 'Mapa novo, modos novos e recompensas até o fim do mês.', g: 'linear-gradient(160deg,#F4C7D3,#B79BDB)' },
+  { src: 'Dunas Oficial', t: 'Modo duplas ganha ranking', s: 'Suba de nível com os amigos e ganhe títulos.', g: 'linear-gradient(160deg,#F7DDB5,#E39B6B)' },
+  { src: 'Cidade Neon News', t: 'Atualização de outono já está no ar', s: 'Corrida noturna e ajustes de desempenho.', g: 'linear-gradient(160deg,#BFE3EE,#6C9AD0)' }
+];
+const FREE = [
+  { src: 'Loja Square', t: 'Reinos de Vale grátis no fim de semana', s: 'Resgate até domingo e jogue com a turma.', g: 'linear-gradient(160deg,#CBE9D9,#78BE9D)' },
+  { src: 'Loja Square', t: 'Pacote de avatares sem custo', s: 'Cinco molduras novas para o seu perfil.', g: 'linear-gradient(160deg,#D9CDF2,#9D8CCF)' },
+  { src: 'Loja Square', t: 'Teste Arena Estelar Premium', s: 'Três dias com todos os modos liberados.', g: 'linear-gradient(160deg,#FAD3DC,#E897AB)' }
+];
+const HUB_KEYS = ['s1:geral', 's2:geral'];
+const fmt = (s) => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+const srvOf = (id) => SERVERS.find((s) => s.id === id) || SERVERS[0];
+
+function friendsList() {
+  const seen = {}, out = [];
+  SERVERS.forEach((s) => s.online.forEach((p) => { if (!seen[p.id]) { seen[p.id] = 1; out.push({ p, sid: s.id }); } }));
+  return out;
+}
+function friendsHTML() {
+  const q = (A.gq || '').trim().toLowerCase();
+  const list = friendsList().filter((f) => !q || f.p.name.toLowerCase().indexOf(q) !== -1);
+  if (!list.length) return '<div class="hempty">Nenhum amigo encontrado.</div>';
+  return list.map((f) => `<button type="button" class="frow hov" data-act="friend" data-sid="${f.sid}" data-id="${f.p.id}" aria-label="Conversar com ${esc(f.p.name)}"><span class="pf" style="background:${f.p.g}" aria-hidden="true">${esc(f.p.ini)}<i></i></span><span class="tx"><b>${esc(f.p.name)}</b><small>${esc(f.p.st)}</small></span></button>`).join('');
+}
+function refilter() {
+  const f = document.getElementById('flist'); if (f) f.innerHTML = friendsHTML();
+  const l = document.getElementById('mlist'); if (l) l.innerHTML = membersListHTML();
+}
+
+function topbarHTML() {
+  const hub = A.view === 'hub';
+  return `<header class="tbar">
+  <button type="button" class="tbh ${hub ? 'sel' : 'hov'}" data-act="hub" aria-label="Início" aria-pressed="${hub}">${ic(D.bubble, 22, '#33333A', 1.6)}</button>
+  <i class="tsep" aria-hidden="true"></i>
+  <nav class="tsrv" aria-label="Seus servidores">${SERVERS.map((s) => { const on = !hub && A.server === s.id; return `<button type="button" class="stile${on ? ' on' : ''}" data-act="srv-open" data-id="${s.id}" aria-label="${esc(s.name)}" aria-pressed="${on}" title="${esc(s.name)}" style="background:${s.tile}">${s.ini}</button>`; }).join('')}<button type="button" class="stile add" data-act="toast-server" aria-label="Adicionar servidor" title="Adicionar servidor">${ic(D.plus, 20, '#33333A', 1.8)}</button></nav>
+  <span class="tsp"></span><i class="tsep" aria-hidden="true"></i>
+  <div class="tsearch${A.searchOpen ? ' open' : ''}" id="tsearch"><input id="gsearch" type="text" placeholder="Buscar amigos" value="${esc(A.gq)}" data-app-bind="gq" autocomplete="off" aria-label="Buscar amigos"><button type="button" class="tbs hov" data-act="gsearch" aria-label="Buscar">${ic(D.search, 22, '#33333A', 1.7)}</button></div>
+</header>`;
+}
+
+function hubChatHTML() {
+  const key = A.hubKey, srv = srvOf(key.split(':')[0]);
+  const people = {}; srv.online.concat(srv.offline).forEach((p) => { people[p.id] = p; });
+  const thread = (A.threads[key] || []).slice(-3);
+  const typingP = A.typing && A.typingKey === key ? people[A.typing] : null;
+  const tabs = HUB_KEYS.map((k) => { const s = srvOf(k.split(':')[0]), on = k === key; return `<button type="button" class="ctab${on ? ' on' : ''}" data-act="hubchat" data-key="${k}" aria-pressed="${on}" aria-label="${esc(s.name)}" title="${esc(s.name)}" style="background:${s.tile}">${s.ini}</button>`; }).join('');
+  return `<div class="hchat">
+  <div class="hch">${tabs}<span class="tsp"></span><button type="button" class="hov wext" data-act="chat-open" aria-label="Abrir a conversa completa">${ic(D.ext, 17)}</button></div>
+  <div class="hmsgs" id="hmsgs" role="log" aria-label="Mensagens recentes" aria-live="polite">
+    ${thread.map((m) => {
+      if (m.from === 'me') return `<div class="mout"><div class="bub"><span class="sr">Você: </span>${esc(m.text)}</div></div>`;
+      const p = people[m.from];
+      return `<div class="min"><div class="av40" aria-hidden="true" style="background:${p ? p.g : G.slate}">${esc(p ? p.ini : '')}</div><div class="bub"><span class="sr">${esc(p ? p.name : '')}: </span>${esc(m.text)}</div></div>`;
+    }).join('')}
+    ${typingP ? `<div class="min"><div class="av40" aria-hidden="true" style="background:${typingP.g}">${esc(typingP.ini)}</div><div class="typing"><i></i><i></i><i></i></div></div>` : ''}
+  </div>
+  <div class="cbar hbar">
+    <button type="button" class="hov ib" data-act="toast-attach" aria-label="Anexar arquivo">${ic(D.clip, 18)}</button>
+    <input id="hmsg" type="text" placeholder="Escreva algo..." value="${esc(A.hdraft)}" data-app-bind="hdraft" autocomplete="off" aria-label="Escreva uma mensagem">
+    <button type="button" class="go" id="hsend" data-act="hsend" aria-label="Enviar mensagem"${A.hdraft.trim() ? '' : ' hidden'}>${ic(D.send, 17, '#FFFFFF', 1.8)}</button>
+  </div>
+</div>`;
+}
+
+function pinnedHTML() {
+  const av = [G.rose, G.sky, G.mint].map((g, i) => `<span class="pav" style="background:${g};margin-left:${i ? -10 : 0}px"></span>`).join('');
+  return `<div class="pp"><h2>Festas fixadas</h2><div class="pgrid">
+    <button type="button" class="pslot has" data-act="srv-open" data-id="s1" aria-label="Abrir Arena Estelar"><span class="pavs">${av}</span><small>Arena Estelar</small></button>
+    ${[0, 1, 2].map(() => `<button type="button" class="pslot" data-act="toast-pin" aria-label="Fixar uma festa">${ic(D.plus, 20, '#62626D', 1.6)}</button>`).join('')}
+  </div></div>`;
+}
+
+function mostHTML() {
+  return `<div class="ggrid">${GAMES.map((g) => `<button type="button" class="gtile" data-act="toast-soon" aria-label="${esc(g.n)}, ${esc(g.h)} jogadas"><span class="gart" style="background:${g.g}">${g.i}</span><b>${esc(g.n)}</b><small>${esc(g.h)}</small></button>`).join('')}</div>`;
+}
+
+function musicHTML() {
+  const t = TRACKS[A.track], pct = Math.min(100, (A.prog / t.d) * 100);
+  return `<div class="mtop">
+  <div class="disc${A.playing ? ' spin' : ''}" id="disc" aria-hidden="true"><span class="core">${ic(D.music, 30, '#44444C', 1.5)}</span></div>
+  <div class="minfo">
+    <h3 id="mt">${esc(t.t)}</h3><small id="ma">${esc(t.a)}</small>
+    <div class="mctl"><button type="button" class="hov mc" data-act="mprev" aria-label="Faixa anterior">${ic(D.prev, 20, '#33333A', 1.7)}</button><button type="button" class="mc play" id="mplay" data-act="mplay" aria-label="${A.playing ? 'Pausar' : 'Tocar'}">${ic(A.playing ? D.pause : D.play, 20, '#FFFFFF', 1.8)}</button><button type="button" class="hov mc" data-act="mnext" aria-label="Próxima faixa">${ic(D.next, 20, '#33333A', 1.7)}</button></div>
+    <div class="mtime"><span id="mcur">${fmt(A.prog)}</span><span>${fmt(t.d)}</span></div>
+    <div class="pbar" data-act="seek" role="progressbar" aria-label="Progresso da música" aria-valuemin="0" aria-valuemax="${t.d}" aria-valuenow="${A.prog}"><i id="mfill" style="width:${pct}%"></i><b id="mknob" style="left:${pct}%"></b></div>
+  </div></div>
+  <div class="tracks">${TRACKS.map((x, i) => `<button type="button" class="trk ${i === A.track ? 'on' : 'hov'}" data-act="mtrack" data-i="${i}" aria-label="Tocar ${esc(x.t)}"><span class="tc" style="background:${x.g}"></span><span class="tx"><b>${esc(x.t)}</b><small>${esc(x.a)}</small></span><em>${fmt(x.d)}</em></button>`).join('')}</div>`;
+}
+
+function newsHTML() {
+  const card = (x) => `<article class="ncard"><div class="nart" style="background:${x.g}"><button type="button" class="hov next" data-act="toast-soon" aria-label="Abrir">${ic(D.ext, 16, '#1D1D22', 1.8)}</button></div><div class="nb"><div class="src"><span style="background:${x.g}"></span>${esc(x.src)}</div><h4>${esc(x.t)}</h4><p>${esc(x.s)}</p></div></article>`;
+  const tab = (k, label) => `<button type="button" role="tab" class="ntab${A.ntab === k ? ' on' : ''}" id="tab-${k}" data-act="ntab" data-k="${k}" aria-selected="${A.ntab === k}">${label}</button>`;
+  return `<div class="ntabs" role="tablist">${tab('news', 'Notícias')}${tab('free', 'Jogos grátis')}<span class="tsp"></span><button type="button" class="hov wext" data-act="toast-soon" aria-label="Abrir">${ic(D.ext, 17)}</button></div>
+  <div class="npane${A.ntab === 'news' ? ' on' : ''}" id="pane-news" role="tabpanel">${NEWS.map(card).join('')}</div>
+  <div class="npane${A.ntab === 'free' ? ' on' : ''}" id="pane-free" role="tabpanel">${FREE.map(card).join('')}</div>`;
+}
+
+function userbarHTML() {
+  const me = displayName(), mutedEff = A.muted || A.deafened;
+  const x = (act, icon, label, i, extra = '') => `<button type="button" class="hov tb" data-act="${act}" ${extra} aria-label="${label}" style="transition-delay:${i * 55}ms">${ic(icon, 20, '#33333A', 1.7)}</button>`;
+  return `<div class="barwrap"><div class="ubar${A.barOpen ? ' open' : ''}" id="ubar">
+  ${A.menu ? `<div class="menu" role="menu" aria-label="Menu da conta"><button type="button" role="menuitem" class="hov" data-act="settings">Configurações</button><button type="button" role="menuitem" class="hov out" data-act="logout">Sair da conta</button></div>` : ''}
+  <span class="pic" title="${esc(me)}" aria-label="${esc(me)}">${esc((me.charAt(0) || '?').toUpperCase())}</span>
+  <button type="button" class="hov tb" data-act="deaf" aria-label="${A.deafened ? 'Ativar áudio' : 'Desativar áudio'}" aria-pressed="${A.deafened}">${A.deafened ? ic(D.head + '<path d="M4 4l16 16"/>', 20, '#D92D45', 1.8) : ic(D.head, 20, '#33333A', 1.7)}</button>
+  <button type="button" class="hov tb" data-act="mute" aria-label="${mutedEff ? 'Ativar microfone' : 'Silenciar microfone'}" aria-pressed="${mutedEff}">${mutedEff ? ic(D.micOff, 20, '#D92D45', 1.8) : ic(D.mic, 20, '#33333A', 1.7)}</button>
+  <button type="button" class="hov tb" data-act="menu" aria-label="Menu da conta" aria-haspopup="true" aria-expanded="${A.menu}">${ic(D.gear, 20, '#33333A', 1.6)}</button>
+  <button type="button" class="hov tb dots" id="b-dots" data-act="bar" aria-label="Mais opções" aria-expanded="${A.barOpen}">${ic(D.dots, 20, '#33333A', 1.7)}</button>
+  <span class="xtra">${x('panel', D.bell, 'Notificações', 1, 'data-k="notif"')}${x('toast-friend', D.userPlus, 'Adicionar amigo', 2)}${x('toast-edit', D.edit, 'Editar perfil', 3)}${x('panel', D.help, 'Central de ajuda', 4, 'data-k="help"')}${x('bar', D.chevL, 'Recolher', 5)}</span>
+</div></div>`;
+}
+
+function hubHTML(enter) {
+  const w = (cls, i, inner) => `<section class="w ${cls}" style="--i:${i}">${inner}</section>`;
+  return `<main class="hub${enter ? ' enter' : ''}" aria-label="Painel inicial">
+  ${w('w-fr', 0, `<div class="wh"><h2>Amigos online</h2><button type="button" class="hov wext" data-act="friends-open" aria-label="Abrir lista de membros">${ic(D.ext, 17)}</button></div><div class="flist" id="flist">${friendsHTML()}</div>`)}
+  ${w('w-chat', 1, `${hubChatHTML()}${pinnedHTML()}`)}
+  ${w('w-most', 2, `<div class="wh"><h2>Mais jogados</h2></div>${mostHTML()}`)}
+  ${w('w-mus', 3, musicHTML())}
+  ${w('w-news', 4, newsHTML())}
+  ${userbarHTML()}
+</main>`;
+}
+
+let musicT = null;
+function startMusic() {
+  if (musicT) return;
+  musicT = setInterval(() => {
+    if (S.view !== 'app' || !A || document.hidden || !A.playing) return;
+    const t = TRACKS[A.track];
+    A.prog++;
+    if (A.prog >= t.d) { A.track = (A.track + 1) % TRACKS.length; A.prog = 0; if (A.view === 'hub') render(); return; }
+    paintProg();
+  }, 1000);
+}
+function paintProg() {
+  if (S.view !== 'app' || !A || A.view !== 'hub') return;
+  const t = TRACKS[A.track], p = Math.min(100, (A.prog / t.d) * 100);
+  const f = document.getElementById('mfill'), k = document.getElementById('mknob'), c = document.getElementById('mcur');
+  if (f) f.style.width = p + '%'; if (k) k.style.left = p + '%'; if (c) c.textContent = fmt(A.prog);
+}
+function hubSend() {
+  const text = A.hdraft.trim();
+  if (!text) return;
+  A.threads[A.hubKey] = (A.threads[A.hubKey] || []).concat([{ id: Date.now(), from: 'me', text, time: nowHM() }]);
+  A.hdraft = '';
+  scheduleReply(A.hubKey);
+  render({ scroll: true });
+  const el = document.getElementById('hmsg'); if (el) el.focus();
+}
 
 function membersListHTML() {
   const srv = curServer();
@@ -747,7 +926,7 @@ function membersListHTML() {
   ${on.length + off.length === 0 ? '<div style="padding:12px 4px;font-size:13px;color:#55555F">Nenhum membro encontrado para essa busca.</div>' : ''}`;
 }
 
-function appView() {
+function serverHTML() {
   const srv = curServer();
   const mutedEff = A.muted || A.deafened;
   const me = displayName();
@@ -760,7 +939,6 @@ function appView() {
   const threadKey = srv.id + ':' + A.channel;
   const thread = A.threads[threadKey] || [];
   const typingP = A.typing && A.typingKey === threadKey ? byId[A.typing] : null;
-  const panel = A.panel ? PANELS[A.panel] : null;
   let voiceName = '';
   if (A.voice) { const [sid, gid] = A.voice.split(':'); const vs = SERVERS.find((s) => s.id === sid); const vg = vs && vs.voice.find((g) => g.id === gid); voiceName = vg ? vg.name + ' · ' + vs.name : ''; }
   const nav = (k, icon, label, on) => `<button type="button" class="nbtn ${on ? 'sel' : 'hov'}" data-act="nav" data-k="${k}" aria-pressed="${!!on}">${ic(icon, 18, '#55555F', 1.6)}${label}</button>`;
@@ -818,8 +996,6 @@ function appView() {
       ${nav('notif', D.bell, 'Notificações', A.panel === 'notif')}${nav('pins', D.pin, 'Mensagens fixadas', A.panel === 'pins')}${nav('members', D.users, 'Lista de membros', A.showMembers)}${nav('mentions', D.at, 'Menções', A.panel === 'mentions')}${nav('help', D.help, 'Central de ajuda', A.panel === 'help')}
     </nav>
   </header>
-  ${panel ? `<div class="panel" role="dialog" aria-label="${panel.title}"><div class="ph"><span>${panel.title}</span><button type="button" class="hov sq" data-act="close-panel" aria-label="Fechar painel">${ic(D.close, 16, '#55555F', 1.8)}</button></div>
-    ${panel.items.map((it) => `<div class="it"><b>${esc(it.t)}</b><span>${esc(it.s)}</span></div>`).join('')}</div>` : ''}
   <div class="body">
     ${A.showMembers ? `<aside class="mem" aria-label="Lista de membros"><h3>${ic(D.users, 20, '#55555F', 1.6)}Lista de membros</h3><div class="mlist" id="mlist">${membersListHTML()}</div></aside>` : ''}
     <section class="chat" aria-label="Conversa">
@@ -852,6 +1028,17 @@ function appView() {
 </div>`;
 }
 
+function appView() {
+  const enter = !A.entered; A.entered = true;
+  const panel = A.panel ? PANELS[A.panel] : null;
+  const panelHTML = panel ? `<div class="panel" role="dialog" aria-label="${panel.title}"><div class="ph"><span>${panel.title}</span><button type="button" class="hov sq" data-act="close-panel" aria-label="Fechar painel">${ic(D.close, 16, '#55555F', 1.8)}</button></div>
+    ${panel.items.map((it) => `<div class="it"><b>${esc(it.t)}</b><span>${esc(it.s)}</span></div>`).join('')}</div>` : '';
+  return `<div class="shell">
+<div class="cloud" aria-hidden="true" style="left:-140px;bottom:-180px;width:600px;height:480px;background:radial-gradient(closest-side,rgba(140,140,158,.34),rgba(140,140,158,0))"></div>
+<div class="cloud c2" aria-hidden="true" style="right:-160px;top:20%;width:520px;height:420px;background:radial-gradient(closest-side,rgba(214,200,240,.4),rgba(214,200,240,0))"></div>
+${topbarHTML()}${panelHTML}${A.view === 'hub' ? hubHTML(enter) : serverHTML()}</div>`;
+}
+
 function appSend() {
   const text = A.draft.trim();
   if (!text) return;
@@ -863,8 +1050,9 @@ function appSend() {
   const el = document.getElementById('msg'); if (el) el.focus();
 }
 function scheduleReply(key) {
-  const srv = curServer();
-  const who = A.channel.indexOf('dm:') === 0 ? srv.online.find((p) => p.id === A.channel.slice(3)) : srv.online[Math.floor(Math.random() * srv.online.length)];
+  const sid = key.split(':')[0], ch = key.slice(sid.length + 1);
+  const srv = srvOf(sid);
+  const who = ch.indexOf('dm:') === 0 ? srv.online.find((p) => p.id === ch.slice(3)) : srv.online[Math.floor(Math.random() * srv.online.length)];
   if (!who) return;
   stopAppTimers();
   A.t1 = setTimeout(() => { if (S.view !== 'app') return; A.typing = who.id; A.typingKey = key; render({ scroll: true }); }, 800);
@@ -875,7 +1063,42 @@ function scheduleReply(key) {
   }, 2600);
 }
 
-function appAction(act, el) {
+function appAction(act, el, ev) {
+  const wasMenu = A.menu;
+  const quiet = () => { if (wasMenu) { A.menu = false; const m = document.querySelector('.menu'); if (m) m.remove(); } };
+  // ações que só mexem no que já está na tela (assim as animações rodam sem recarregar tudo)
+  switch (act) {
+    case 'bar': {
+      quiet(); A.barOpen = !A.barOpen;
+      const b = document.getElementById('ubar'); if (b) b.classList.toggle('open', A.barOpen);
+      const d = document.getElementById('b-dots'); if (d) d.setAttribute('aria-expanded', String(A.barOpen));
+      return;
+    }
+    case 'mplay': {
+      quiet(); A.playing = !A.playing;
+      const d = document.getElementById('disc'); if (d) d.classList.toggle('spin', A.playing);
+      const b = document.getElementById('mplay'); if (b) { b.innerHTML = ic(A.playing ? D.pause : D.play, 20, '#FFFFFF', 1.8); b.setAttribute('aria-label', A.playing ? 'Pausar' : 'Tocar'); }
+      return;
+    }
+    case 'seek': { quiet(); const r = el.getBoundingClientRect(); const f = Math.min(1, Math.max(0, ((ev ? ev.clientX : r.left) - r.left) / (r.width || 1))); A.prog = Math.round(f * TRACKS[A.track].d); paintProg(); return; }
+    case 'ntab': {
+      quiet(); A.ntab = el.dataset.k;
+      ['news', 'free'].forEach((k) => {
+        const t = document.getElementById('tab-' + k), p = document.getElementById('pane-' + k), on = k === A.ntab;
+        if (t) { t.classList.toggle('on', on); t.setAttribute('aria-selected', String(on)); }
+        if (p) p.classList.toggle('on', on);
+      });
+      return;
+    }
+    case 'gsearch': {
+      quiet(); A.searchOpen = !A.searchOpen;
+      const s = document.getElementById('tsearch'); if (s) s.classList.toggle('open', A.searchOpen);
+      const i = document.getElementById('gsearch');
+      if (i) { if (A.searchOpen) i.focus(); else { i.value = ''; A.gq = ''; A.search = ''; refilter(); } }
+      return;
+    }
+    default: break;
+  }
   if (act !== 'menu') A.menu = false;
   if (act !== 'emoji-toggle' && act !== 'emoji') A.emojiOpen = false;
   const reset = () => { A.emojiOpen = false; A.typing = null; A.typingKey = null; };
@@ -898,6 +1121,21 @@ function appAction(act, el) {
     case 'emoji-toggle': A.emojiOpen = !A.emojiOpen; break;
     case 'emoji': A.draft += el.dataset.ch; A.emojiOpen = false; render(); { const m = document.getElementById('msg'); if (m) m.focus(); } return;
     case 'send': appSend(); return;
+    case 'hsend': hubSend(); return;
+    case 'hub': A.view = 'hub'; A.panel = null; reset(); break;
+    case 'srv-open': { const s = SERVERS.find((x) => x.id === el.dataset.id) || SERVERS[0]; A.server = s.id; A.channel = s.text[0].id; A.search = ''; A.view = 'server'; A.panel = null; reset(); render({ scroll: true }); return; }
+    case 'friend': { A.server = el.dataset.sid; A.channel = 'dm:' + el.dataset.id; A.search = ''; A.view = 'server'; A.panel = null; reset(); render({ scroll: true }); return; }
+    case 'friends-open': A.view = 'server'; A.showMembers = true; A.panel = null; reset(); break;
+    case 'chat-open': { const k = A.hubKey, sid = k.split(':')[0]; A.server = sid; A.channel = k.slice(sid.length + 1); A.search = ''; A.view = 'server'; A.panel = null; reset(); render({ scroll: true }); return; }
+    case 'hubchat': A.hubKey = el.dataset.key; reset(); render({ scroll: true }); return;
+    case 'mprev': A.track = (A.track + TRACKS.length - 1) % TRACKS.length; A.prog = 0; break;
+    case 'mnext': A.track = (A.track + 1) % TRACKS.length; A.prog = 0; break;
+    case 'mtrack': A.track = Number(el.dataset.i) || 0; A.prog = 0; A.playing = true; break;
+    case 'panel': A.panel = A.panel === el.dataset.k ? null : el.dataset.k; break;
+    case 'toast-soon': toast('Isso chega em breve'); return;
+    case 'toast-pin': toast('Fixar festas chega em breve'); return;
+    case 'toast-friend': toast('Adicionar amigos chega em breve'); return;
+    case 'toast-edit': toast('Editar perfil chega em breve'); return;
     case 'toast-server': toast('Criar servidor chega em breve'); return;
     case 'toast-channel': toast('Criar canais chega em breve'); return;
     case 'toast-attach': toast('Anexos chegam em breve'); return;
@@ -934,6 +1172,8 @@ $root.addEventListener('input', (e) => {
   const t = e.target;
   if (t.dataset.appBind) {
     if (t.dataset.appBind === 'search') { A.search = t.value; const l = document.getElementById('mlist'); if (l) l.innerHTML = membersListHTML(); }
+    else if (t.dataset.appBind === 'gq') { A.gq = t.value; A.search = t.value; refilter(); }
+    else if (t.dataset.appBind === 'hdraft') { A.hdraft = t.value; const b = document.getElementById('hsend'); if (b) b.hidden = !A.hdraft.trim(); }
     else { A.draft = t.value; const b = document.getElementById('send-btn'); if (b) b.hidden = !A.draft.trim(); }
     return;
   }
@@ -949,6 +1189,7 @@ $root.addEventListener('change', (e) => {
 });
 $root.addEventListener('keydown', (e) => {
   if (e.target.id === 'msg' && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); appSend(); }
+  if (e.target.id === 'hmsg' && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); hubSend(); }
 });
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && S.view === 'app' && (A.menu || A.panel || A.emojiOpen)) { A.menu = false; A.panel = null; A.emojiOpen = false; render(); }
@@ -961,7 +1202,7 @@ $root.addEventListener('submit', (e) => {
 $root.addEventListener('click', (e) => {
   const el = e.target.closest('[data-act]');
   if (S.view === 'app') {
-    if (el) { appAction(el.dataset.act, el); return; }
+    if (el) { appAction(el.dataset.act, el, e); return; }
     if (A.menu || A.emojiOpen) { A.menu = false; A.emojiOpen = false; render(); }
     return;
   }
