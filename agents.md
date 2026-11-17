@@ -24,10 +24,11 @@ A pessoa que está construindo este projeto é **iniciante**. Escreva e explique
    - Ao **surgir algo novo** a fazer: adicione em "O que ainda falta fazer".
    - Antes de adicionar uma tarefa, **procure se ela já existe** no arquivo, para não duplicar nem refazer o que já está feito.
    - Não deixe a atualização para o final: faça no momento em que acontece.
+8. **Envie ao GitHub a cada tarefa concluída.** Depois de concluir uma tarefa (e atualizar o `task.md`), faça `git add -A`, `git commit` e `git push origin main`, sem esperar a pessoa pedir. Assim, se o limite da conta acabar, nada fica preso na sessão e outra conta continua de onde parou. Nunca envie segredos (veja "Regras do projeto"). Se o envio falhar, avise a pessoa em linguagem simples.
 
 ## 3. Ao encerrar uma sessão
 
-7. **Antes de encerrar, registre no `task.md`**, na seção "Registro de sessões": o que foi feito, os problemas encontrados e o próximo passo. Confira também se "Em andamento agora" e "Próximo passo" estão corretos para a próxima IA.
+7. **Antes de encerrar (ou se a pessoa disser que vai trocar de conta), envie tudo ao GitHub e registre no `task.md`**, na seção "Registro de sessões": o que foi feito, os problemas encontrados e o próximo passo. Confira também se "Em andamento agora" e "Próximo passo" estão corretos para a próxima IA.
 
 ---
 
