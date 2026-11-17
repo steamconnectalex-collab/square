@@ -7,11 +7,11 @@ const path = require('path');
 const ROOT = path.join(__dirname, '..', 'site');
 const OUT = path.join(__dirname, 'out');
 fs.mkdirSync(OUT, { recursive: true });
-const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml' };
+const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg' };
 const server = http.createServer((req, res) => {
   const p = req.url.split('?')[0] === '/' ? '/index.html' : req.url.split('?')[0];
   const f = path.join(ROOT, p);
-  if (!f.startsWith(ROOT) || !fs.existsSync(f)) { res.writeHead(404); return res.end('nf'); }
+  if (!f.startsWith(ROOT) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); return res.end('nf'); }
   res.writeHead(200, { 'content-type': types[path.extname(f)] || 'text/plain' });
   res.end(fs.readFileSync(f));
 });

@@ -9,4 +9,9 @@ mkdir -p out
 for f in index.html app.js home.js config.js qr.js style.css favicon.svg; do
   curl -fsSL --retry 3 --max-time 60 "$BASE/$f" -o "out/$f"
 done
-ls -l out
+# Fotos de teste dos perfis (provisório; ver USE_TEST_PHOTOS em site/app.js)
+mkdir -p out/img
+for f in eu capa tux terno anime estatua craque morcego mono1 mono2; do
+  curl -fsSL --retry 3 --max-time 60 "$BASE/img/$f.jpg" -o "out/img/$f.jpg"
+done
+ls -l out out/img

@@ -662,7 +662,13 @@ const G = {
   sky: 'linear-gradient(135deg,#C9E6F0,#7DB8CF)', mint: 'linear-gradient(135deg,#CBE9D9,#78BE9D)',
   sand: 'linear-gradient(135deg,#F9E5C0,#EBBA6C)', slate: 'linear-gradient(135deg,#DCDCE4,#9A9AA7)'
 };
-const Pp = (id, name, st, g) => ({ id, name, st, g, ini: name.charAt(0) });
+/* FOTOS DE TESTE (provisório): só para ter uma ideia de como o projeto fica.
+   Antes do lançamento, trocar por um ícone de boneco: USE_TEST_PHOTOS = false e apagar site/img/. */
+const USE_TEST_PHOTOS = true;
+const ph = (file, fallback) => (USE_TEST_PHOTOS ? `url('img/${file}.jpg') center/cover no-repeat, ${fallback}` : fallback);
+const meBg = () => ph('eu', G.lilac);
+const meIni = (name) => (USE_TEST_PHOTOS ? '' : (name.charAt(0) || '?').toUpperCase());
+const Pp = (id, name, st, g, photo) => ({ id, name, st, g: photo ? ph(photo, g) : g, ini: photo && USE_TEST_PHOTOS ? '' : name.charAt(0) });
 const V = (name, g, bot) => ({ name, g, bot: !!bot });
 const SERVERS = [
   { id: 's1', name: 'Arena Estelar', users: '119.282', activity: '15 minutos atrás', ini: 'A', tile: 'linear-gradient(160deg,#F4C7D3,#B79BDB)',
@@ -671,14 +677,14 @@ const SERVERS = [
       { id: 'sala', name: 'Sala principal', members: [V('Lorena Lima', G.rose), V('Irwin Peixoto', G.sky), V('Estefani Leal', G.mint)] },
       { id: 'rapida', name: 'Partida rápida', members: [V('Yasmin Sabino', G.sand), V('Duda Brandão', G.lilac), V('Bot de música', G.slate, true)] },
       { id: 'treino', name: 'Treino', members: [V('Rafa Teles', G.sky), V('Nina Prado', G.rose)] }],
-    online: [Pp('lia', 'Lia Monteiro', 'Arena Estelar: nível 15 Vanguarda', G.rose), Pp('salma', 'Salma Fonseca', 'Reinos de Vale: menu principal', G.lilac), Pp('marina', 'Marina Rocha', 'Cidade Neon: Operadora', G.sky), Pp('theo', 'Theo Bramante', 'Dunas: 14 jogadores restantes', G.slate)],
+    online: [Pp('lia', 'Lia Monteiro', 'Arena Estelar: nível 15 Vanguarda', G.rose, 'estatua'), Pp('salma', 'Salma Fonseca', 'Reinos de Vale: menu principal', G.lilac, 'anime'), Pp('marina', 'Marina Rocha', 'Cidade Neon: Operadora', G.sky, 'mono1'), Pp('theo', 'Theo Bramante', 'Dunas: 14 jogadores restantes', G.slate, 'tux')],
     offline: [Pp('leo', 'Leo Cavalcante', 'Offline', G.mint), Pp('caio', 'Caio Santana', 'Offline', G.sand)] },
   { id: 's2', name: 'Dunas', users: '212.990', activity: '2 horas atrás', ini: 'D', tile: 'linear-gradient(160deg,#F7DDB5,#E39B6B)',
     text: [{ id: 'geral', name: 'Geral' }, { id: 'estrategias', name: 'Estratégias' }],
     voice: [
       { id: 'comboio', name: 'Comboio', members: [V('Bruno Azevedo', G.sky), V('Camila Duarte', G.rose)] },
       { id: 'duplas', name: 'Modo duplas', members: [V('Tati Moura', G.mint), V('Bot de música', G.slate, true)] }],
-    online: [Pp('bruno', 'Bruno Azevedo', 'Dunas: modo duplas', G.sky), Pp('camila', 'Camila Duarte', 'Ouvindo música', G.rose), Pp('rodrigo', 'Rodrigo Nunes', 'Arena Estelar: treino', G.lilac), Pp('tati', 'Tati Moura', 'Online', G.mint)],
+    online: [Pp('bruno', 'Bruno Azevedo', 'Dunas: modo duplas', G.sky, 'terno'), Pp('camila', 'Camila Duarte', 'Ouvindo música', G.rose, 'morcego'), Pp('rodrigo', 'Rodrigo Nunes', 'Arena Estelar: treino', G.lilac, 'craque'), Pp('tati', 'Tati Moura', 'Online', G.mint, 'mono2')],
     offline: [Pp('hugo', 'Hugo Pires', 'Offline', G.sand), Pp('vera', 'Vera Lins', 'Offline', G.slate)] },
   { id: 's3', name: 'Cidade Neon', users: '112.230', activity: 'ontem', ini: 'N', tile: 'linear-gradient(160deg,#BFE3EE,#6C9AD0)',
     text: [{ id: 'geral', name: 'Geral' }, { id: 'clipes', name: 'Clipes' }],
@@ -753,6 +759,7 @@ const GAMES = [
   { n: 'Cidade Neon', h: '97 h', i: 'N', g: 'linear-gradient(160deg,#BFE3EE,#6C9AD0)' }
 ];
 const TRACKS = [
+  { t: 'Magnolia', a: 'Playboi Carti', d: 181, g: ph('capa', G.rose), img: true },
   { t: 'Fim de Tarde', a: 'Banda Lume', d: 261, g: G.rose },
   { t: 'Noite em Neon', a: 'Os Faróis', d: 215, g: G.sky },
   { t: 'Rota das Dunas', a: 'Vale Sonoro', d: 243, g: G.sand }
@@ -837,7 +844,7 @@ function mostHTML() {
 function musicHTML() {
   const t = TRACKS[A.track], pct = Math.min(100, (A.prog / t.d) * 100);
   return `<div class="mtop">
-  <div class="disc${A.playing ? ' spin' : ''}" id="disc" aria-hidden="true"><span class="core">${ic(D.music, 30, '#44444C', 1.5)}</span></div>
+  <div class="disc${A.playing ? ' spin' : ''}" id="disc" aria-hidden="true"><span class="core"${USE_TEST_PHOTOS && t.img ? ` style="background:${t.g}"` : ''}>${USE_TEST_PHOTOS && t.img ? '' : ic(D.music, 30, '#44444C', 1.5)}</span></div>
   <div class="minfo">
     <h3 id="mt">${esc(t.t)}</h3><small id="ma">${esc(t.a)}</small>
     <div class="mctl"><button type="button" class="hov mc" data-act="mprev" aria-label="Faixa anterior">${ic(D.prev, 20, '#33333A', 1.7)}</button><button type="button" class="mc play" id="mplay" data-act="mplay" aria-label="${A.playing ? 'Pausar' : 'Tocar'}">${ic(A.playing ? D.pause : D.play, 20, '#FFFFFF', 1.8)}</button><button type="button" class="hov mc" data-act="mnext" aria-label="Próxima faixa">${ic(D.next, 20, '#33333A', 1.7)}</button></div>
@@ -860,7 +867,7 @@ function userbarHTML() {
   const x = (act, icon, label, i, extra = '') => `<button type="button" class="hov tb" data-act="${act}" ${extra} aria-label="${label}" style="transition-delay:${i * 55}ms">${ic(icon, 20, '#33333A', 1.7)}</button>`;
   return `<div class="barwrap"><div class="ubar${A.barOpen ? ' open' : ''}" id="ubar">
   ${A.menu ? `<div class="menu" role="menu" aria-label="Menu da conta"><button type="button" role="menuitem" class="hov" data-act="settings">Configurações</button><button type="button" role="menuitem" class="hov out" data-act="logout">Sair da conta</button></div>` : ''}
-  <span class="pic" title="${esc(me)}" aria-label="${esc(me)}">${esc((me.charAt(0) || '?').toUpperCase())}</span>
+  <span class="pic" title="${esc(me)}" aria-label="${esc(me)}" style="background:${meBg()}">${esc(meIni(me))}</span>
   <button type="button" class="hov tb" data-act="deaf" aria-label="${A.deafened ? 'Ativar áudio' : 'Desativar áudio'}" aria-pressed="${A.deafened}">${A.deafened ? ic(D.head + '<path d="M4 4l16 16"/>', 20, '#D92D45', 1.8) : ic(D.head, 20, '#33333A', 1.7)}</button>
   <button type="button" class="hov tb" data-act="mute" aria-label="${mutedEff ? 'Ativar microfone' : 'Silenciar microfone'}" aria-pressed="${mutedEff}">${mutedEff ? ic(D.micOff, 20, '#D92D45', 1.8) : ic(D.mic, 20, '#33333A', 1.7)}</button>
   <button type="button" class="hov tb" data-act="menu" aria-label="Menu da conta" aria-haspopup="true" aria-expanded="${A.menu}">${ic(D.gear, 20, '#33333A', 1.6)}</button>
@@ -969,7 +976,7 @@ function serverHTML() {
       ${srv.voice.map((g) => {
         const key = srv.id + ':' + g.id, joined = A.voice === key, open = !A.collapsed[key];
         const members = g.members.map((m) => ({ name: m.name, g: m.g, bot: m.bot, muted: false, w: 500 }));
-        if (joined) members.unshift({ name: me + ' (você)', g: G.lilac, bot: false, muted: mutedEff, w: 700 });
+        if (joined) members.unshift({ name: me + ' (você)', g: meBg(), bot: false, muted: mutedEff, w: 700 });
         return `<div class="vg"><div class="vgh">
           <button type="button" class="hov vjoin" data-act="vjoin" data-key="${key}" aria-pressed="${joined}" aria-label="${joined ? 'Sair de ' : 'Entrar em '}${esc(g.name)}" style="color:${joined ? '#1B6B47' : '#33333A'}"><i style="background:${joined ? '#2DA770' : 'rgba(29,29,34,.22)'}"></i><span>${esc(g.name)}</span></button>
           <button type="button" class="hov sq" data-act="vopen" data-key="${key}" aria-label="${open ? 'Ocultar ' : 'Mostrar '}${esc(g.name)}" aria-expanded="${open}">${ic(open ? D.up : D.down, 17, '#55555F', 1.8)}</button></div>
@@ -980,7 +987,7 @@ function serverHTML() {
   ${A.voice ? `<div class="vbar"><div style="min-width:0"><b>Voz conectada</b><span>${esc(voiceName)}</span></div><button type="button" class="hov tb" data-act="leave-voice" aria-label="Sair da chamada de voz">${ic(D.leave, 17, '#1B6B47', 1.8)}</button></div>` : ''}
   <div class="me">
     ${A.menu ? `<div class="menu" role="menu" aria-label="Menu da conta"><button type="button" role="menuitem" class="hov" data-act="settings">Configurações</button><button type="button" role="menuitem" class="hov out" data-act="logout">Sair da conta</button></div>` : ''}
-    <div class="who"><span class="pic" aria-hidden="true">${esc(initial)}</span><strong title="${esc(S.session && S.session.user ? S.session.user.email : '')}">${esc(me)}</strong></div>
+    <div class="who"><span class="pic" aria-hidden="true" style="background:${meBg()}">${esc(USE_TEST_PHOTOS ? '' : initial)}</span><strong title="${esc(S.session && S.session.user ? S.session.user.email : '')}">${esc(me)}</strong></div>
     <div class="tools">
       <button type="button" class="hov tb" data-act="mute" aria-label="${mutedEff ? 'Ativar microfone' : 'Silenciar microfone'}" aria-pressed="${mutedEff}">${mutedEff ? ic(D.micOff, 18, '#D92D45', 1.8) : ic(D.mic)}</button>
       <button type="button" class="hov tb" data-act="deaf" aria-label="${A.deafened ? 'Ativar áudio' : 'Desativar áudio'}" aria-pressed="${A.deafened}">${A.deafened ? ic(D.head + '<path d="M4 4l16 16"/>', 18, '#D92D45', 1.8) : ic(D.head)}</button>
