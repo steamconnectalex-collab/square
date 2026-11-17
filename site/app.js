@@ -668,10 +668,18 @@ const USE_TEST_PHOTOS = true;
 const ph = (file, fallback) => (USE_TEST_PHOTOS ? `url('img/${file}.jpg') center/cover no-repeat, ${fallback}` : fallback);
 const meBg = () => ph('eu', G.lilac);
 const meIni = (name) => (USE_TEST_PHOTOS ? '' : (name.charAt(0) || '?').toUpperCase());
-const Pp = (id, name, st, g, photo) => ({ id, name, st, g: photo ? ph(photo, g) : g, ini: photo && USE_TEST_PHOTOS ? '' : name.charAt(0) });
-const V = (name, g, bot) => ({ name, g, bot: !!bot });
+const Pp = (id, name, st, g) => { const photo = PHOTO_OF[name]; return { id, name, st, g: photo ? ph(photo, g) : g, ini: photo && USE_TEST_PHOTOS ? '' : name.charAt(0) }; };
+/* Foto de teste de cada pessoa (nome -> arquivo em site/img/). Provisório, junto com USE_TEST_PHOTOS. */
+const PHOTO_OF = {
+  'Lorena Lima': 'v4', 'Irwin Peixoto': 'v2', 'Estefani Leal': 'v6', 'Yasmin Sabino': 'v5', 'Duda Brandão': 'v1', 'Rafa Teles': 'v7', 'Nina Prado': 'v8',
+  'Lia Monteiro': 'estatua', 'Salma Fonseca': 'anime', 'Marina Rocha': 'mono1', 'Theo Bramante': 'tux', 'Leo Cavalcante': 'v1', 'Caio Santana': 'v2',
+  'Bruno Azevedo': 'terno', 'Camila Duarte': 'morcego', 'Rodrigo Nunes': 'craque', 'Tati Moura': 'mono2', 'Hugo Pires': 'v3', 'Vera Lins': 'v4',
+  'Ravi Costa': 'cao', 'Julia Prado': 'craque2', 'Otávio Sá': 'boneco', 'Pietra Lemos': 'dentes', 'Nando Alves': 'v5', 'Bela Furtado': 'v6',
+  'Davi Prates': 'v3', 'Kelly Ramos': 'v8', 'Marcos Vieira': 'v2', 'Dani Cruz': 'v5', 'Enzo Matos': 'v1', 'Alice Borges': 'v6', 'Caue Lima': 'v7', 'Lara Neves': 'v4'
+};
+const V = (name, g, bot) => ({ name, g: !bot && PHOTO_OF[name] ? ph(PHOTO_OF[name], g) : g, bot: !!bot });
 const SERVERS = [
-  { id: 's1', name: 'Arena Estelar', users: '119.282', activity: '15 minutos atrás', ini: 'A', tile: 'linear-gradient(160deg,#F4C7D3,#B79BDB)',
+  { id: 's1', name: 'Dream Cup', users: '119.282', activity: '15 minutos atrás', ini: USE_TEST_PHOTOS ? '' : 'D', tile: ph('dream', 'linear-gradient(160deg,#F4C7D3,#B79BDB)'),
     text: [{ id: 'geral', name: 'Geral' }, { id: 'amigos', name: 'Amigos próximos' }],
     voice: [
       { id: 'sala', name: 'Sala principal', members: [V('Lorena Lima', G.rose), V('Irwin Peixoto', G.sky), V('Estefani Leal', G.mint)] },
@@ -679,23 +687,37 @@ const SERVERS = [
       { id: 'treino', name: 'Treino', members: [V('Rafa Teles', G.sky), V('Nina Prado', G.rose)] }],
     online: [Pp('lia', 'Lia Monteiro', 'Arena Estelar: nível 15 Vanguarda', G.rose, 'estatua'), Pp('salma', 'Salma Fonseca', 'Reinos de Vale: menu principal', G.lilac, 'anime'), Pp('marina', 'Marina Rocha', 'Cidade Neon: Operadora', G.sky, 'mono1'), Pp('theo', 'Theo Bramante', 'Dunas: 14 jogadores restantes', G.slate, 'tux')],
     offline: [Pp('leo', 'Leo Cavalcante', 'Offline', G.mint), Pp('caio', 'Caio Santana', 'Offline', G.sand)] },
-  { id: 's2', name: 'Dunas', users: '212.990', activity: '2 horas atrás', ini: 'D', tile: 'linear-gradient(160deg,#F7DDB5,#E39B6B)',
+  { id: 's2', name: 'Foroz City', users: '212.990', activity: '2 horas atrás', ini: USE_TEST_PHOTOS ? '' : 'F', tile: ph('foroz', 'linear-gradient(160deg,#F7DDB5,#E39B6B)'),
     text: [{ id: 'geral', name: 'Geral' }, { id: 'estrategias', name: 'Estratégias' }],
     voice: [
       { id: 'comboio', name: 'Comboio', members: [V('Bruno Azevedo', G.sky), V('Camila Duarte', G.rose)] },
       { id: 'duplas', name: 'Modo duplas', members: [V('Tati Moura', G.mint), V('Bot de música', G.slate, true)] }],
     online: [Pp('bruno', 'Bruno Azevedo', 'Dunas: modo duplas', G.sky, 'terno'), Pp('camila', 'Camila Duarte', 'Ouvindo música', G.rose, 'morcego'), Pp('rodrigo', 'Rodrigo Nunes', 'Arena Estelar: treino', G.lilac, 'craque'), Pp('tati', 'Tati Moura', 'Online', G.mint, 'mono2')],
     offline: [Pp('hugo', 'Hugo Pires', 'Offline', G.sand), Pp('vera', 'Vera Lins', 'Offline', G.slate)] },
-  { id: 's3', name: 'Cidade Neon', users: '112.230', activity: 'ontem', ini: 'N', tile: 'linear-gradient(160deg,#BFE3EE,#6C9AD0)',
+  { id: 's3', name: 'Sleepy Community', users: '112.230', activity: 'ontem', ini: USE_TEST_PHOTOS ? '' : 'S', tile: ph('sleepy', 'linear-gradient(160deg,#BFE3EE,#6C9AD0)'),
     text: [{ id: 'geral', name: 'Geral' }, { id: 'clipes', name: 'Clipes' }],
     voice: [
       { id: 'garagem', name: 'Garagem', members: [V('Ravi Costa', G.sand), V('Julia Prado', G.lilac)] },
       { id: 'cobertura', name: 'Cobertura', members: [V('Pietra Lemos', G.mint)] }],
     online: [Pp('ravi', 'Ravi Costa', 'Cidade Neon: patrulha', G.sand), Pp('julia', 'Julia Prado', 'Online', G.lilac), Pp('otavio', 'Otávio Sá', 'Ouvindo música', G.sky), Pp('pietra', 'Pietra Lemos', 'Reinos de Vale: Mapa novo', G.mint)],
-    offline: [Pp('nando', 'Nando Alves', 'Offline', G.slate), Pp('bela', 'Bela Furtado', 'Offline', G.rose)] }
+    offline: [Pp('nando', 'Nando Alves', 'Offline', G.slate), Pp('bela', 'Bela Furtado', 'Offline', G.rose)] },
+  { id: 's4', name: 'Unity PVP', users: '84.510', activity: '3 horas atrás', ini: USE_TEST_PHOTOS ? '' : 'U', tile: ph('unity', 'linear-gradient(160deg,#CBE9D9,#78BE9D)'),
+    text: [{ id: 'geral', name: 'Geral' }, { id: 'ranqueada', name: 'Ranqueada' }],
+    voice: [
+      { id: 'arena', name: 'Arena', members: [V('Davi Prates', G.mint), V('Kelly Ramos', G.sky)] },
+      { id: 'treino', name: 'Treino livre', members: [V('Marcos Vieira', G.sand)] }],
+    online: [Pp('davi', 'Davi Prates', 'Unity PVP: partida ranqueada', G.mint), Pp('kelly', 'Kelly Ramos', 'Online', G.sky), Pp('marcos', 'Marcos Vieira', 'Ouvindo música', G.sand)],
+    offline: [Pp('dani', 'Dani Cruz', 'Offline', G.slate)] },
+  { id: 's5', name: 'Sociaxs', users: '57.804', activity: '5 horas atrás', ini: USE_TEST_PHOTOS ? '' : 'S', tile: ph('sociaxs', 'linear-gradient(160deg,#F4C7D3,#E06A7A)'),
+    text: [{ id: 'geral', name: 'Geral' }, { id: 'eventos', name: 'Eventos' }],
+    voice: [
+      { id: 'lounge', name: 'Lounge', members: [V('Enzo Matos', G.rose), V('Alice Borges', G.lilac)] },
+      { id: 'festa', name: 'Festa', members: [V('Caue Lima', G.sky)] }],
+    online: [Pp('enzo', 'Enzo Matos', 'Sociaxs: evento hoje à noite', G.rose), Pp('alice', 'Alice Borges', 'Online', G.lilac), Pp('caue', 'Caue Lima', 'Ouvindo música', G.sky)],
+    offline: [Pp('lara', 'Lara Neves', 'Offline', G.slate)] }
 ];
 const PANELS = {
-  notif: { title: 'Notificações', items: [{ t: 'Lia mencionou você em Geral', s: 'há 2 minutos' }, { t: 'Marina entrou na Sala principal', s: 'há 8 minutos' }, { t: 'Dunas convidou você para jogar', s: 'há 1 hora' }] },
+  notif: { title: 'Notificações', items: [{ t: 'Lia mencionou você em Geral', s: 'há 2 minutos' }, { t: 'Marina entrou na Sala principal', s: 'há 8 minutos' }, { t: 'Foroz City convidou você para jogar', s: 'há 1 hora' }] },
   pins: { title: 'Mensagens fixadas', items: [{ t: 'Regras do grupo', s: 'Respeite todo mundo e avise quando for faltar a uma partida.' }, { t: 'Horário das partidas', s: 'Sextas, às 21h. Chame os amigos com antecedência.' }] },
   mentions: { title: 'Menções', items: [{ t: 'Marina: Ok, Davi. Corre!', s: 'Geral · 12:57' }] },
   help: { title: 'Central de ajuda', items: [{ t: 'Como criar um servidor', s: 'Passo a passo para começar a sua comunidade.' }, { t: 'Atalhos do teclado', s: 'Enter envia a mensagem que você escreveu.' }, { t: 'Falar com o suporte', s: 'Resposta em até um dia útil.' }] }
@@ -730,7 +752,17 @@ function seedThreads(first) {
       { id: 2, from: 'julia', text: 'Vi aqui, o mapa novo ficou lindo.', time: '10:09' }],
     's3:clipes': [
       { id: 1, from: 'pietra', text: 'Olha esse clipe da última partida!', time: '16:30' },
-      { id: 2, from: 'otavio', text: 'Isso foi sorte ou habilidade?', time: '16:32' }]
+      { id: 2, from: 'otavio', text: 'Isso foi sorte ou habilidade?', time: '16:32' }],
+    's4:geral': [
+      { id: 1, from: 'davi', text: 'Quem entra na ranqueada hoje?', time: '14:10' },
+      { id: 2, from: 'kelly', text: 'Eu entro em dez minutos.', time: '14:12' }],
+    's4:ranqueada': [
+      { id: 1, from: 'marcos', text: 'Subi de divisão ontem à noite!', time: '13:05' }],
+    's5:geral': [
+      { id: 1, from: 'enzo', text: 'O evento de hoje começa às 21h.', time: '15:20' },
+      { id: 2, from: 'alice', text: 'Já separei a playlist!', time: '15:24' }],
+    's5:eventos': [
+      { id: 1, from: 'caue', text: 'Confirmem presença até o fim da tarde.', time: '11:40' }]
   };
 }
 const firstName = () => displayName().split(/\s+/)[0] || 'Você';
@@ -764,15 +796,16 @@ const TRACKS = [
   { t: 'Noite em Neon', a: 'Os Faróis', d: 215, g: G.sky },
   { t: 'Rota das Dunas', a: 'Vale Sonoro', d: 243, g: G.sand }
 ];
+/* Notícias reais (pesquisa feita em 17/11/2026). Cada item abre a matéria na fonte. As artes são degradês de exemplo. */
 const NEWS = [
-  { src: 'Notícias Arena', t: 'Temporada nova chegou à Arena Estelar', s: 'Mapa novo, modos novos e recompensas até o fim do mês.', g: 'linear-gradient(160deg,#F4C7D3,#B79BDB)' },
-  { src: 'Dunas Oficial', t: 'Modo duplas ganha ranking', s: 'Suba de nível com os amigos e ganhe títulos.', g: 'linear-gradient(160deg,#F7DDB5,#E39B6B)' },
-  { src: 'Cidade Neon News', t: 'Atualização de outono já está no ar', s: 'Corrida noturna e ajustes de desempenho.', g: 'linear-gradient(160deg,#BFE3EE,#6C9AD0)' }
+  { src: 'Game Over Drive', t: 'Sony confirma fim da PS Store no PS3 e PS Vita; veja o que muda no Brasil', s: 'Compras digitais acabam até 2027, mas jogos já comprados poderão ser baixados.', u: 'https://gameoverdrive.com.br/sony-fim-ps-store-ps3-ps-vita-datas-brasil/', g: 'linear-gradient(160deg,#BFE3EE,#6C9AD0)' },
+  { src: 'Game Over Drive', t: 'PlayStation 5 ultrapassa 100 milhões de unidades vendidas', s: 'Marco atingido até 10 de novembro de 2026, segundo a Sony.', u: 'https://gameoverdrive.com.br/ps5-100-milhoes-unidades-vendidas-sony/', g: 'linear-gradient(160deg,#D9CDF2,#9D8CCF)' },
+  { src: 'Canaltech', t: 'GTA 6, Zelda Ocarina of Time e mais lançamentos de jogos em novembro', s: 'Lista com os principais jogos do mês e as datas de cada plataforma.', u: 'https://canaltech.com.br/games/lancamentos-jogos-novos-novembro-2026/', g: 'linear-gradient(160deg,#F7DDB5,#E39B6B)' },
+  { src: 'Game Over Drive', t: "Assassin's Creed Hexe foi adiado? Jogo pode ficar para 2028", s: 'Relato aponta problemas de desenvolvimento; a Ubisoft ainda não confirmou.', u: 'https://gameoverdrive.com.br/assassins-creed-hexe-adiado-lancamento-2028/', g: 'linear-gradient(160deg,#F4C7D3,#B79BDB)' }
 ];
 const FREE = [
-  { src: 'Loja Square', t: 'Reinos de Vale grátis no fim de semana', s: 'Resgate até domingo e jogue com a turma.', g: 'linear-gradient(160deg,#CBE9D9,#78BE9D)' },
-  { src: 'Loja Square', t: 'Pacote de avatares sem custo', s: 'Cinco molduras novas para o seu perfil.', g: 'linear-gradient(160deg,#D9CDF2,#9D8CCF)' },
-  { src: 'Loja Square', t: 'Teste Arena Estelar Premium', s: 'Três dias com todos os modos liberados.', g: 'linear-gradient(160deg,#FAD3DC,#E897AB)' }
+  { src: 'Game Over Drive', t: 'Alien: Isolation grátis na Epic Games: data e como resgatar', s: 'Alien: Isolation e Mark of the Deep ficam grátis de 19 a 26 de novembro.', u: 'https://gameoverdrive.com.br/alien-isolation-gratis-epic-games-novembro-2026/', g: 'linear-gradient(160deg,#CBE9D9,#78BE9D)' },
+  { src: 'Olhar Digital', t: 'Jogos grátis na Epic Games: Knightica', s: 'Roguelike auto-battler de estratégia, grátis de 12 a 19 de novembro.', u: 'https://olhardigital.com.br/2026/11/12/games-e-consoles/jogos-gratis-na-epic-games-knightica/', g: 'linear-gradient(160deg,#FAD3DC,#E897AB)' }
 ];
 const HUB_KEYS = ['s1:geral', 's2:geral'];
 const fmt = (s) => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
@@ -830,9 +863,10 @@ function hubChatHTML() {
 }
 
 function pinnedHTML() {
-  const av = [G.rose, G.sky, G.mint].map((g, i) => `<span class="pav" style="background:${g};margin-left:${i ? -10 : 0}px"></span>`).join('');
+  const s1 = srvOf('s1');
+  const av = s1.online.slice(0, 3).map((p, i) => `<span class="pav" style="background:${p.g};margin-left:${i ? -10 : 0}px"></span>`).join('');
   return `<div class="pp"><h2>Festas fixadas</h2><div class="pgrid">
-    <button type="button" class="pslot has" data-act="srv-open" data-id="s1" aria-label="Abrir Arena Estelar"><span class="pavs">${av}</span><small>Arena Estelar</small></button>
+    <button type="button" class="pslot has" data-act="srv-open" data-id="s1" aria-label="Abrir ${esc(s1.name)}"><span class="pavs">${av}</span><small>${esc(s1.name)}</small></button>
     ${[0, 1, 2].map(() => `<button type="button" class="pslot" data-act="toast-pin" aria-label="Fixar uma festa">${ic(D.plus, 20, '#62626D', 1.6)}</button>`).join('')}
   </div></div>`;
 }
@@ -855,7 +889,7 @@ function musicHTML() {
 }
 
 function newsHTML() {
-  const card = (x) => `<article class="ncard"><div class="nart" style="background:${x.g}"><button type="button" class="hov next" data-act="toast-soon" aria-label="Abrir">${ic(D.ext, 16, '#1D1D22', 1.8)}</button></div><div class="nb"><div class="src"><span style="background:${x.g}"></span>${esc(x.src)}</div><h4>${esc(x.t)}</h4><p>${esc(x.s)}</p></div></article>`;
+  const card = (x) => `<article class="ncard"><div class="nart" style="background:${x.g}"><a class="hov next" href="${esc(x.u)}" target="_blank" rel="noopener noreferrer" aria-label="Abrir a notícia em ${esc(x.src)}">${ic(D.ext, 16, '#1D1D22', 1.8)}</a></div><div class="nb"><div class="src"><span style="background:${x.g}"></span>${esc(x.src)}</div><h4><a href="${esc(x.u)}" target="_blank" rel="noopener noreferrer">${esc(x.t)}</a></h4><p>${esc(x.s)}</p></div></article>`;
   const tab = (k, label) => `<button type="button" role="tab" class="ntab${A.ntab === k ? ' on' : ''}" id="tab-${k}" data-act="ntab" data-k="${k}" aria-selected="${A.ntab === k}">${label}</button>`;
   return `<div class="ntabs" role="tablist">${tab('news', 'Notícias')}${tab('free', 'Jogos grátis')}<span class="tsp"></span><button type="button" class="hov wext" data-act="toast-soon" aria-label="Abrir">${ic(D.ext, 17)}</button></div>
   <div class="npane${A.ntab === 'news' ? ' on' : ''}" id="pane-news" role="tabpanel">${NEWS.map(card).join('')}</div>

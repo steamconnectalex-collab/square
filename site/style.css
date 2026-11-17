@@ -305,6 +305,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .nb{padding:12px 14px 14px;display:flex;flex-direction:column;gap:3px}
 .src{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--soft)}
 .src span{width:14px;height:14px;border-radius:50%}
+.nb h4 a{color:inherit;text-decoration:none}.nb h4 a:hover{text-decoration:underline}
 .nb h4{margin:2px 0 0;font-size:14px;font-weight:700;line-height:1.25}
 .nb p{margin:0;font-size:11.5px;color:var(--muted)}
 

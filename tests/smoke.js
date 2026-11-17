@@ -141,7 +141,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   // servidor pelo topo e volta ao painel
   await page.click('.stile[data-id="s2"]');
   await page.waitForSelector('.ap .chat');
-  ok('ícone do servidor abre o servidor', /Dunas/.test(await page.textContent('.top h1')));
+  ok('ícone do servidor abre o servidor', /Foroz City/.test(await page.textContent('.top h1')));
   await page.click('.tbh');
   await page.waitForSelector('.hub');
   ok('ícone de conversa volta ao painel', true);

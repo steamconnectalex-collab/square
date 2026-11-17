@@ -11,7 +11,7 @@ for f in index.html app.js home.js config.js qr.js style.css favicon.svg; do
 done
 # Fotos de teste dos perfis (provisório; ver USE_TEST_PHOTOS em site/app.js)
 mkdir -p out/img
-for f in eu capa tux terno anime estatua craque morcego mono1 mono2; do
+for f in eu capa tux terno anime estatua craque morcego mono1 mono2 cao craque2 boneco dentes v1 v2 v3 v4 v5 v6 v7 v8 dream foroz sleepy unity sociaxs; do
   curl -fsSL --retry 3 --max-time 60 "$BASE/img/$f.jpg" -o "out/img/$f.jpg"
 done
 ls -l out out/img
