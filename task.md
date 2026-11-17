@@ -42,11 +42,11 @@ Fluxo de acesso: Home → "Entrar" → login (com painel de QR Code) → "Regist
 - [x] 2026-11-16 — Criados `agents.md` e `task.md` (este arquivo).
 - [x] 2026-11-16 — Home (landing) levada para o site real (`site/home.js`, gerada do design): abre na raiz, "Entrar" e "Abrir no navegador" levam ao login, links ainda sem destino mostram "Em breve". Testes de fumaça passando (27 verificações, desktop e celular).
 - [x] 2026-11-16 — Repositório GitHub criado pela pessoa (`steamconnectalex-collab/square`, público) e conectado ao Claude.
+- [x] 2026-11-16 — **Etapa 3:** projeto completo enviado ao GitHub (branch `main`, 22 arquivos, nenhum segredo dentro). A pasta de trabalho `/home/claude/square` agora também é um repositório git ligado ao GitHub.
 
 ## Em andamento agora
 
-- [ ] Etapa 2 — Publicar na Vercel o site completo (home + login + app). A home já está pronta no código e testada; falta o envio para a Vercel.
-- [ ] Etapa 3 — Enviar o projeto completo para o GitHub (`main`). Repositório já existe e está vazio; enviando.
+- [ ] Etapa 2 — Publicar na Vercel o site completo (home + login + app). A home já está pronta no código e testada. A Vercel hoje ainda tem a versão antiga (sem a home); a publicação da versão nova está em andamento (1ª tentativa, direto do GitHub, foi recusada pelo limite de consultas do GitHub — tentar de novo).
 
 ## O que ainda falta fazer
 
@@ -63,7 +63,7 @@ Fluxo de acesso: Home → "Entrar" → login (com painel de QR Code) → "Regist
 
 ## Próximo passo
 
-Concluir as etapas 2 e 3 acima. Depois, começar o chat com dados reais (primeiro: servidores e canais no banco).
+Concluir a etapa 2 (publicar a home na Vercel e conferir o site no ar). Depois, começar o chat com dados reais (primeiro: servidores e canais no banco).
 
 ---
 
@@ -72,4 +72,4 @@ Concluir as etapas 2 e 3 acima. Depois, começar o chat com dados reais (primeir
 ### 2026-11-16
 - **Feito:** backend e banco criados e testados; site real publicado; e-mails reais ligados; login confirmado pela pessoa; criados `agents.md` e `task.md`; projeto organizado em pasta única; home levada para o site real; repositório GitHub conectado.
 - **Problemas:** a primeira publicação na Vercel saiu sem dois arquivos (`app.js` e `qr.js`); foi corrigida com uma nova publicação completa.
-- **Próximo passo:** publicar a home na Vercel (etapa 2), enviar tudo ao GitHub (etapa 3) e ligar Vercel ↔ GitHub.
+- **Próximo passo:** publicar a home na Vercel (etapa 2) e ligar Vercel ↔ GitHub. (Etapa 3, envio ao GitHub, já feita.)
