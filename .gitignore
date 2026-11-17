@@ -1,0 +1,9 @@
+node_modules/
+tests/out/
+.env
+.env.*
+*.local
+.DS_Store
+.vercel/
+supabase/.temp/
+supabase/.branches/

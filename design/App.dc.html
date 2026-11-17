@@ -1,0 +1,778 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>App</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1D1D22}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:pointer;text-align:inherit}
+input{font:inherit;color:inherit}
+button:focus-visible,input:focus-visible{outline:2px solid #5B5BD6;outline-offset:2px}
+::placeholder{color:#62626D;opacity:1}
+.hov:hover{background:rgba(29,29,34,.06)}
+.sel{background:rgba(29,29,34,.09)}
+@keyframes dcPulse{0%,80%,100%{opacity:.25}40%{opacity:1}}
+.dot{animation:dcPulse 1.2s infinite ease-in-out}
+@media (prefers-reduced-motion:reduce){.dot{animation:none;opacity:.6}}
+</style>
+</helmet>
+
+<div style="position: relative; display: flex; flex-wrap: wrap; align-items: stretch; width: 100%; min-height: 100vh; box-sizing: border-box; overflow: hidden; background: linear-gradient(180deg, #F6F5FB 0%, #FAFAFC 160px); color: #1D1D22; font-family: Inter, 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.4">
+
+<!-- nuvens de fumaça cinza (como no design) -->
+<div aria-hidden="true" style="position: absolute; left: -120px; bottom: -160px; width: 560px; height: 460px; border-radius: 50%; background: radial-gradient(closest-side, rgba(140,140,158,.42), rgba(140,140,158,0)); pointer-events: none"></div>
+<div aria-hidden="true" style="position: absolute; left: 190px; top: 38%; width: 420px; height: 300px; border-radius: 50%; background: radial-gradient(closest-side, rgba(176,176,192,.32), rgba(176,176,192,0)); pointer-events: none"></div>
+
+<!-- ================= BARRA LATERAL ================= -->
+<aside aria-label="Servidores e canais" style="position: relative; flex: 1 1 250px; min-width: 0; box-sizing: border-box; padding: 18px 14px 14px; display: flex; flex-direction: column; gap: 16px; background: rgba(246,246,250,.55); -webkit-backdrop-filter: blur(26px) saturate(1.3); backdrop-filter: blur(26px) saturate(1.3); border-right: 1px solid rgba(29,29,34,.06)">
+  <div style="display: flex; align-items: center; gap: 10px; padding: 0 4px; font-size: 13px; font-weight: 700; color: #33333A">
+    <span aria-hidden="true" style="width: 24px; height: 24px; border-radius: 8px; background: {{accent}}; display: flex; align-items: center; justify-content: center">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-8l-5 4v-4H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg>
+    </span>
+    {{brand}}
+  </div>
+
+  <label style="display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border-radius: 11px; background: rgba(255,255,255,.9); box-shadow: 0 1px 0 rgba(29,29,34,.06), 0 0 0 1px rgba(29,29,34,.05)">
+    <input id="search" type="text" placeholder="Buscar membros" value="{{search}}" onInput="{{onSearch}}" onChange="{{onSearch}}" autocomplete="off" aria-label="Buscar membros" style="flex: 1 1 auto; min-width: 0; border: 0; background: transparent; font-size: 13px; color: #1D1D22">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#55555F" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+  </label>
+
+  <div style="flex: 1 1 auto; min-height: 0; max-height: calc(100vh - 300px); overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding-right: 2px">
+
+    <!-- servidores -->
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 0 0 0 4px">
+        <span style="display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 500; color: #33333A">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#55555F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="7" width="19" height="11" rx="5.5"/><path d="M7 10.5v4M5 12.5h4M15.5 11.5h.01M18 13.5h.01"/></svg>
+          Seus servidores
+        </span>
+        <button type="button" class="hov" aria-label="Adicionar servidor" onClick="{{toastAddServer}}" style="width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#55555F" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+      </div>
+      <div style="display: flex; gap: 8px; padding: 4px 2px 2px">
+        <sc-for list="{{serverTiles}}" as="t" hint-placeholder-count="3">
+          <button type="button" aria-label="{{t.label}}" aria-pressed="{{t.on}}" onClick="{{t.pick}}" style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 5px">
+            <span style="display: flex; align-items: center; justify-content: center; width: 100%; height: 76px; border-radius: 14px; background: {{t.bg}}; box-shadow: {{t.sh}}; font-weight: 800; font-size: 20px; color: #1D1D22">{{t.ini}}</span>
+            <span style="font-size: 11px; font-weight: 600; color: #33333A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{t.name}}</span>
+            <span style="font-size: 10px; color: #62626D; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{t.users}}</span>
+          </button>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="height: 1px; background: rgba(29,29,34,.08)"></div>
+
+    <!-- canais de texto -->
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 0 0 0 4px">
+        <span style="display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 500; color: #33333A">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#55555F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 9h14M5 15h14M10 4 8 20M16 4l-2 16"/></svg>
+          Canais de texto
+        </span>
+        <button type="button" class="hov" aria-label="Adicionar canal de texto" onClick="{{toastAddChannel}}" style="width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#55555F" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+      </div>
+      <sc-for list="{{textChannels}}" as="c" hint-placeholder-count="2">
+        <button type="button" class="{{c.cls}}" aria-current="{{c.cur}}" onClick="{{c.pick}}" style="display: block; width: 100%; box-sizing: border-box; padding: 8px 12px 8px 38px; border-radius: 9px; font-size: 13.5px; font-weight: {{c.w}}; color: #1D1D22">{{c.name}}</button>
+      </sc-for>
+    </div>
+
+    <div style="height: 1px; background: rgba(29,29,34,.08)"></div>
+
+    <!-- canais de voz -->
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 0 0 0 4px">
+        <span style="display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 500; color: #33333A">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#55555F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+          Canais de voz
+        </span>
+        <button type="button" class="hov" aria-label="Adicionar canal de voz" onClick="{{toastAddChannel}}" style="width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#55555F" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+      </div>
+      <sc-for list="{{voiceGroups}}" as="g" hint-placeholder-count="3">
+        <div style="display: flex; flex-direction: column; gap: 2px; padding-bottom: 6px">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px; padding-left: 10px">
+            <button type="button" class="hov" aria-pressed="{{g.joined}}" aria-label="{{g.joinLabel}}" onClick="{{g.toggleJoin}}" style="flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 9px; font-size: 13.5px; font-weight: 600; color: {{g.color}}">
+              <span style="flex: none; width: 7px; height: 7px; border-radius: 50%; background: {{g.dot}}"></span>
+              <span style="min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{g.name}}</span>
+            </button>
+            <button type="button" class="hov" aria-label="{{g.toggleLabel}}" aria-expanded="{{g.open}}" onClick="{{g.toggleOpen}}" style="flex: none; width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center">
+              <sc-if value="{{g.open}}" hint-placeholder-val="{{ true }}">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#55555F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg>
+              </sc-if>
+              <sc-if value="{{g.closed}}" hint-placeholder-val="{{ false }}">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#55555F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+              </sc-if>
+            </button>
+          </div>
+          <sc-if value="{{g.open}}" hint-placeholder-val="{{ true }}">
+            <div style="display: flex; flex-direction: column; gap: 2px">
+              <sc-for list="{{g.members}}" as="m" hint-placeholder-count="3">
+                <div style="display: flex; align-items: center; gap: 10px; padding: 5px 8px 5px 28px; min-width: 0">
+                  <span style="flex: none; width: 22px; height: 22px; border-radius: 50%; background: {{m.g}}; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.85), 0 2px 6px rgba(29,29,34,.14)"></span>
+                  <span style="flex: 1 1 auto; min-width: 0; font-size: 12.5px; font-weight: {{m.w}}; color: #33333A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{m.name}}</span>
+                  <sc-if value="{{m.muted}}" hint-placeholder-val="{{ false }}">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#D92D45" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M4 4l16 16"/></svg>
+                  </sc-if>
+                  <sc-if value="{{m.bot}}" hint-placeholder-val="{{ false }}">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#62626D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M9 18V5l11-2v13"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/></svg>
+                  </sc-if>
+                  <sc-if value="{{m.human}}" hint-placeholder-val="{{ true }}">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#62626D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/></svg>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <sc-if value="{{inVoice}}" hint-placeholder-val="{{ true }}">
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border-radius: 12px; background: rgba(45,167,112,.13)">
+      <div style="min-width: 0">
+        <div style="font-size: 11px; font-weight: 700; color: #1B6B47">Voz conectada</div>
+        <div style="font-size: 12.5px; color: #33333A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{voiceName}}</div>
+      </div>
+      <button type="button" class="hov" aria-label="Sair da chamada de voz" onClick="{{leaveVoice}}" style="flex: none; width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1B6B47" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      </button>
+    </div>
+  </sc-if>
+
+  <div style="position: relative; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 12px; border-top: 1px solid rgba(29,29,34,.08)">
+    <sc-if value="{{menuOpen}}" hint-placeholder-val="{{ false }}">
+      <div role="menu" aria-label="Menu da conta" style="position: absolute; z-index: 8; right: 0; bottom: 54px; width: 220px; box-sizing: border-box; padding: 6px; border-radius: 16px; background: #FFFFFF; border: 1px solid rgba(29,29,34,.08); box-shadow: 0 20px 50px rgba(40,40,70,.2); display: flex; flex-direction: column; gap: 2px">
+        <button type="button" role="menuitem" class="hov" onClick="{{openSettings}}" style="display: flex; align-items: center; height: 40px; padding: 0 12px; border-radius: 10px; font-size: 13.5px; color: #1D1D22">Configurações</button>
+        <a href="Main.dc.html" role="menuitem" class="hov" style="display: flex; align-items: center; height: 40px; padding: 0 12px; border-radius: 10px; font-size: 13.5px; color: #1D1D22; text-decoration: none">Página inicial</a>
+        <a href="Auth.dc.html" role="menuitem" class="hov" style="display: flex; align-items: center; height: 40px; padding: 0 12px; border-radius: 10px; font-size: 13.5px; color: #B3261E; text-decoration: none">Sair da conta</a>
+      </div>
+    </sc-if>
+    <div style="display: flex; align-items: center; gap: 10px; min-width: 0">
+      <span style="position: relative; flex: none; width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg,#D9CDF2,#9D8CCF); box-shadow: inset 0 0 0 2px rgba(255,255,255,.85), 0 4px 10px rgba(29,29,34,.16)">
+        <span style="position: absolute; right: -1px; bottom: -1px; width: 10px; height: 10px; border-radius: 50%; background: #2DA770; box-shadow: 0 0 0 2px #F3F3F7"></span>
+      </span>
+      <span style="font-size: 14px; font-weight: 600; color: #1D1D22">Davi</span>
+    </div>
+    <div style="display: flex; gap: 2px; flex: none">
+      <button type="button" class="hov" aria-label="{{micLabel}}" aria-pressed="{{micOff}}" onClick="{{toggleMute}}" style="width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center">
+        <sc-if value="{{micOn}}" hint-placeholder-val="{{ true }}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#55555F" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+        </sc-if>
+        <sc-if value="{{micOff}}" hint-placeholder-val="{{ false }}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D92D45" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M4 4l16 16"/></svg>
+        </sc-if>
+      </button>
+      <button type="button" class="hov" aria-label="{{deafLabel}}" aria-pressed="{{deafened}}" onClick="{{toggleDeaf}}" style="width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center">
+        <sc-if value="{{hearOn}}" hint-placeholder-val="{{ true }}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#55555F" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/></svg>
+        </sc-if>
+        <sc-if value="{{deafened}}" hint-placeholder-val="{{ false }}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D92D45" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/><path d="M4 4l16 16"/></svg>
+        </sc-if>
+      </button>
+      <button type="button" class="hov" aria-label="Menu da conta" aria-haspopup="true" aria-expanded="{{menuOpen}}" onClick="{{toggleMenu}}" style="width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#55555F" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>
+      </button>
+    </div>
+  </div>
+</aside>
+
+<!-- ================= ÁREA PRINCIPAL ================= -->
+<div style="position: relative; flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+
+  <!-- barra superior -->
+  <header style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; padding: 18px 28px 14px; background: rgba(255,255,255,.82); border-bottom: 1px solid rgba(29,29,34,.07)">
+    <div style="display: flex; align-items: center; gap: 12px; min-width: 0">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#55555F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><rect x="2.5" y="7" width="19" height="11" rx="5.5"/><path d="M7 10.5v4M5 12.5h4M15.5 11.5h.01M18 13.5h.01"/></svg>
+      <div style="min-width: 0">
+        <h1 style="margin: 0; font-size: 17px; font-weight: 700; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{serverName}}</h1>
+        <div style="font-size: 11.5px; color: #62626D">Última atividade: {{serverActivity}}</div>
+      </div>
+    </div>
+    <nav aria-label="Ferramentas do servidor" style="display: flex; flex-wrap: wrap; gap: 4px 6px">
+      <button type="button" class="{{navCls.notif}}" aria-pressed="{{navOn.notif}}" onClick="{{navNotif}}" style="display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 14px; border-radius: 11px; font-size: 12.5px; color: #33333A">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#55555F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+        Notificações
+      </button>
+      <button type="button" class="{{navCls.pins}}" aria-pressed="{{navOn.pins}}" onClick="{{navPins}}" style="display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 14px; border-radius: 11px; font-size: 12.5px; color: #33333A">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#55555F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>
+        Mensagens fixadas
+      </button>
+      <button type="button" class="{{navCls.members}}" aria-pressed="{{navOn.members}}" onClick="{{navMembers}}" style="display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 14px; border-radius: 11px; font-size: 12.5px; color: #33333A">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#55555F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8"/><path d="M18 14.3c2.2.7 3.5 2.6 3.5 5.7"/></svg>
+        Lista de membros
+      </button>
+      <button type="button" class="{{navCls.mentions}}" aria-pressed="{{navOn.mentions}}" onClick="{{navMentions}}" style="display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 14px; border-radius: 11px; font-size: 12.5px; color: #33333A">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#55555F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/></svg>
+        Menções
+      </button>
+      <button type="button" class="{{navCls.help}}" aria-pressed="{{navOn.help}}" onClick="{{navHelp}}" style="display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 14px; border-radius: 11px; font-size: 12.5px; color: #33333A">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#55555F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7"/><path d="M12 17h.01"/></svg>
+        Central de ajuda
+      </button>
+    </nav>
+  </header>
+
+  <!-- painel flutuante dos botões do topo -->
+  <sc-if value="{{panelOpen}}" hint-placeholder-val="{{ false }}">
+    <div role="dialog" aria-label="{{panelTitle}}" style="position: absolute; z-index: 6; top: 86px; right: 24px; width: 340px; max-width: calc(100% - 32px); box-sizing: border-box; padding: 18px; border-radius: 20px; background: #FFFFFF; border: 1px solid rgba(29,29,34,.08); box-shadow: 0 24px 60px rgba(40,40,70,.2); display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <span style="font-size: 15px; font-weight: 700">{{panelTitle}}</span>
+        <button type="button" class="hov" aria-label="Fechar painel" onClick="{{closePanel}}" style="width: 32px; height: 32px; border-radius: 9px; display: flex; align-items: center; justify-content: center">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#55555F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <sc-for list="{{panelItems}}" as="it" hint-placeholder-count="3">
+        <div style="padding: 11px 13px; border-radius: 12px; background: #F4F4F8">
+          <div style="font-size: 13px; font-weight: 600">{{it.t}}</div>
+          <div style="font-size: 12px; color: #55555F">{{it.s}}</div>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <div style="display: flex; flex-wrap: wrap; align-items: stretch; flex: 1 1 auto">
+
+    <!-- lista de membros -->
+    <sc-if value="{{showMembers}}" hint-placeholder-val="{{ true }}">
+      <aside aria-label="Lista de membros" style="position: relative; flex: 1 1 300px; min-width: 0; box-sizing: border-box; padding: 24px 22px 0; display: flex; flex-direction: column; gap: 14px; background: radial-gradient(80% 32% at 0% 55%, rgba(176,176,192,.3), rgba(176,176,192,0) 70%), rgba(255,255,255,.55); border-right: 1px solid rgba(29,29,34,.06)">
+        <div style="display: flex; align-items: center; gap: 12px; font-size: 15px; font-weight: 600; color: #1D1D22">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#55555F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8"/><path d="M18 14.3c2.2.7 3.5 2.6 3.5 5.7"/></svg>
+          Lista de membros
+        </div>
+        <div style="max-height: calc(100vh - 210px); overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-bottom: 20px">
+          <button type="button" aria-expanded="{{onlineOpen}}" onClick="{{toggleOnline}}" class="hov" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 4px; border-radius: 8px; font-size: 12px; color: #33333A">
+            <span>{{onlineLabel}}</span>
+            <sc-if value="{{onlineOpen}}" hint-placeholder-val="{{ true }}">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#55555F" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg>
+            </sc-if>
+            <sc-if value="{{onlineClosed}}" hint-placeholder-val="{{ false }}">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#55555F" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </sc-if>
+          </button>
+          <sc-if value="{{onlineOpen}}" hint-placeholder-val="{{ true }}">
+            <div style="display: flex; flex-direction: column; gap: 4px">
+              <sc-for list="{{onlineRows}}" as="p" hint-placeholder-count="4">
+                <div style="display: flex; align-items: center; gap: 14px; padding: 8px 4px">
+                  <div style="flex: none; width: 52px; height: 52px; border-radius: 50%; background: {{p.g}}; box-shadow: 0 8px 18px rgba(29,29,34,.18), inset 0 0 0 2px rgba(255,255,255,.85); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; color: #1D1D22">{{p.ini}}</div>
+                  <div style="flex: 1 1 auto; min-width: 0">
+                    <div style="font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{p.name}}</div>
+                    <div style="font-size: 11px; color: #62626D; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{p.st}}</div>
+                  </div>
+                  <button type="button" class="hov" aria-label="{{p.dmLabel}}" onClick="{{p.dm}}" style="flex: none; width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center">
+                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#55555F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-8l-5 4v-4H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/><path d="M8 9h8M8 12.5h5"/></svg>
+                  </button>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <div style="height: 1px; margin: 8px 0; background: rgba(29,29,34,.08)"></div>
+
+          <button type="button" aria-expanded="{{offlineOpen}}" onClick="{{toggleOffline}}" class="hov" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 4px; border-radius: 8px; font-size: 12px; color: #33333A">
+            <span>{{offlineLabel}}</span>
+            <sc-if value="{{offlineOpen}}" hint-placeholder-val="{{ true }}">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#55555F" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg>
+            </sc-if>
+            <sc-if value="{{offlineClosed}}" hint-placeholder-val="{{ false }}">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#55555F" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </sc-if>
+          </button>
+          <sc-if value="{{offlineOpen}}" hint-placeholder-val="{{ true }}">
+            <div style="display: flex; flex-direction: column; gap: 4px">
+              <sc-for list="{{offlineRows}}" as="p" hint-placeholder-count="2">
+                <div style="display: flex; align-items: center; gap: 14px; padding: 8px 4px; opacity: .55">
+                  <div style="flex: none; width: 52px; height: 52px; border-radius: 50%; background: {{p.g}}; box-shadow: inset 0 0 0 2px rgba(255,255,255,.85); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; color: #1D1D22">{{p.ini}}</div>
+                  <div style="flex: 1 1 auto; min-width: 0">
+                    <div style="font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{p.name}}</div>
+                    <div style="font-size: 11px; color: #33333A">Offline</div>
+                  </div>
+                  <button type="button" class="hov" aria-label="{{p.dmLabel}}" onClick="{{p.dm}}" style="flex: none; width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center">
+                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#55555F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-8l-5 4v-4H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/><path d="M8 9h8M8 12.5h5"/></svg>
+                  </button>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{noMembers}}" hint-placeholder-val="{{ false }}">
+            <div style="padding: 12px 4px; font-size: 13px; color: #55555F">Nenhum membro encontrado para essa busca.</div>
+          </sc-if>
+        </div>
+      </aside>
+    </sc-if>
+
+    <!-- chat -->
+    <section aria-label="Conversa" style="position: relative; flex: 999 1 420px; min-width: 0; display: flex; flex-direction: column; background: rgba(255,255,255,.72)">
+      <div style="display: flex; align-items: center; gap: 12px; padding: 24px 28px 6px; font-size: 15px; font-weight: 600">
+        <sc-if value="{{isChannel}}" hint-placeholder-val="{{ true }}">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#55555F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 9h14M5 15h14M10 4 8 20M16 4l-2 16"/></svg>
+        </sc-if>
+        <sc-if value="{{isDm}}" hint-placeholder-val="{{ false }}">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#55555F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/></svg>
+        </sc-if>
+        <h2 style="margin: 0; font-size: 15px; font-weight: 600">{{chTitle}}</h2>
+      </div>
+
+      <div ref="{{setMsgEl}}" role="log" aria-label="Mensagens" aria-live="polite" style="flex: 1 1 auto; min-height: 320px; max-height: calc(100vh - 230px); overflow-y: auto; box-sizing: border-box; padding: 14px 28px; display: flex; flex-direction: column; gap: 16px">
+        <div style="flex: 1 1 auto"></div>
+        <sc-if value="{{emptyThread}}" hint-placeholder-val="{{ false }}">
+          <div style="align-self: center; padding: 28px 0; font-size: 14px; color: #55555F; text-align: center">Nenhuma mensagem ainda. Diga oi para {{chTitle}}.</div>
+        </sc-if>
+        <sc-for list="{{messages}}" as="m" hint-placeholder-count="6">
+          <sc-if value="{{m.isIn}}" hint-placeholder-val="{{ true }}">
+            <div style="display: flex; align-items: flex-end; gap: 12px">
+              <div aria-hidden="true" style="flex: none; display: flex; flex-direction: column; align-items: center; gap: 4px">
+                <div style="width: 40px; height: 40px; border-radius: 50%; background: {{m.bg}}; box-shadow: 0 5px 12px rgba(29,29,34,.18), inset 0 0 0 2px rgba(255,255,255,.85); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #1D1D22">{{m.ini}}</div>
+                <div style="font-size: 10px; color: #62626D">{{m.time}}</div>
+              </div>
+              <div style="max-width: min(560px, 78%); box-sizing: border-box; padding: 12px 18px; border-radius: 20px; background: #EDEDF0; font-size: 14.5px; line-height: 1.45; color: #1D1D22">
+                <span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap">{{m.name}} às {{m.time}}: </span>{{m.text}}
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{m.isOut}}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; justify-content: flex-end">
+              <div style="max-width: min(560px, 78%); box-sizing: border-box; padding: 12px 18px; border-radius: 20px; background: {{m.ob}}; font-size: 14.5px; line-height: 1.45; color: #FFFFFF">
+                <span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap">Você: </span>{{m.text}}
+              </div>
+            </div>
+          </sc-if>
+        </sc-for>
+        <sc-if value="{{typingOn}}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; align-items: flex-end; gap: 12px">
+            <div aria-hidden="true" style="flex: none; width: 40px; height: 40px; border-radius: 50%; background: {{typingBg}}; box-shadow: 0 5px 12px rgba(29,29,34,.18), inset 0 0 0 2px rgba(255,255,255,.85); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #1D1D22">{{typingIni}}</div>
+            <div style="display: flex; align-items: center; gap: 5px; padding: 15px 18px; border-radius: 20px; background: #EDEDF0">
+              <span class="dot" style="width: 7px; height: 7px; border-radius: 50%; background: #55555F"></span>
+              <span class="dot" style="width: 7px; height: 7px; border-radius: 50%; background: #55555F; animation-delay: .2s"></span>
+              <span class="dot" style="width: 7px; height: 7px; border-radius: 50%; background: #55555F; animation-delay: .4s"></span>
+            </div>
+            <span style="padding-bottom: 6px; font-size: 11.5px; color: #62626D">{{typingName}} está digitando</span>
+          </div>
+        </sc-if>
+      </div>
+
+      <div style="position: relative; margin: 8px 28px 22px">
+        <sc-if value="{{emojiOpen}}" hint-placeholder-val="{{ false }}">
+          <div role="group" aria-label="Escolher emoji" style="position: absolute; z-index: 5; right: 0; bottom: 56px; display: grid; grid-template-columns: repeat(4, 40px); gap: 4px; padding: 10px; border-radius: 16px; background: #FFFFFF; border: 1px solid rgba(29,29,34,.08); box-shadow: 0 20px 50px rgba(40,40,70,.2)">
+            <sc-for list="{{emojis}}" as="e" hint-placeholder-count="8">
+              <button type="button" class="hov" aria-label="{{e.label}}" onClick="{{e.add}}" style="width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px">{{e.ch}}</button>
+            </sc-for>
+          </div>
+        </sc-if>
+        <div style="display: flex; align-items: stretch; height: 50px; border: 1px solid rgba(29,29,34,.12); border-radius: 13px; background: #FFFFFF">
+          <button type="button" class="hov" aria-label="Anexar arquivo" onClick="{{toastAttach}}" style="flex: none; width: 50px; border-radius: 12px 0 0 12px; border-right: 1px solid rgba(29,29,34,.1); display: flex; align-items: center; justify-content: center">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#55555F" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+          <input id="msg" type="text" placeholder="Escreva algo..." value="{{draft}}" onInput="{{onDraft}}" onChange="{{onDraft}}" onKeyDown="{{onKey}}" autocomplete="off" aria-label="Escreva uma mensagem" style="flex: 1 1 auto; min-width: 0; border: 0; background: transparent; padding: 0 14px; font-size: 14px; color: #1D1D22">
+          <button type="button" class="hov" aria-label="Enviar presente" onClick="{{toastGift}}" style="flex: none; width: 40px; display: flex; align-items: center; justify-content: center; border-radius: 10px; align-self: center; height: 40px">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#55555F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M5 12v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8M7.5 8a2.5 2.5 0 1 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 1 1 0 5"/></svg>
+          </button>
+          <button type="button" class="hov" aria-label="Escolher GIF" onClick="{{toastGif}}" style="flex: none; width: 40px; display: flex; align-items: center; justify-content: center; border-radius: 10px; align-self: center; height: 40px">
+            <span style="padding: 1px 5px; border: 1.6px solid #55555F; border-radius: 5px; font-size: 9px; font-weight: 700; color: #55555F">GIF</span>
+          </button>
+          <button type="button" class="hov" aria-label="Escolher emoji" aria-expanded="{{emojiOpen}}" onClick="{{toggleEmoji}}" style="flex: none; width: 40px; display: flex; align-items: center; justify-content: center; border-radius: 10px; align-self: center; height: 40px">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#55555F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9.5h.01M15 9.5h.01"/></svg>
+          </button>
+          <sc-if value="{{canSend}}" hint-placeholder-val="{{ false }}">
+            <button type="button" aria-label="Enviar mensagem" onClick="{{send}}" style="flex: none; align-self: center; width: 40px; height: 40px; margin-right: 5px; border-radius: 10px; background: {{accent}}; display: flex; align-items: center; justify-content: center">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></svg>
+            </button>
+          </sc-if>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<sc-if value="{{toastOn}}" hint-placeholder-val="{{ false }}">
+  <div role="status" style="position: fixed; z-index: 30; left: 50%; bottom: 28px; transform: translateX(-50%); padding: 12px 20px; border-radius: 14px; background: #1D1D22; color: #FFFFFF; font-size: 13px; font-weight: 500; box-shadow: 0 16px 40px rgba(29,29,34,.3); white-space: nowrap">{{toast}}</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"brand":{"editor":"text","default":"Square."},"accent":{"editor":"color","default":"#4A4A52","options":["#4A4A52","#2A2A30","#5B4B8A","#2F5D7C"]},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  state = {
+    server: 's1',
+    channel: 'geral',
+    collapsed: { 's1:treino': true },
+    voice: 's1:sala',
+    muted: false,
+    deafened: false,
+    panel: null,
+    showMembers: true,
+    onlineOpen: true,
+    offlineOpen: true,
+    draft: '',
+    search: '',
+    emojiOpen: false,
+    typing: null,
+    typingKey: null,
+    toast: '',
+    menu: false,
+    threads: this.seed()
+  };
+
+  seed() {
+    return {
+      's1:geral': [
+        { id: 1, from: 'lia', text: 'Galera, a partida começa em 10 minutos.', time: '12:53' },
+        { id: 2, from: 'salma', text: 'Melhor ser rápido. Minha mãe está me esperando pra sair.', time: '12:55' },
+        { id: 3, from: 'me', text: 'Beleza, chego em alguns minutos.', time: '12:56' },
+        { id: 4, from: 'marina', text: 'Ok, Davi. Corre!', time: '12:57' },
+        { id: 5, from: 'theo', text: 'Hoje não vai dar, estou passando mal. Tento chegar à tarde, mas se não der, sem problema, tranquilo!', time: '12:57' },
+        { id: 6, from: 'me', text: 'Que pena, Theo. Melhoras!', time: '12:58' },
+        { id: 7, from: 'marina', text: 'Caramba, Theo! O que aconteceu?', time: '12:58' }
+      ],
+      's1:amigos': [
+        { id: 1, from: 'marina', text: 'Quem fecha a dupla comigo hoje à noite?', time: '11:20' },
+        { id: 2, from: 'me', text: 'Eu fecho, só preciso terminar uma coisa antes.', time: '11:24' },
+        { id: 3, from: 'lia', text: 'Me chama pro próximo, estou sem dupla.', time: '11:31' }
+      ],
+      's2:geral': [
+        { id: 1, from: 'bruno', text: 'Alguém topa uma dupla em Dunas?', time: '09:40' },
+        { id: 2, from: 'camila', text: 'Eu! Só terminar o café.', time: '09:42' },
+        { id: 3, from: 'me', text: 'Entro em 5 minutos.', time: '09:44' }
+      ],
+      's2:estrategias': [
+        { id: 1, from: 'rodrigo', text: 'A rota pelo cânion é mais segura no começo.', time: '08:15' },
+        { id: 2, from: 'me', text: 'Anotado, valeu!', time: '08:18' }
+      ],
+      's3:geral': [
+        { id: 1, from: 'ravi', text: 'Saiu atualização nova hoje cedo.', time: '10:05' },
+        { id: 2, from: 'julia', text: 'Vi aqui, o mapa novo ficou lindo.', time: '10:09' }
+      ],
+      's3:clipes': [
+        { id: 1, from: 'pietra', text: 'Olha esse clipe da última partida!', time: '16:30' },
+        { id: 2, from: 'otavio', text: 'Isso foi sorte ou habilidade?', time: '16:32' }
+      ]
+    };
+  }
+
+  data() {
+    const G = {
+      lilac: 'linear-gradient(135deg,#D9CDF2,#9D8CCF)',
+      rose: 'linear-gradient(135deg,#FAD3DC,#E897AB)',
+      sky: 'linear-gradient(135deg,#C9E6F0,#7DB8CF)',
+      mint: 'linear-gradient(135deg,#CBE9D9,#78BE9D)',
+      sand: 'linear-gradient(135deg,#F9E5C0,#EBBA6C)',
+      slate: 'linear-gradient(135deg,#DCDCE4,#9A9AA7)'
+    };
+    const P = (id, name, st, g) => ({ id, name, st, g, ini: name.charAt(0) });
+    const V = (name, g, bot) => ({ name, g, bot: !!bot });
+    return {
+      G,
+      servers: [
+        {
+          id: 's1', name: 'Arena Estelar', users: '119.282', activity: '15 minutos atrás', ini: 'A',
+          tile: 'linear-gradient(160deg,#F4C7D3,#B79BDB)',
+          text: [{ id: 'geral', name: 'Geral' }, { id: 'amigos', name: 'Amigos próximos' }],
+          voice: [
+            { id: 'sala', name: 'Sala principal', members: [V('Lorena Lima', G.rose), V('Irwin Peixoto', G.sky), V('Estefani Leal', G.mint)] },
+            { id: 'rapida', name: 'Partida rápida', members: [V('Yasmin Sabino', G.sand), V('Duda Brandão', G.lilac), V('Bot de música', G.slate, true)] },
+            { id: 'treino', name: 'Treino', members: [V('Rafa Teles', G.sky), V('Nina Prado', G.rose)] }
+          ],
+          online: [
+            P('lia', 'Lia Monteiro', 'Arena Estelar: nível 15 Vanguarda', G.rose),
+            P('salma', 'Salma Fonseca', 'Reinos de Vale: menu principal', G.lilac),
+            P('marina', 'Marina Rocha', 'Cidade Neon: Operadora', G.sky),
+            P('theo', 'Theo Bramante', 'Dunas: 14 jogadores restantes', G.slate)
+          ],
+          offline: [P('leo', 'Leo Cavalcante', 'Offline', G.mint), P('caio', 'Caio Santana', 'Offline', G.sand)]
+        },
+        {
+          id: 's2', name: 'Dunas', users: '212.990', activity: '2 horas atrás', ini: 'D',
+          tile: 'linear-gradient(160deg,#F7DDB5,#E39B6B)',
+          text: [{ id: 'geral', name: 'Geral' }, { id: 'estrategias', name: 'Estratégias' }],
+          voice: [
+            { id: 'comboio', name: 'Comboio', members: [V('Bruno Azevedo', G.sky), V('Camila Duarte', G.rose)] },
+            { id: 'duplas', name: 'Modo duplas', members: [V('Tati Moura', G.mint), V('Bot de música', G.slate, true)] }
+          ],
+          online: [
+            P('bruno', 'Bruno Azevedo', 'Dunas: modo duplas', G.sky),
+            P('camila', 'Camila Duarte', 'Ouvindo música', G.rose),
+            P('rodrigo', 'Rodrigo Nunes', 'Arena Estelar: treino', G.lilac),
+            P('tati', 'Tati Moura', 'Online', G.mint)
+          ],
+          offline: [P('hugo', 'Hugo Pires', 'Offline', G.sand), P('vera', 'Vera Lins', 'Offline', G.slate)]
+        },
+        {
+          id: 's3', name: 'Cidade Neon', users: '112.230', activity: 'ontem', ini: 'N',
+          tile: 'linear-gradient(160deg,#BFE3EE,#6C9AD0)',
+          text: [{ id: 'geral', name: 'Geral' }, { id: 'clipes', name: 'Clipes' }],
+          voice: [
+            { id: 'garagem', name: 'Garagem', members: [V('Ravi Costa', G.sand), V('Julia Prado', G.lilac)] },
+            { id: 'cobertura', name: 'Cobertura', members: [V('Pietra Lemos', G.mint)] }
+          ],
+          online: [
+            P('ravi', 'Ravi Costa', 'Cidade Neon: patrulha', G.sand),
+            P('julia', 'Julia Prado', 'Online', G.lilac),
+            P('otavio', 'Otávio Sá', 'Ouvindo música', G.sky),
+            P('pietra', 'Pietra Lemos', 'Reinos de Vale: Mapa novo', G.mint)
+          ],
+          offline: [P('nando', 'Nando Alves', 'Offline', G.slate), P('bela', 'Bela Furtado', 'Offline', G.rose)]
+        }
+      ]
+    };
+  }
+
+  now() {
+    const d = new Date();
+    return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+
+  componentDidMount() { this.scrollDown(); }
+
+  componentDidUpdate(prevProps, prevState) {
+    if (!prevState || prevState.threads !== this.state.threads || prevState.channel !== this.state.channel || prevState.server !== this.state.server || prevState.typing !== this.state.typing) {
+      this.scrollDown();
+    }
+  }
+
+  componentWillUnmount() {
+    this._gone = true;
+    clearTimeout(this._t1); clearTimeout(this._t2); clearTimeout(this._tt);
+  }
+
+  scrollDown() {
+    try { if (this.msgEl) this.msgEl.scrollTop = this.msgEl.scrollHeight; } catch (e) {}
+  }
+
+  showToast(text) {
+    clearTimeout(this._tt);
+    this.setState({ toast: text });
+    this._tt = setTimeout(() => { if (!this._gone) this.setState({ toast: '' }); }, 2200);
+  }
+
+  send() {
+    const text = (this.state.draft || '').trim();
+    if (!text) return;
+    const key = this.state.server + ':' + this.state.channel;
+    const threads = Object.assign({}, this.state.threads);
+    threads[key] = (threads[key] || []).concat([{ id: Date.now(), from: 'me', text, time: this.now() }]);
+    this.setState({ threads, draft: '', emojiOpen: false });
+    this.scheduleReply(key);
+  }
+
+  scheduleReply(key) {
+    const st = this.state;
+    const srv = this.data().servers.find((s) => s.id === st.server);
+    let who = null;
+    if (st.channel.indexOf('dm:') === 0) {
+      who = srv.online.find((p) => p.id === st.channel.slice(3)) || null;
+    } else {
+      who = srv.online[Math.floor(Math.random() * srv.online.length)];
+    }
+    if (!who) return;
+    clearTimeout(this._t1); clearTimeout(this._t2);
+    this._t1 = setTimeout(() => {
+      if (this._gone) return;
+      this.setState({ typing: who.id, typingKey: key });
+    }, 800);
+    this._t2 = setTimeout(() => {
+      if (this._gone) return;
+      const bank = ['Boa!', 'Chegando já.', 'Haha, verdade.', 'Fechou, bora!', 'Já estou no lobby.', 'Combinado.', 'Depois me conta mais.'];
+      const threads = Object.assign({}, this.state.threads);
+      threads[key] = (threads[key] || []).concat([{ id: Date.now() + 1, from: who.id, text: bank[Math.floor(Math.random() * bank.length)], time: this.now() }]);
+      this.setState({ threads, typing: null, typingKey: null });
+    }, 2600);
+  }
+
+  renderVals() {
+    const st = this.state;
+    const P = this.props;
+    const brand = P.brand ?? 'Plataforma';
+    const accent = P.accent ?? '#4A4A52';
+    const D = this.data();
+    const G = D.G;
+    const srv = D.servers.find((s) => s.id === st.server) || D.servers[0];
+
+    const serverTiles = D.servers.map((s) => {
+      const on = s.id === st.server;
+      return {
+        label: s.name + ', ' + s.users + ' usuários',
+        name: s.name, users: s.users, ini: s.ini, bg: s.tile, on,
+        sh: on ? '0 0 0 2px #FFFFFF, 0 0 0 4px #1D1D22, 0 10px 18px rgba(29,29,34,.2)' : '0 8px 16px rgba(29,29,34,.16)',
+        pick: () => this.setState({ server: s.id, channel: s.text[0].id, emojiOpen: false, typing: null, typingKey: null, search: '' })
+      };
+    });
+
+    const textChannels = srv.text.map((c) => {
+      const on = st.channel === c.id;
+      return {
+        name: c.name, cls: on ? 'sel' : 'hov', w: on ? 700 : 400, cur: on ? 'true' : 'false',
+        pick: () => this.setState({ channel: c.id, emojiOpen: false, typing: null, typingKey: null })
+      };
+    });
+
+    const mutedEff = st.muted || st.deafened;
+    const voiceGroups = srv.voice.map((g) => {
+      const key = srv.id + ':' + g.id;
+      const joined = st.voice === key;
+      const open = !st.collapsed[key];
+      const members = g.members.map((m) => ({ name: m.name, g: m.g, bot: m.bot, human: !m.bot, muted: false, w: 500 }));
+      if (joined) members.unshift({ name: 'Davi (você)', g: G.lilac, bot: false, human: !mutedEff, muted: mutedEff, w: 700 });
+      return {
+        name: g.name, joined, open, closed: !open, members,
+        color: joined ? '#1B6B47' : '#33333A',
+        dot: joined ? '#2DA770' : 'rgba(29,29,34,.22)',
+        joinLabel: (joined ? 'Sair de ' : 'Entrar em ') + g.name,
+        toggleLabel: (open ? 'Ocultar ' : 'Mostrar ') + g.name,
+        toggleJoin: () => this.setState({ voice: joined ? null : key }),
+        toggleOpen: () => {
+          const c = Object.assign({}, this.state.collapsed);
+          c[key] = !c[key];
+          this.setState({ collapsed: c });
+        }
+      };
+    });
+
+    let voiceName = '';
+    if (st.voice) {
+      const parts = st.voice.split(':');
+      const vs = D.servers.find((s) => s.id === parts[0]);
+      const vg = vs && vs.voice.find((g) => g.id === parts[1]);
+      voiceName = vg ? vg.name + ' · ' + vs.name : '';
+    }
+
+    const q = (st.search || '').trim().toLowerCase();
+    const match = (p) => !q || p.name.toLowerCase().indexOf(q) !== -1;
+    const toRow = (p) => ({
+      name: p.name, st: p.st, g: p.g, ini: p.ini,
+      dmLabel: 'Enviar mensagem para ' + p.name,
+      dm: () => this.setState({ channel: 'dm:' + p.id, emojiOpen: false, typing: null, typingKey: null })
+    });
+    const onlineList = srv.online.filter(match);
+    const offlineList = srv.offline.filter(match);
+    const plural = (n) => (n === 1 ? ' membro' : ' membros');
+
+    const people = srv.online.concat(srv.offline);
+    const byId = {};
+    people.forEach((p) => { byId[p.id] = p; });
+
+    const isDm = st.channel.indexOf('dm:') === 0;
+    const dmPerson = isDm ? byId[st.channel.slice(3)] : null;
+    const chObj = srv.text.find((c) => c.id === st.channel);
+    const chTitle = isDm ? (dmPerson ? dmPerson.name : 'Conversa') : (chObj ? chObj.name : 'Geral');
+    const threadKey = srv.id + ':' + st.channel;
+    const thread = st.threads[threadKey] || [];
+    const messages = thread.map((m) => {
+      const me = m.from === 'me';
+      const p = byId[m.from];
+      return {
+        isIn: !me, isOut: me, text: m.text, time: m.time,
+        name: me ? 'Você' : (p ? p.name : ''),
+        ini: p ? p.ini : '', bg: p ? p.g : G.slate, ob: accent
+      };
+    });
+
+    const typingPerson = st.typing && st.typingKey === threadKey ? byId[st.typing] : null;
+
+    const panels = {
+      notif: { title: 'Notificações', items: [
+        { t: 'Lia mencionou você em Geral', s: 'há 2 minutos' },
+        { t: 'Marina entrou na Sala principal', s: 'há 8 minutos' },
+        { t: 'Dunas convidou você para jogar', s: 'há 1 hora' }
+      ] },
+      pins: { title: 'Mensagens fixadas', items: [
+        { t: 'Regras do grupo', s: 'Respeite todo mundo e avise quando for faltar a uma partida.' },
+        { t: 'Horário das partidas', s: 'Sextas, às 21h. Chame os amigos com antecedência.' }
+      ] },
+      mentions: { title: 'Menções', items: [
+        { t: 'Marina: Ok, Davi. Corre!', s: 'Geral · 12:57' }
+      ] },
+      help: { title: 'Central de ajuda', items: [
+        { t: 'Como criar um servidor', s: 'Passo a passo para começar a sua comunidade.' },
+        { t: 'Atalhos do teclado', s: 'Enter envia a mensagem que você escreveu.' },
+        { t: 'Falar com o suporte', s: 'Resposta em até um dia útil.' }
+      ] }
+    };
+    const panelDef = st.panel ? panels[st.panel] : null;
+    const tp = (name) => () => this.setState({ panel: this.state.panel === name ? null : name });
+    const navKeys = ['notif', 'pins', 'mentions', 'help'];
+    const navOn = { members: st.showMembers };
+    const navCls = { members: st.showMembers ? 'sel' : 'hov' };
+    navKeys.forEach((k) => { navOn[k] = st.panel === k; navCls[k] = st.panel === k ? 'sel' : 'hov'; });
+
+    const emojis = [['😀', 'Sorriso'], ['😂', 'Rindo'], ['👍', 'Joia'], ['🔥', 'Fogo'], ['🎮', 'Controle'], ['🎉', 'Festa'], ['❤️', 'Coração'], ['😮', 'Surpresa']].map((e) => ({
+      ch: e[0], label: 'Inserir emoji ' + e[1],
+      add: () => this.setState({ draft: (this.state.draft || '') + e[0], emojiOpen: false })
+    }));
+
+    return {
+      brand, accent,
+      serverName: srv.name, serverActivity: srv.activity,
+      serverTiles, textChannels, voiceGroups,
+      inVoice: !!st.voice, voiceName,
+      micOff: mutedEff, micOn: !mutedEff, micLabel: mutedEff ? 'Ativar microfone' : 'Silenciar microfone',
+      deafened: st.deafened, hearOn: !st.deafened, deafLabel: st.deafened ? 'Ativar áudio' : 'Desativar áudio',
+      toggleMute: () => this.setState({ muted: !this.state.muted, deafened: this.state.deafened && this.state.muted ? true : this.state.deafened }),
+      toggleDeaf: () => this.setState({ deafened: !this.state.deafened }),
+      leaveVoice: () => this.setState({ voice: null }),
+      toastAddServer: () => this.showToast('Criar servidor chega em breve'),
+      toastAddChannel: () => this.showToast('Criar canais chega em breve'),
+      menuOpen: !!st.menu,
+      toggleMenu: () => this.setState({ menu: !this.state.menu }),
+      openSettings: () => { this.setState({ menu: false }); this.showToast('Configurações chegam em breve'); },
+      toastAttach: () => this.showToast('Anexos chegam em breve'),
+      toastGift: () => this.showToast('Presentes chegam em breve'),
+      toastGif: () => this.showToast('GIFs chegam em breve'),
+      toastOn: !!st.toast, toast: st.toast,
+
+      search: st.search,
+      onSearch: (e) => this.setState({ search: e.target.value }),
+
+      showMembers: st.showMembers,
+      onlineOpen: st.onlineOpen, onlineClosed: !st.onlineOpen,
+      offlineOpen: st.offlineOpen, offlineClosed: !st.offlineOpen,
+      onlineLabel: 'Online (' + onlineList.length + plural(onlineList.length) + ')',
+      offlineLabel: 'Offline (' + offlineList.length + plural(offlineList.length) + ')',
+      onlineRows: onlineList.map(toRow),
+      offlineRows: offlineList.map(toRow),
+      noMembers: onlineList.length + offlineList.length === 0,
+      toggleOnline: () => this.setState({ onlineOpen: !this.state.onlineOpen }),
+      toggleOffline: () => this.setState({ offlineOpen: !this.state.offlineOpen }),
+
+      navOn, navCls,
+      navNotif: tp('notif'), navPins: tp('pins'), navMentions: tp('mentions'), navHelp: tp('help'),
+      navMembers: () => this.setState({ showMembers: !this.state.showMembers }),
+      panelOpen: !!panelDef,
+      panelTitle: panelDef ? panelDef.title : '',
+      panelItems: panelDef ? panelDef.items : [],
+      closePanel: () => this.setState({ panel: null }),
+
+      isChannel: !isDm, isDm, chTitle,
+      messages, emptyThread: thread.length === 0,
+      typingOn: !!typingPerson,
+      typingName: typingPerson ? typingPerson.name.split(' ')[0] : '',
+      typingIni: typingPerson ? typingPerson.ini : '',
+      typingBg: typingPerson ? typingPerson.g : G.slate,
+      setMsgEl: (el) => { this.msgEl = el; },
+
+      draft: st.draft,
+      canSend: (st.draft || '').trim().length > 0,
+      onDraft: (e) => this.setState({ draft: e.target.value }),
+      onKey: (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.send(); } },
+      send: () => this.send(),
+      emojiOpen: st.emojiOpen,
+      toggleEmoji: () => this.setState({ emojiOpen: !this.state.emojiOpen }),
+      emojis
+    };
+  }
+}
+</script>
+</body>
+</html>
