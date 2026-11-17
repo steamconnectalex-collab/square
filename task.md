@@ -17,6 +17,7 @@ Quem constrói: uma pessoa iniciante, que fala português do Brasil. Explique tu
 | Parte | Onde está | Onde roda |
 |---|---|---|
 | Site (HTML/CSS/JS puros, sem build) | `site/` | Vercel, projeto `square-chat` — https://square-chat-silk.vercel.app |
+| Publicação do site na Vercel | `deploy/fetch.sh` | Na publicação, a Vercel roda `sh fetch.sh <commit>`: baixa `site/` do GitHub naquele commit para a pasta `out/` (ver "Como publicar" abaixo) |
 | Backend de acesso à conta | `supabase/functions/auth/` (`index.ts`, `mail.ts`) | Supabase Edge Function `auth` |
 | Banco de dados | `supabase/migrations/0001_acesso_a_conta.sql` | Supabase, projeto `square` (ref `vjkqyqdabypdylhoupha`, São Paulo) |
 | E-mails (códigos e recuperação de senha) | `supabase/functions/auth/mail.ts` | Resend (chave `RESEND_API_KEY` guardada nos segredos do Supabase) |
@@ -44,13 +45,22 @@ Fluxo de acesso: Home → "Entrar" → login (com painel de QR Code) → "Regist
 - [x] 2026-11-16 — Repositório GitHub criado pela pessoa (`steamconnectalex-collab/square`, público) e conectado ao Claude.
 - [x] 2026-11-16 — **Etapa 3:** projeto completo enviado ao GitHub (branch `main`, 22 arquivos, nenhum segredo dentro). A pasta de trabalho `/home/claude/square` agora também é um repositório git ligado ao GitHub.
 
+- [x] 2026-11-16 — **Etapa 2:** site completo (home + login + app) publicado na Vercel em https://square-chat-silk.vercel.app (deployment `dpl_2wsLZ3h1f7CT3kGt3w8N5rdQS6KS`, commit `495cab0` do GitHub). Conferido: `index.html`, `app.js` e `home.js` no ar são idênticos, byte a byte, aos do repositório.
+
 ## Em andamento agora
 
-- [ ] Etapa 2 — Publicar na Vercel o site completo (home + login + app). A home já está pronta no código e testada. A Vercel hoje ainda tem a versão antiga (sem a home); a publicação da versão nova está em andamento (1ª tentativa, direto do GitHub, foi recusada pelo limite de consultas do GitHub — tentar de novo).
+- Nada em andamento. Aguardando a pessoa testar o site no ar e dizer o que ajustar.
+
+## Como publicar o site (enquanto a Vercel não estiver ligada ao GitHub)
+
+1. Mude os arquivos em `site/`, rode `node tests/smoke.js`, faça commit e `git push` para a `main`.
+2. Chame `create_deployment` da Vercel (projeto `square-chat`, `target: production`) com os arquivos `fetch.sh` (conteúdo de `deploy/fetch.sh`) e `vercel.json` (o de `site/vercel.json`), e `projectSettings`: `buildCommand = "sh fetch.sh <commit novo>"`, `outputDirectory = "out"`, `framework`, `installCommand`, `rootDirectory` = null.
+3. Confira os arquivos no ar (por exemplo, o `sha1` de `home.js` e `app.js`) e registre aqui.
+- Por quê assim: enviar direto do GitHub (`gitSource`) foi recusado pelo limite de consultas do GitHub (erro 429); colar arquivos grandes à mão é frágil. Se o envio direto voltar a funcionar, prefira-o.
 
 ## O que ainda falta fazer
 
-- [ ] Ligar a Vercel ao repositório do GitHub, para o site publicar sozinho a cada envio (hoje a publicação é feita à mão por upload).
+- [ ] Ligar a Vercel ao repositório do GitHub, para o site publicar sozinho a cada envio (hoje a publicação é feita por `deploy/fetch.sh`, passo a passo acima). Precisa de um passo da pessoa no painel da Vercel: projeto `square-chat` → Settings → Git → Connect Git Repository → GitHub → `steamconnectalex-collab/square`. Depois: Root Directory = `site`, e apagar o Build Command e o Output Directory (hoje `sh fetch.sh …` e `out`).
 - [ ] Chat com dados reais (servidores, canais, mensagens guardadas no banco, tempo real). Hoje a tela principal usa dados de demonstração.
 - [ ] Botões "em breve" da tela principal: criar servidor, criar canais, anexos, presentes, GIFs, configurações.
 - [ ] Verificar um domínio no Resend e trocar o remetente (hoje `onboarding@resend.dev`, que só entrega para o e-mail da conta Resend e pode cair no spam).
@@ -63,7 +73,7 @@ Fluxo de acesso: Home → "Entrar" → login (com painel de QR Code) → "Regist
 
 ## Próximo passo
 
-Concluir a etapa 2 (publicar a home na Vercel e conferir o site no ar). Depois, começar o chat com dados reais (primeiro: servidores e canais no banco).
+A pessoa testa o site no ar (home → Entrar → login/cadastro/QR) e aponta ajustes. Depois, começar o chat com dados reais (primeiro: servidores e canais no banco).
 
 ---
 
@@ -71,5 +81,6 @@ Concluir a etapa 2 (publicar a home na Vercel e conferir o site no ar). Depois, 
 
 ### 2026-11-16
 - **Feito:** backend e banco criados e testados; site real publicado; e-mails reais ligados; login confirmado pela pessoa; criados `agents.md` e `task.md`; projeto organizado em pasta única; home levada para o site real; repositório GitHub conectado.
-- **Problemas:** a primeira publicação na Vercel saiu sem dois arquivos (`app.js` e `qr.js`); foi corrigida com uma nova publicação completa.
-- **Próximo passo:** publicar a home na Vercel (etapa 2) e ligar Vercel ↔ GitHub. (Etapa 3, envio ao GitHub, já feita.)
+- **Problemas:** a primeira publicação na Vercel saiu sem dois arquivos (`app.js` e `qr.js`); foi corrigida com uma nova publicação completa. Depois, o envio direto do GitHub para a Vercel foi recusado 3 vezes (limite de consultas do GitHub, erro 429); resolvido com `deploy/fetch.sh` (a Vercel baixa os arquivos do GitHub durante a publicação).
+- **Feito (final do dia):** etapas 2 e 3 concluídas: site completo no ar na Vercel e projeto completo no GitHub (`main`).
+- **Próximo passo:** a pessoa testa o site; ligar Vercel ↔ GitHub pelo painel da Vercel (passo da pessoa); depois, chat com dados reais.
