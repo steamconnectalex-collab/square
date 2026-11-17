@@ -2,7 +2,7 @@
 
 > **Para a IA:** este arquivo é a fonte da verdade sobre o projeto. Leia tudo antes de começar e atualize **na hora** em que algo acontecer (regras completas em `agents.md`). Não duplique tarefas: procure aqui antes de adicionar.
 >
-> Última atualização: 2026-11-17 (capas, notícias reais e fotos)
+> Última atualização: 2026-11-17 (análise e plano; base do banco para o chat)
 
 ---
 
@@ -51,11 +51,33 @@ Fluxo de acesso: Home → "Entrar" → login (com painel de QR Code) → "Regist
 - [x] 2026-11-17 — **Fotos de teste nos perfis** (pedido da pessoa, só para ter ideia do visual): a foto que a pessoa mandou do Playboi Carti é o avatar da conta (barra do usuário e lista de voz); as outras 8 imagens são avatares dos amigos (Lia, Salma, Marina, Theo, Bruno, Camila, Rodrigo, Tati); a faixa "Magnolia — Playboi Carti" é a primeira do player, com a outra foto dele como capa. Imagens recortadas em `site/img/` (10 arquivos de ~10 KB); `deploy/fetch.sh` agora baixa essa pasta. **PROVISÓRIO:** antes do lançamento trocar por ícone de boneco (basta `USE_TEST_PHOTOS = false` em `site/app.js` e apagar `site/img/`). Publicado na Vercel (deployment `dpl_3VtJwv3iXsMGkt7X2N7ECeAAJNJY`, commit `c046ed5`; `img/eu.jpg` no ar confere: 10108 bytes). Testes de fumaça OK. Atenção: o repositório e o site são públicos, então as fotos ficam visíveis a quem tiver o link.
 - [x] 2026-11-17 — Barra do usuário: tirado o espaço em branco entre a foto e os ícones (fone, microfone, engrenagem, três pontinhos), no computador e no celular (`.ubar .pic` em `site/style.css`). Publicado na Vercel (deployment `dpl_93wM9DrCtcdLT8kzrdPPjzyKQy19`, commit `4606d80`).
 - [x] 2026-11-17 — **Capas dos servidores, notícias reais e fotos para todos os usuários:** (1) as 5 imagens enviadas viraram a capa dos servidores, que agora se chamam Dream Cup, Foroz City, Sleepy Community, Unity PVP e Sociaxs (os dois últimos são servidores novos, com canais, membros e conversa de exemplo); (2) "Notícias" e "Jogos grátis" do painel usam manchetes reais pesquisadas em 17/11/2026 (Game Over Drive, Canaltech, Olhar Digital), cada card abre a matéria na fonte; as artes dos cards continuam degradês, porque não dá baixar imagens de sites daqui; (3) todos os usuários de exemplo (amigos, offline e membros dos canais de voz) têm foto de teste (`PHOTO_OF` em `site/app.js`); como só havia 10 fotos, algumas se repetem em outro recorte, espelhadas ou em preto e branco. Tudo provisório (`USE_TEST_PHOTOS`). Testes de fumaça: 40 OK. Publicado na Vercel (deployment `dpl_5hv3xBtGmhh6UWheTbZpDAbef5yZ`, commit `6a69ed9`; `img/dream.jpg` no ar confere: 8166 bytes). Obs.: na pasta `site/img/` existem outros arquivos soltos de hoje (`srv1-5`, `srv-*`, `chapeu`, `guarda`, `amigo3d` etc.) que não estão no GitHub nem no site; não foram usados nem apagados.
+- [x] 2026-11-17 — **Base do banco para chat e perfil** (migração `0002_chat_e_perfil.sql` aplicada no Supabase): tabela `messages` com regras de segurança e tempo real, campos de perfil, funções auxiliares no schema `private`. Testado com transação desfeita: membro lê/envia, estranho não vê nem envia, autor não pode ser forjado, `birth_date` protegido.
 - [x] 2026-11-16 — **Etapa 2:** site completo (home + login + app) publicado na Vercel em https://square-chat-silk.vercel.app (deployment `dpl_2wsLZ3h1f7CT3kGt3w8N5rdQS6KS`, commit `495cab0` do GitHub). Conferido: `index.html`, `app.js` e `home.js` no ar são idênticos, byte a byte, aos do repositório.
+
+## Análise do projeto (2026-11-17)
+
+**O que funciona de verdade (ligado ao banco):** cadastro com código por e-mail, login (e-mail ou usuário), recuperar senha, login por QR Code, sessão segura (Supabase Auth), leitura do próprio nome/usuário, publicação na Vercel, testes de fumaça.
+
+**Banco de dados hoje:** perfis, códigos, QR e limite de tentativas; `servers`, `server_members`, `channels` com regras de segurança e a função `create_server` (feitas em outra sessão, agora documentadas em `supabase/migrations/0002_chat_e_perfil.sql`); **novo:** tabela `messages` (mensagens) com tempo real ligado, campos de perfil (bio, status, foto, cor) e leitura de perfis de quem divide servidor com você. Segurança testada: só membro lê/envia, ninguém forja autor, `birth_date` e e-mail de marketing ficam privados.
+
+**O que ainda é só demonstração (dados falsos dentro do `site/app.js`):** amigos, conversas do painel, servidores, canais, mensagens, lista de membros, voz, jogos, música. São 58 ações no site; cerca de 12 só mostram "chega em breve".
+
+**O que falta para ser app de verdade:** o site ainda não lê nem grava servidores/mensagens no banco; não há tempo real; não dá para editar perfil, trocar foto nem abrir o card de outro usuário; não há convites, amigos nem mensagens diretas; presença (online/offline) e voz são só visuais; sem moderação.
+
+## Plano (ordem de execução)
+
+1. [x] **Base do banco (2026-11-17):** mensagens, campos de perfil, regras de segurança testadas, tempo real habilitado.
+2. [ ] **Servidores e canais reais:** o site lê do banco; criar servidor; criar canal (função nova `create_channel`, só o dono); tela para conta nova sem servidor; convites por código e "entrar num servidor"; remover os servidores de demonstração.
+3. [ ] **Chat real:** carregar histórico (com "ver mais antigas"), enviar, receber em tempo real, editar e apagar a própria mensagem, "digitando…", tratar queda de internet. **Decisão da pessoa:** para o tempo real, incluir no site a biblioteca oficial `supabase-js` (um arquivo, sem build) ou escrever a conexão à mão (mais trabalho, mais frágil). Recomendo a biblioteca.
+4. [ ] **Perfil:** editar perfil (nome, bio, status, cor), foto (Supabase Storage + liberar no CSP), **card ao clicar no nome ou avatar** (nome, @usuário, bio, status, "membro desde"), lista de membros real.
+5. [ ] **Amigos e mensagens diretas:** pedido de amizade, conversa 1 a 1, painel inicial com dados reais, notificações.
+6. [ ] **Presença e extras:** online/offline real, imagens/anexos, emojis e GIFs, menções, busca de mensagens.
+7. [ ] **Voz** (WebRTC): por último, é a parte mais pesada.
+8. [ ] **Antes de lançar:** limite de mensagens por segundo, proteção contra senhas vazadas, domínio verificado no Resend, ligar Vercel ↔ GitHub, trocar fotos de teste por ícone de boneco (`USE_TEST_PHOTOS = false`), expulsar/banir, termos e idade mínima.
 
 ## Em andamento agora
 
-- Nada em andamento. Aguardando a pessoa testar o site no ar e dizer o que ajustar.
+- **Plano, etapa 2:** servidores e canais reais (ver "Plano" acima).
 
 ## Como publicar o site (enquanto a Vercel não estiver ligada ao GitHub)
 
@@ -79,7 +101,7 @@ Fluxo de acesso: Home → "Entrar" → login (com painel de QR Code) → "Regist
 
 ## Próximo passo
 
-A pessoa testa o painel novo no ar e aponta ajustes (ex.: o que fazer com os botões "em breve" do painel). Depois, começar o chat com dados reais (primeiro: servidores e canais no banco).
+Etapa 2 do plano: ligar o site aos servidores e canais do banco (ler, criar servidor, criar canal, convite). Depois, etapa 3 (chat real), que precisa da decisão sobre a biblioteca de tempo real.
 
 ---
 
