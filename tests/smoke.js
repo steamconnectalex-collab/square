@@ -31,6 +31,52 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   const calls = [];
   const session = { access_token: 'tok-abc', refresh_token: 'ref-abc', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, token_type: 'bearer' };
   let qrPolls = 0;
+  // ---- banco simulado (servidores, canais, membros, mensagens, perfis) ----
+  const world = { servers: [], channels: [], members: [], messages: [], nextMsg: 1, nextId: 1,
+    profiles: [
+      { id: 'u1', username: 'tester', display_name: 'Tester Um', bio: '', status_text: '', accent: '#9D8CCF', last_seen: null, created_at: '2026-11-16T10:00:00Z' },
+      { id: 'u2', username: 'marina', display_name: 'Marina Rocha', bio: 'Gosto de jogos de plataforma.', status_text: 'Jogando', accent: '#E58FB0', last_seen: new Date().toISOString(), created_at: '2026-11-10T10:00:00Z' }
+    ] };
+  const rest = (req, url, body, send) => {
+    const path = url.pathname.replace('/rest/v1/', ''), q = url.searchParams, m = req.method();
+    if (path.startsWith('rpc/')) {
+      const fn = path.slice(4);
+      if (fn === 'create_server') {
+        const id = 'srv' + world.nextId++;
+        world.servers.push({ id, name: body.p_name, owner_id: 'u1', created_at: new Date().toISOString() });
+        world.members.push({ server_id: id, user_id: 'u1', role: 'owner' }, { server_id: id, user_id: 'u2', role: 'member' });
+        world.channels.push({ id: id + 'c1', server_id: id, name: 'Geral', kind: 'text', position: 0 }, { id: id + 'c2', server_id: id, name: 'Sala principal', kind: 'voice', position: 1 });
+        return send(200, id);
+      }
+      if (fn === 'create_channel') {
+        const id = 'ch' + world.nextId++;
+        world.channels.push({ id, server_id: body.p_server, name: body.p_name, kind: body.p_kind, position: world.channels.length });
+        return send(200, id);
+      }
+      if (fn === 'create_invite') return send(200, 'abc123def0');
+      if (fn === 'join_server') return send(400, { message: 'invalid_invite' });
+      return send(404, {});
+    }
+    if (path === 'servers') return send(200, world.servers);
+    if (path === 'channels') return send(200, world.channels);
+    if (path === 'server_members') return send(200, world.members);
+    if (path === 'profiles') {
+      if (m === 'PATCH') { Object.assign(world.profiles[0], body); return send(204, null); }
+      return send(200, world.profiles);
+    }
+    if (path === 'messages') {
+      const ch = (q.get('channel_id') || '').replace('eq.', '');
+      if (m === 'POST') { const row = { id: world.nextMsg++, channel_id: body.channel_id, author_id: 'u1', content: body.content, created_at: new Date().toISOString(), edited_at: null }; world.messages.push(row); return send(201, [row]); }
+      if (m === 'GET') {
+        let rows = world.messages.filter((r) => r.channel_id === ch);
+        const gt = (q.get('id') || '').match(/^gt\.(\d+)/); if (gt) rows = rows.filter((r) => r.id > +gt[1]);
+        rows = rows.slice().sort((a, b) => (q.get('order') === 'id.desc' ? b.id - a.id : a.id - b.id));
+        return send(200, rows);
+      }
+    }
+    return send(404, {});
+  };
+
   await ctx.route('https://fonts.googleapis.com/**', (r) => r.fulfill({ status: 200, contentType: 'text/css', body: '' }));
   await ctx.route('https://fonts.gstatic.com/**', (r) => r.abort());
   await ctx.route('https://vjkqyqdabypdylhoupha.supabase.co/**', async (route) => {
@@ -60,7 +106,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
       case '/qr/info': return send(200, { ok: true, device: 'Chrome no Windows' });
       case '/qr/approve': return send(200, { ok: true, status: 'approved' });
       default:
-        if (url.pathname.startsWith('/rest/v1/profiles')) return send(200, [{ username: 'tester', display_name: 'Tester Um' }]);
+        if (url.pathname.startsWith('/rest/v1/')) return rest(req, url, body, send);
         if (url.pathname.startsWith('/auth/v1/logout')) return send(204, {});
         return send(404, {});
     }
@@ -128,23 +174,67 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await page.click('#mplay');
   ok('pausar para o disco', await page.locator('#disc.spin').count() === 0);
   await page.click('#mplay');
-  // busca de amigos
-  await page.click('[data-act="gsearch"]');
-  await page.fill('#gsearch', 'marina');
-  ok('busca filtra os amigos', (await page.locator('.frow').count()) === 1);
-  await page.fill('#gsearch', '');
-  await page.click('[data-act="gsearch"]');
-  // conversa do painel
-  await page.fill('#hmsg', 'Oi pessoal');
-  await page.press('#hmsg', 'Enter');
-  ok('mensagem aparece na conversa do painel', /Oi pessoal/.test(await page.textContent('#hmsgs')));
-  // servidor pelo topo e volta ao painel
-  await page.click('.stile[data-id="s2"]');
-  await page.waitForSelector('.ap .chat');
-  ok('ícone do servidor abre o servidor', /Foroz City/.test(await page.textContent('.top h1')));
+  // conta nova: sem servidores
+  ok('conta nova mostra estado vazio com convite para criar servidor', /ainda não está em nenhum servidor/.test(await page.textContent('.hchat')));
+  await page.screenshot({ path: OUT + '/2d-vazio.png' });
+  // criar servidor pela janela
+  await page.click('.hcta .mbtn:not(.ghost)');
+  await page.waitForSelector('.modal');
+  await page.fill('#mf-name', 'Clube do Teste');
+  await page.click('[data-act="modal-submit"]');
+  await page.waitForSelector('.ap .chat', { timeout: 6000 }).catch(async () => { console.log('DEBUG modal:', await page.textContent('.mbody').catch(() => 'sem modal'), '| erros:', errors.join(' | '), '| chamadas:', JSON.stringify(calls.slice(-6))); });
+  ok('criar servidor abre o servidor novo', /Clube do Teste/.test(await page.textContent('.top h1')));
+  ok('servidor novo tem os canais Geral e Sala principal', /Geral/.test(await page.textContent('body')) && /Sala principal/.test(await page.textContent('body')));
+  ok('RPC create_server chamada com o nome', calls.some((c) => c[1] === '/rest/v1/rpc/create_server' && c[2].p_name === 'Clube do Teste'));
+  // mandar mensagem de verdade
+  await page.fill('#msg', 'Olá, mundo real');
+  await page.press('#msg', 'Enter');
+  await page.waitForFunction(() => /Olá, mundo real/.test(document.getElementById('msgs').textContent), null, { timeout: 5000 }).catch(async () => { console.log('DEBUG msgs:', await page.textContent('#msgs'), '| erros:', errors.join(' | '), '| calls:', JSON.stringify(calls.slice(-5))); });
+  ok('mensagem enviada aparece no chat e foi gravada', world.messages.length === 1 && world.messages[0].content === 'Olá, mundo real');
+  // mensagem de outra pessoa chega por atualização automática
+  world.messages.push({ id: world.nextMsg++, channel_id: 'srv1c1', author_id: 'u2', content: 'Oi do outro lado', created_at: new Date().toISOString(), edited_at: null });
+  await page.waitForFunction(() => /Oi do outro lado/.test(document.getElementById('msgs').textContent), null, { timeout: 8000 });
+  ok('mensagem de outro usuário chega sozinha', true);
+  await page.screenshot({ path: OUT + '/2e-chat.png' });
+  // cartão de perfil de outra pessoa
+  await page.click('#msgs [data-act="profile"][data-id="u2"]');
+  await page.waitForSelector('.pcard');
+  ok('cartão mostra nome, @usuário e bio', /Marina Rocha/.test(await page.textContent('.pcard')) && /@marina/.test(await page.textContent('.pcard')) && /jogos de plataforma/.test(await page.textContent('.pcard')));
+  await page.screenshot({ path: OUT + '/2f-cartao.png' });
+  await page.click('[data-act="modal-close"]');
+  ok('fechar o cartão', (await page.locator('.modal').count()) === 0);
+  // criar canal
+  await page.click('[data-act="modal-open"][data-k="chan"]');
+  await page.fill('#mf-name', 'Avisos');
+  await page.click('[data-act="modal-submit"]');
+  await page.waitForFunction(() => /Avisos/.test(document.body.textContent));
+  ok('canal novo aparece na lista', world.channels.some((c) => c.name === 'Avisos' && c.kind === 'text'));
+  // convite
+  await page.click('[data-act="nav"][data-k="invite"]');
+  await page.waitForSelector('#mf-link');
+  ok('convite mostra o link com código', /#join\?c=abc123def0/.test(await page.inputValue('#mf-link')));
+  await page.click('[data-act="modal-close"]');
+  // editar o próprio perfil
+  await page.click('.who .pic');
+  await page.waitForSelector('.pcard');
+  await page.click('[data-act="edit-profile"]');
+  await page.fill('#mf-bio', 'Minha bio de teste');
+  await page.click('[data-act="modal-submit"]');
+  await page.waitForFunction(() => !document.querySelector('.modal'));
+  ok('editar perfil grava a bio no banco', world.profiles[0].bio === 'Minha bio de teste');
+  // painel inicial agora com dados reais
   await page.click('.tbh');
   await page.waitForSelector('.hub');
   ok('ícone de conversa volta ao painel', true);
+  await page.click('[data-act="gsearch"]');
+  await page.fill('#gsearch', 'marina');
+  ok('busca filtra os amigos (membros reais)', (await page.locator('.frow').count()) === 1);
+  await page.fill('#gsearch', '');
+  await page.click('[data-act="gsearch"]');
+  await page.fill('#hmsg', 'Oi pessoal');
+  await page.press('#hmsg', 'Enter');
+  await page.waitForFunction(() => /Oi pessoal/.test(document.getElementById('hmsgs').textContent));
+  ok('mensagem aparece na conversa do painel', true);
   await page.setViewportSize({ width: 390, height: 800 });
   await page.waitForTimeout(300);
   ok('painel no celular sem rolagem lateral', await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));

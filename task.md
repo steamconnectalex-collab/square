@@ -2,7 +2,7 @@
 
 > **Para a IA:** este arquivo é a fonte da verdade sobre o projeto. Leia tudo antes de começar e atualize **na hora** em que algo acontecer (regras completas em `agents.md`). Não duplique tarefas: procure aqui antes de adicionar.
 >
-> Última atualização: 2026-11-17 (análise e plano; base do banco para o chat)
+> Última atualização: 2026-11-18 (servidores, canais, chat e perfil reais)
 
 ---
 
@@ -52,6 +52,7 @@ Fluxo de acesso: Home → "Entrar" → login (com painel de QR Code) → "Regist
 - [x] 2026-11-17 — Barra do usuário: tirado o espaço em branco entre a foto e os ícones (fone, microfone, engrenagem, três pontinhos), no computador e no celular (`.ubar .pic` em `site/style.css`). Publicado na Vercel (deployment `dpl_93wM9DrCtcdLT8kzrdPPjzyKQy19`, commit `4606d80`).
 - [x] 2026-11-17 — **Capas dos servidores, notícias reais e fotos para todos os usuários:** (1) as 5 imagens enviadas viraram a capa dos servidores, que agora se chamam Dream Cup, Foroz City, Sleepy Community, Unity PVP e Sociaxs (os dois últimos são servidores novos, com canais, membros e conversa de exemplo); (2) "Notícias" e "Jogos grátis" do painel usam manchetes reais pesquisadas em 17/11/2026 (Game Over Drive, Canaltech, Olhar Digital), cada card abre a matéria na fonte; as artes dos cards continuam degradês, porque não dá baixar imagens de sites daqui; (3) todos os usuários de exemplo (amigos, offline e membros dos canais de voz) têm foto de teste (`PHOTO_OF` em `site/app.js`); como só havia 10 fotos, algumas se repetem em outro recorte, espelhadas ou em preto e branco. Tudo provisório (`USE_TEST_PHOTOS`). Testes de fumaça: 40 OK. Publicado na Vercel (deployment `dpl_5hv3xBtGmhh6UWheTbZpDAbef5yZ`, commit `6a69ed9`; `img/dream.jpg` no ar confere: 8166 bytes). Obs.: na pasta `site/img/` existem outros arquivos soltos de hoje (`srv1-5`, `srv-*`, `chapeu`, `guarda`, `amigo3d` etc.) que não estão no GitHub nem no site; não foram usados nem apagados.
 - [x] 2026-11-17 — **Base do banco para chat e perfil** (migração `0002_chat_e_perfil.sql` aplicada no Supabase): tabela `messages` com regras de segurança e tempo real, campos de perfil, funções auxiliares no schema `private`. Testado com transação desfeita: membro lê/envia, estranho não vê nem envia, autor não pode ser forjado, `birth_date` protegido.
+- [x] 2026-11-18 — **Etapa 2 + núcleo da 3 + perfil (plano 2, 3 e 4 em parte):** migração `0003_convites_canais_presenca.sql` aplicada (funções `create_channel`, `create_invite`, `join_server`; tabela `server_invites`; `last_seen` para presença). O site agora lê e grava no banco de verdade: servidores, canais, membros, mensagens; criar servidor, criar canal (só o dono), convite por link/código e "entrar com convite" (`#join?c=CÓDIGO`), conta nova com tela vazia, histórico de 50 mensagens, envio, recebimento automático (consulta a cada 3 s), editar/apagar a própria mensagem (dono do servidor apaga qualquer uma), cartão de perfil ao clicar no nome/avatar, editar perfil (nome, status, bio, cor), online/offline por presença (batimento a cada 60 s). Dados falsos de servidores/amigos/mensagens removidos (só música, jogos e notícias seguem estáticos). Testes de fumaça: 47 OK (`tests/smoke.js` com banco simulado).
 - [x] 2026-11-16 — **Etapa 2:** site completo (home + login + app) publicado na Vercel em https://square-chat-silk.vercel.app (deployment `dpl_2wsLZ3h1f7CT3kGt3w8N5rdQS6KS`, commit `495cab0` do GitHub). Conferido: `index.html`, `app.js` e `home.js` no ar são idênticos, byte a byte, aos do repositório.
 
 ## Análise do projeto (2026-11-17)
@@ -67,9 +68,9 @@ Fluxo de acesso: Home → "Entrar" → login (com painel de QR Code) → "Regist
 ## Plano (ordem de execução)
 
 1. [x] **Base do banco (2026-11-17):** mensagens, campos de perfil, regras de segurança testadas, tempo real habilitado.
-2. [ ] **Servidores e canais reais:** o site lê do banco; criar servidor; criar canal (função nova `create_channel`, só o dono); tela para conta nova sem servidor; convites por código e "entrar num servidor"; remover os servidores de demonstração.
-3. [ ] **Chat real:** carregar histórico (com "ver mais antigas"), enviar, receber em tempo real, editar e apagar a própria mensagem, "digitando…", tratar queda de internet. **Decisão da pessoa:** para o tempo real, incluir no site a biblioteca oficial `supabase-js` (um arquivo, sem build) ou escrever a conexão à mão (mais trabalho, mais frágil). Recomendo a biblioteca.
-4. [ ] **Perfil:** editar perfil (nome, bio, status, cor), foto (Supabase Storage + liberar no CSP), **card ao clicar no nome ou avatar** (nome, @usuário, bio, status, "membro desde"), lista de membros real.
+2. [x] **Servidores e canais reais (2026-11-18):** o site lê do banco; criar servidor; criar canal (função nova `create_channel`, só o dono); tela para conta nova sem servidor; convites por código e "entrar num servidor"; remover os servidores de demonstração.
+3. [~] **Chat real (feito: histórico, enviar, receber por consulta de 3 s, editar/apagar; falta: "ver mais antigas" na tela, "digitando…", tempo real instantâneo):** carregar histórico (com "ver mais antigas"), enviar, receber em tempo real, editar e apagar a própria mensagem, "digitando…", tratar queda de internet. **Decisão da pessoa:** para o tempo real, incluir no site a biblioteca oficial `supabase-js` (um arquivo, sem build) ou escrever a conexão à mão (mais trabalho, mais frágil). Recomendo a biblioteca.
+4. [~] **Perfil (feito: editar nome/bio/status/cor, cartão ao clicar, lista de membros real; falta: foto via Storage):** editar perfil (nome, bio, status, cor), foto (Supabase Storage + liberar no CSP), **card ao clicar no nome ou avatar** (nome, @usuário, bio, status, "membro desde"), lista de membros real.
 5. [ ] **Amigos e mensagens diretas:** pedido de amizade, conversa 1 a 1, painel inicial com dados reais, notificações.
 6. [ ] **Presença e extras:** online/offline real, imagens/anexos, emojis e GIFs, menções, busca de mensagens.
 7. [ ] **Voz** (WebRTC): por último, é a parte mais pesada.
@@ -77,7 +78,7 @@ Fluxo de acesso: Home → "Entrar" → login (com painel de QR Code) → "Regist
 
 ## Em andamento agora
 
-- **Plano, etapa 2:** servidores e canais reais (ver "Plano" acima).
+- Nada em andamento; publicação da etapa acima e testes manuais pela pessoa.
 
 ## Como publicar o site (enquanto a Vercel não estiver ligada ao GitHub)
 
@@ -101,7 +102,7 @@ Fluxo de acesso: Home → "Entrar" → login (com painel de QR Code) → "Regist
 
 ## Próximo passo
 
-Etapa 2 do plano: ligar o site aos servidores e canais do banco (ler, criar servidor, criar canal, convite). Depois, etapa 3 (chat real), que precisa da decisão sobre a biblioteca de tempo real.
+Pessoa testa no site (criar servidor, convidar uma segunda conta, conversar). Depois: foto de perfil (Storage), amigos e mensagens diretas (etapa 5), e decidir `supabase-js` para tempo real instantâneo.
 
 ---
 
@@ -112,3 +113,8 @@ Etapa 2 do plano: ligar o site aos servidores e canais do banco (ler, criar serv
 - **Problemas:** a primeira publicação na Vercel saiu sem dois arquivos (`app.js` e `qr.js`); foi corrigida com uma nova publicação completa. Depois, o envio direto do GitHub para a Vercel foi recusado 3 vezes (limite de consultas do GitHub, erro 429); resolvido com `deploy/fetch.sh` (a Vercel baixa os arquivos do GitHub durante a publicação).
 - **Feito (final do dia):** etapas 2 e 3 concluídas: site completo no ar na Vercel e projeto completo no GitHub (`main`).
 - **Próximo passo:** a pessoa testa o site; ligar Vercel ↔ GitHub pelo painel da Vercel (passo da pessoa); depois, chat com dados reais.
+
+### 2026-11-18
+- **Feito:** migração 0003; site ligado ao banco (servidores, canais, chat, convites, perfil, presença); testes atualizados (47 OK).
+- **Problemas:** no meio do caminho faltavam ligar os campos das janelas, o envio com Enter e o carregamento do histórico ao abrir o canal; corrigidos e cobertos pelos testes.
+- **Próximo passo:** ver "Próximo passo" acima.

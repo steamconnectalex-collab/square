@@ -244,6 +244,7 @@ function render(o = {}) {
     const el = document.getElementById(snap.id);
     if (el) { el.focus(); if (snap.s && el.setSelectionRange) { try { el.setSelectionRange(snap.s[0], snap.s[1]); } catch (e) { /* tipo sem seleção */ } } }
   }
+  if (S.view === 'app' && A && A.world === 'ready') ensureThread(curKey());
 }
 
 /* ----------------------------------------------------- peças de acesso */
@@ -655,135 +656,247 @@ async function doReset() {
 }
 
 /* =====================================================================
-   TELA PRINCIPAL (dados de demonstração; o chat real vem depois)
+   TELA PRINCIPAL — dados reais do Supabase (servidores, canais, mensagens e perfis).
+   Ainda de demonstração: jogos, música, notícias, amigos/DM, voz.
    ===================================================================== */
 const G = {
   lilac: 'linear-gradient(135deg,#D9CDF2,#9D8CCF)', rose: 'linear-gradient(135deg,#FAD3DC,#E897AB)',
   sky: 'linear-gradient(135deg,#C9E6F0,#7DB8CF)', mint: 'linear-gradient(135deg,#CBE9D9,#78BE9D)',
   sand: 'linear-gradient(135deg,#F9E5C0,#EBBA6C)', slate: 'linear-gradient(135deg,#DCDCE4,#9A9AA7)'
 };
-/* FOTOS DE TESTE (provisório): só para ter uma ideia de como o projeto fica.
-   Antes do lançamento, trocar por um ícone de boneco: USE_TEST_PHOTOS = false e apagar site/img/. */
+const TILES = ['linear-gradient(160deg,#F4C7D3,#B79BDB)', 'linear-gradient(160deg,#F7DDB5,#E39B6B)', 'linear-gradient(160deg,#BFE3EE,#6C9AD0)', 'linear-gradient(160deg,#CBE9D9,#78BE9D)', 'linear-gradient(160deg,#F4C7D3,#E06A7A)', 'linear-gradient(160deg,#DCDCE4,#9A9AA7)'];
+const ACCENTS = ['#9D8CCF', '#E897AB', '#7DB8CF', '#78BE9D', '#EBBA6C', '#9A9AA7'];
+const hashOf = (s) => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
+const gradFor = (id) => { const k = Object.keys(G); return G[k[hashOf(id) % k.length]]; };
+const tileFor = (id) => TILES[hashOf(id) % TILES.length];
+/* FOTO DE TESTE (provisório): só a foto da própria conta. Antes do lançamento: USE_TEST_PHOTOS = false e apagar site/img/. */
 const USE_TEST_PHOTOS = true;
 const ph = (file, fallback) => (USE_TEST_PHOTOS ? `url('img/${file}.jpg') center/cover no-repeat, ${fallback}` : fallback);
 const meBg = () => ph('eu', G.lilac);
 const meIni = (name) => (USE_TEST_PHOTOS ? '' : (name.charAt(0) || '?').toUpperCase());
-const Pp = (id, name, st, g) => { const photo = PHOTO_OF[name]; return { id, name, st, g: photo ? ph(photo, g) : g, ini: photo && USE_TEST_PHOTOS ? '' : name.charAt(0) }; };
-/* Foto de teste de cada pessoa (nome -> arquivo em site/img/). Provisório, junto com USE_TEST_PHOTOS. */
-const PHOTO_OF = {
-  'Lorena Lima': 'v4', 'Irwin Peixoto': 'v2', 'Estefani Leal': 'v6', 'Yasmin Sabino': 'v5', 'Duda Brandão': 'v1', 'Rafa Teles': 'v7', 'Nina Prado': 'v8',
-  'Lia Monteiro': 'estatua', 'Salma Fonseca': 'anime', 'Marina Rocha': 'mono1', 'Theo Bramante': 'tux', 'Leo Cavalcante': 'v1', 'Caio Santana': 'v2',
-  'Bruno Azevedo': 'terno', 'Camila Duarte': 'morcego', 'Rodrigo Nunes': 'craque', 'Tati Moura': 'mono2', 'Hugo Pires': 'v3', 'Vera Lins': 'v4',
-  'Ravi Costa': 'cao', 'Julia Prado': 'craque2', 'Otávio Sá': 'boneco', 'Pietra Lemos': 'dentes', 'Nando Alves': 'v5', 'Bela Furtado': 'v6',
-  'Davi Prates': 'v3', 'Kelly Ramos': 'v8', 'Marcos Vieira': 'v2', 'Dani Cruz': 'v5', 'Enzo Matos': 'v1', 'Alice Borges': 'v6', 'Caue Lima': 'v7', 'Lara Neves': 'v4'
-};
-const V = (name, g, bot) => ({ name, g: !bot && PHOTO_OF[name] ? ph(PHOTO_OF[name], g) : g, bot: !!bot });
-const SERVERS = [
-  { id: 's1', name: 'Dream Cup', users: '119.282', activity: '15 minutos atrás', ini: USE_TEST_PHOTOS ? '' : 'D', tile: ph('dream', 'linear-gradient(160deg,#F4C7D3,#B79BDB)'),
-    text: [{ id: 'geral', name: 'Geral' }, { id: 'amigos', name: 'Amigos próximos' }],
-    voice: [
-      { id: 'sala', name: 'Sala principal', members: [V('Lorena Lima', G.rose), V('Irwin Peixoto', G.sky), V('Estefani Leal', G.mint)] },
-      { id: 'rapida', name: 'Partida rápida', members: [V('Yasmin Sabino', G.sand), V('Duda Brandão', G.lilac), V('Bot de música', G.slate, true)] },
-      { id: 'treino', name: 'Treino', members: [V('Rafa Teles', G.sky), V('Nina Prado', G.rose)] }],
-    online: [Pp('lia', 'Lia Monteiro', 'Arena Estelar: nível 15 Vanguarda', G.rose, 'estatua'), Pp('salma', 'Salma Fonseca', 'Reinos de Vale: menu principal', G.lilac, 'anime'), Pp('marina', 'Marina Rocha', 'Cidade Neon: Operadora', G.sky, 'mono1'), Pp('theo', 'Theo Bramante', 'Dunas: 14 jogadores restantes', G.slate, 'tux')],
-    offline: [Pp('leo', 'Leo Cavalcante', 'Offline', G.mint), Pp('caio', 'Caio Santana', 'Offline', G.sand)] },
-  { id: 's2', name: 'Foroz City', users: '212.990', activity: '2 horas atrás', ini: USE_TEST_PHOTOS ? '' : 'F', tile: ph('foroz', 'linear-gradient(160deg,#F7DDB5,#E39B6B)'),
-    text: [{ id: 'geral', name: 'Geral' }, { id: 'estrategias', name: 'Estratégias' }],
-    voice: [
-      { id: 'comboio', name: 'Comboio', members: [V('Bruno Azevedo', G.sky), V('Camila Duarte', G.rose)] },
-      { id: 'duplas', name: 'Modo duplas', members: [V('Tati Moura', G.mint), V('Bot de música', G.slate, true)] }],
-    online: [Pp('bruno', 'Bruno Azevedo', 'Dunas: modo duplas', G.sky, 'terno'), Pp('camila', 'Camila Duarte', 'Ouvindo música', G.rose, 'morcego'), Pp('rodrigo', 'Rodrigo Nunes', 'Arena Estelar: treino', G.lilac, 'craque'), Pp('tati', 'Tati Moura', 'Online', G.mint, 'mono2')],
-    offline: [Pp('hugo', 'Hugo Pires', 'Offline', G.sand), Pp('vera', 'Vera Lins', 'Offline', G.slate)] },
-  { id: 's3', name: 'Sleepy Community', users: '112.230', activity: 'ontem', ini: USE_TEST_PHOTOS ? '' : 'S', tile: ph('sleepy', 'linear-gradient(160deg,#BFE3EE,#6C9AD0)'),
-    text: [{ id: 'geral', name: 'Geral' }, { id: 'clipes', name: 'Clipes' }],
-    voice: [
-      { id: 'garagem', name: 'Garagem', members: [V('Ravi Costa', G.sand), V('Julia Prado', G.lilac)] },
-      { id: 'cobertura', name: 'Cobertura', members: [V('Pietra Lemos', G.mint)] }],
-    online: [Pp('ravi', 'Ravi Costa', 'Cidade Neon: patrulha', G.sand), Pp('julia', 'Julia Prado', 'Online', G.lilac), Pp('otavio', 'Otávio Sá', 'Ouvindo música', G.sky), Pp('pietra', 'Pietra Lemos', 'Reinos de Vale: Mapa novo', G.mint)],
-    offline: [Pp('nando', 'Nando Alves', 'Offline', G.slate), Pp('bela', 'Bela Furtado', 'Offline', G.rose)] },
-  { id: 's4', name: 'Unity PVP', users: '84.510', activity: '3 horas atrás', ini: USE_TEST_PHOTOS ? '' : 'U', tile: ph('unity', 'linear-gradient(160deg,#CBE9D9,#78BE9D)'),
-    text: [{ id: 'geral', name: 'Geral' }, { id: 'ranqueada', name: 'Ranqueada' }],
-    voice: [
-      { id: 'arena', name: 'Arena', members: [V('Davi Prates', G.mint), V('Kelly Ramos', G.sky)] },
-      { id: 'treino', name: 'Treino livre', members: [V('Marcos Vieira', G.sand)] }],
-    online: [Pp('davi', 'Davi Prates', 'Unity PVP: partida ranqueada', G.mint), Pp('kelly', 'Kelly Ramos', 'Online', G.sky), Pp('marcos', 'Marcos Vieira', 'Ouvindo música', G.sand)],
-    offline: [Pp('dani', 'Dani Cruz', 'Offline', G.slate)] },
-  { id: 's5', name: 'Sociaxs', users: '57.804', activity: '5 horas atrás', ini: USE_TEST_PHOTOS ? '' : 'S', tile: ph('sociaxs', 'linear-gradient(160deg,#F4C7D3,#E06A7A)'),
-    text: [{ id: 'geral', name: 'Geral' }, { id: 'eventos', name: 'Eventos' }],
-    voice: [
-      { id: 'lounge', name: 'Lounge', members: [V('Enzo Matos', G.rose), V('Alice Borges', G.lilac)] },
-      { id: 'festa', name: 'Festa', members: [V('Caue Lima', G.sky)] }],
-    online: [Pp('enzo', 'Enzo Matos', 'Sociaxs: evento hoje à noite', G.rose), Pp('alice', 'Alice Borges', 'Online', G.lilac), Pp('caue', 'Caue Lima', 'Ouvindo música', G.sky)],
-    offline: [Pp('lara', 'Lara Neves', 'Offline', G.slate)] }
-];
+const myId = () => (S.session && S.session.user && S.session.user.id) || '';
+
 const PANELS = {
-  notif: { title: 'Notificações', items: [{ t: 'Lia mencionou você em Geral', s: 'há 2 minutos' }, { t: 'Marina entrou na Sala principal', s: 'há 8 minutos' }, { t: 'Foroz City convidou você para jogar', s: 'há 1 hora' }] },
-  pins: { title: 'Mensagens fixadas', items: [{ t: 'Regras do grupo', s: 'Respeite todo mundo e avise quando for faltar a uma partida.' }, { t: 'Horário das partidas', s: 'Sextas, às 21h. Chame os amigos com antecedência.' }] },
-  mentions: { title: 'Menções', items: [{ t: 'Marina: Ok, Davi. Corre!', s: 'Geral · 12:57' }] },
-  help: { title: 'Central de ajuda', items: [{ t: 'Como criar um servidor', s: 'Passo a passo para começar a sua comunidade.' }, { t: 'Atalhos do teclado', s: 'Enter envia a mensagem que você escreveu.' }, { t: 'Falar com o suporte', s: 'Resposta em até um dia útil.' }] }
+  notif: { title: 'Notificações', items: [] },
+  pins: { title: 'Mensagens fixadas', items: [] },
+  mentions: { title: 'Menções', items: [] },
+  help: { title: 'Central de ajuda', items: [{ t: 'Como criar um servidor', s: 'Clique no “+” da barra de cima e escolha “Criar servidor”.' }, { t: 'Como convidar amigos', s: 'Dentro do servidor, clique em “Convidar” e envie o link.' }, { t: 'Atalhos do teclado', s: 'Enter envia a mensagem que você escreveu.' }] }
 };
 const EMOJIS = [['😀', 'Sorriso'], ['😂', 'Rindo'], ['👍', 'Joia'], ['🔥', 'Fogo'], ['🎮', 'Controle'], ['🎉', 'Festa'], ['❤️', 'Coração'], ['😮', 'Surpresa']];
-const REPLIES = ['Boa!', 'Chegando já.', 'Haha, verdade.', 'Fechou, bora!', 'Já estou no lobby.', 'Combinado.', 'Depois me conta mais.'];
 
+/* ----------------------------------------------------- acesso ao banco */
+async function sb(path, o = {}) {
+  const t = await freshToken();
+  if (!t) throw { message: 'not_authenticated', status: 401 };
+  const headers = { apikey: C.SUPABASE_KEY, authorization: 'Bearer ' + t, accept: 'application/json' };
+  if (o.body !== undefined) headers['content-type'] = 'application/json';
+  if (o.prefer) headers.prefer = o.prefer;
+  let res;
+  try {
+    res = await fetch(C.SUPABASE_URL + path, { method: o.method || 'GET', headers, body: o.body !== undefined ? JSON.stringify(o.body) : undefined });
+  } catch (e) { throw { message: 'network', status: 0 }; }
+  if (!res.ok) { const j = await res.json().catch(() => ({})); throw { message: (j && (j.message || j.error)) || '', status: res.status }; }
+  if (res.status === 204) return null;
+  const txt = await res.text();
+  return txt ? JSON.parse(txt) : null;
+}
+const rpc = (name, args) => sb('/rest/v1/rpc/' + name, { method: 'POST', body: args || {} });
+const ERRS = {
+  not_authenticated: 'Sua sessão expirou. Entre de novo.', network: 'Sem conexão. Verifique sua internet e tente de novo.',
+  invalid_name: 'O nome está fora do tamanho permitido.', too_many_servers: 'Você atingiu o limite de servidores.',
+  too_many_channels: 'Esse servidor já tem o máximo de canais.', not_owner: 'Só o dono do servidor pode fazer isso.',
+  not_member: 'Você não faz parte deste servidor.', invalid_invite: 'Convite inválido ou expirado.',
+  'row-level security': 'Você não tem permissão para isso.', 'violates check constraint': 'Algum campo está fora do tamanho permitido.'
+};
+function errText(e) {
+  const m = String((e && e.message) || '');
+  for (const k of Object.keys(ERRS)) if (m.indexOf(k) !== -1) return ERRS[k];
+  return 'Algo deu errado. Tente de novo em instantes.';
+}
+
+/* ---------------------------------------------------------------- estado */
+let SERVERS = [];
 let A = null;
-function seedThreads(first) {
+const ONLINE_MS = 150000;
+const FIELDS = 'id,author_id,content,created_at,edited_at';
+const mapMsg = (r) => ({ id: r.id, from: r.author_id, text: r.content, at: r.created_at, edited: !!r.edited_at });
+const msgTime = (iso) => {
+  const d = new Date(iso), t = new Date(), p2 = (n) => String(n).padStart(2, '0');
+  const hm = p2(d.getHours()) + ':' + p2(d.getMinutes());
+  return d.toDateString() === t.toDateString() ? hm : p2(d.getDate()) + '/' + p2(d.getMonth() + 1) + ' ' + hm;
+};
+
+function person(p, uid, role) {
+  const me = uid === myId();
+  const name = (p && (p.display_name || p.username)) || 'Membro';
+  const on = me || !!(p && p.last_seen && Date.now() - Date.parse(p.last_seen) < ONLINE_MS);
+  const status = (p && p.status_text) || '';
   return {
-    's1:geral': [
-      { id: 1, from: 'lia', text: 'Galera, a partida começa em 10 minutos.', time: '12:53' },
-      { id: 2, from: 'salma', text: 'Melhor ser rápido. Minha mãe está me esperando pra sair.', time: '12:55' },
-      { id: 3, from: 'me', text: 'Beleza, chego em alguns minutos.', time: '12:56' },
-      { id: 4, from: 'marina', text: `Ok, ${first}. Corre!`, time: '12:57' },
-      { id: 5, from: 'theo', text: 'Hoje não vai dar, estou passando mal. Tento chegar à tarde, mas se não der, sem problema, tranquilo!', time: '12:57' },
-      { id: 6, from: 'me', text: 'Que pena, Theo. Melhoras!', time: '12:58' },
-      { id: 7, from: 'marina', text: 'Caramba, Theo! O que aconteceu?', time: '12:58' }],
-    's1:amigos': [
-      { id: 1, from: 'marina', text: 'Quem fecha a dupla comigo hoje à noite?', time: '11:20' },
-      { id: 2, from: 'me', text: 'Eu fecho, só preciso terminar uma coisa antes.', time: '11:24' },
-      { id: 3, from: 'lia', text: 'Me chama pro próximo, estou sem dupla.', time: '11:31' }],
-    's2:geral': [
-      { id: 1, from: 'bruno', text: 'Alguém topa uma dupla em Dunas?', time: '09:40' },
-      { id: 2, from: 'camila', text: 'Eu! Só terminar o café.', time: '09:42' },
-      { id: 3, from: 'me', text: 'Entro em 5 minutos.', time: '09:44' }],
-    's2:estrategias': [
-      { id: 1, from: 'rodrigo', text: 'A rota pelo cânion é mais segura no começo.', time: '08:15' },
-      { id: 2, from: 'me', text: 'Anotado, valeu!', time: '08:18' }],
-    's3:geral': [
-      { id: 1, from: 'ravi', text: 'Saiu atualização nova hoje cedo.', time: '10:05' },
-      { id: 2, from: 'julia', text: 'Vi aqui, o mapa novo ficou lindo.', time: '10:09' }],
-    's3:clipes': [
-      { id: 1, from: 'pietra', text: 'Olha esse clipe da última partida!', time: '16:30' },
-      { id: 2, from: 'otavio', text: 'Isso foi sorte ou habilidade?', time: '16:32' }],
-    's4:geral': [
-      { id: 1, from: 'davi', text: 'Quem entra na ranqueada hoje?', time: '14:10' },
-      { id: 2, from: 'kelly', text: 'Eu entro em dez minutos.', time: '14:12' }],
-    's4:ranqueada': [
-      { id: 1, from: 'marcos', text: 'Subi de divisão ontem à noite!', time: '13:05' }],
-    's5:geral': [
-      { id: 1, from: 'enzo', text: 'O evento de hoje começa às 21h.', time: '15:20' },
-      { id: 2, from: 'alice', text: 'Já separei a playlist!', time: '15:24' }],
-    's5:eventos': [
-      { id: 1, from: 'caue', text: 'Confirmem presença até o fim da tarde.', time: '11:40' }]
+    id: uid, name, user: (p && p.username) || '', bio: (p && p.bio) || '', status, accent: (p && p.accent) || '#9D8CCF',
+    since: (p && p.created_at) || '', role: role || '', me, on, st: on ? (status || 'Online') : 'Offline',
+    g: me ? meBg() : gradFor(uid), ini: me ? meIni(name) : name.charAt(0).toUpperCase()
   };
 }
-const firstName = () => displayName().split(/\s+/)[0] || 'Você';
+
 function initApp() {
-  if (A && A.owner === (S.session && S.session.user && S.session.user.id)) return;
+  const uid = myId();
+  if (A && A.owner === uid) { startLive(); openJoin(); return; }
+  SERVERS = [];
   A = {
-    owner: S.session && S.session.user && S.session.user.id,
-    server: 's1', channel: 'geral', collapsed: { 's1:treino': true }, voice: 's1:sala', muted: false, deafened: false,
-    panel: null, showMembers: true, onlineOpen: true, offlineOpen: true, draft: '', search: '', emojiOpen: false,
-    typing: null, typingKey: null, menu: false, threads: seedThreads(firstName()), t1: null, t2: null,
-    view: 'hub', hubKey: 's1:geral', hdraft: '', gq: '', searchOpen: false, barOpen: false, playing: true, track: 0, prog: 34, ntab: 'news', entered: false
+    owner: uid, world: 'loading', werr: '', me: null, server: null, channel: null, voice: null, muted: false, deafened: false,
+    panel: null, showMembers: true, onlineOpen: true, offlineOpen: true, draft: '', search: '', emojiOpen: false, menu: false,
+    view: 'hub', hubKey: '', hubKeys: [], hdraft: '', gq: '', searchOpen: false, barOpen: false, playing: true, track: 0, prog: 34, ntab: 'news', entered: false,
+    threads: {}, loaded: {}, loading: {}, more: {}, terr: {}, modal: null, poll: null, beat: null
   };
+  startLive(); loadWorld(); openJoin();
 }
-function stopAppTimers() { if (A) { clearTimeout(A.t1); clearTimeout(A.t2); A.t1 = A.t2 = null; } }
+function openJoin() {
+  if (S.joinCode && A) { A.modal = { type: 'srv', mode: 'join', name: '', code: S.joinCode, err: '', busy: false }; S.joinCode = null; }
+}
+function startLive() {
+  stopAppTimers();
+  A.poll = setInterval(pollTick, 3000);
+  A.beat = setInterval(() => beat(false), 60000);
+  beat(true);
+}
+function stopAppTimers() { if (A) { clearInterval(A.poll); clearInterval(A.beat); A.poll = A.beat = null; } }
 
-const curServer = () => SERVERS.find((s) => s.id === A.server) || SERVERS[0];
+const curServer = () => SERVERS.find((s) => s.id === A.server) || SERVERS[0] || null;
+const serverOfChan = (cid) => SERVERS.find((s) => s.text.some((c) => c.id === cid)) || null;
+const curKey = () => (A.view === 'hub' ? A.hubKey : (A.channel || ''));
+const findPerson = (id) => { if (A.me && id === A.me.id) return A.me; for (const s of SERVERS) if (s.byId[id]) return s.byId[id]; return null; };
 
-/* ---------------------------------------------------------------------
-   PAINEL INICIAL (tela principal depois do login): amigos, conversa,
-   festas fixadas, mais jogados, player e notícias. Dados de demonstração.
-   --------------------------------------------------------------------- */
+async function loadWorld(paint) {
+  const w = A;
+  try {
+    const [srv, chs, mem] = await Promise.all([
+      sb('/rest/v1/servers?select=id,name,owner_id,created_at&order=created_at.asc'),
+      sb('/rest/v1/channels?select=id,server_id,name,kind,position&order=position.asc'),
+      sb('/rest/v1/server_members?select=server_id,user_id,role')
+    ]);
+    const ids = Array.from(new Set(mem.map((m) => m.user_id).concat([myId()])));
+    const profs = await sb('/rest/v1/profiles?select=id,username,display_name,bio,status_text,accent,last_seen,created_at&id=in.(' + ids.join(',') + ')');
+    if (A !== w) return;
+    const P = {}; profs.forEach((p) => { P[p.id] = p; });
+    w.me = person(P[myId()] || { display_name: displayName(), username: S.profile && S.profile.username }, myId(), '');
+    SERVERS = srv.map((s) => {
+      const people = mem.filter((m) => m.server_id === s.id).map((m) => person(P[m.user_id], m.user_id, m.role));
+      const byId = {}; people.forEach((p) => { byId[p.id] = p; });
+      const by = (a, b) => a.name.localeCompare(b.name);
+      const chan = (k) => chs.filter((c) => c.server_id === s.id && c.kind === k).map((c) => ({ id: c.id, name: c.name }));
+      return {
+        id: s.id, name: s.name, owner: s.owner_id, mine: s.owner_id === myId(), users: people.length, ini: s.name.charAt(0).toUpperCase(), tile: tileFor(s.id),
+        text: chan('text'), voice: chan('voice'), byId, online: people.filter((p) => p.on).sort(by), offline: people.filter((p) => !p.on).sort(by)
+      };
+    });
+    w.world = 'ready'; w.werr = '';
+    S.profile = Object.assign({}, S.profile, { display_name: w.me.name, username: w.me.user || (S.profile && S.profile.username) });
+    store.set('sq.profile', S.profile);
+    fixSelection();
+  } catch (e) {
+    if (A !== w) return;
+    if (w.world === 'ready') return;
+    w.world = 'error'; w.werr = errText(e);
+  }
+  (paint || render)();
+}
+function fixSelection() {
+  if (!SERVERS.length) { A.server = null; A.channel = null; A.hubKeys = []; A.hubKey = ''; A.view = 'hub'; return; }
+  let s = SERVERS.find((x) => x.id === A.server);
+  if (!s) { s = SERVERS[0]; A.server = s.id; A.channel = null; }
+  if (!s.text.some((c) => c.id === A.channel)) A.channel = s.text[0] ? s.text[0].id : null;
+  A.hubKeys = SERVERS.slice(0, 3).map((x) => (x.text[0] ? x.text[0].id : '')).filter(Boolean);
+  if (!A.hubKeys.includes(A.hubKey)) A.hubKey = A.hubKeys[0] || '';
+}
+function selectServer(id) {
+  const s = SERVERS.find((x) => x.id === id); if (!s) return;
+  A.server = s.id; A.channel = s.text[0] ? s.text[0].id : null; A.view = 'server'; A.panel = null; A.search = '';
+}
+async function beat(first) {
+  if (S.view !== 'app' || !A || document.hidden) return;
+  const w = A;
+  try {
+    await sb('/rest/v1/profiles?id=eq.' + myId(), { method: 'PATCH', body: { last_seen: new Date().toISOString() } });
+    if (!first && A === w && w.world === 'ready') await loadWorld(refilter);
+  } catch (e) { /* tenta de novo no próximo ciclo */ }
+}
+
+/* ------------------------------------------------------------ mensagens */
+async function ensureThread(key) {
+  if (!key || A.loaded[key] || A.loading[key] || A.terr[key]) return;
+  const w = A; A.loading[key] = 1;
+  try {
+    const rows = await sb(`/rest/v1/messages?select=${FIELDS}&channel_id=eq.${key}&order=id.desc&limit=50`);
+    if (A !== w) return;
+    w.more[key] = rows.length === 50;
+    w.threads[key] = rows.reverse().map(mapMsg);
+    w.loaded[key] = 1;
+  } catch (e) { if (A === w) w.terr[key] = 1; }
+  finally { if (A === w) w.loading[key] = 0; }
+  if (A === w && S.view === 'app' && curKey() === key) paintMsgs(true);
+}
+function paintMsgs(stick) {
+  const hub = A.view === 'hub';
+  const el = document.getElementById(hub ? 'hmsgs' : 'msgs'); if (!el) return;
+  const near = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  el.innerHTML = hub ? hubMsgsHTML() : serverMsgsHTML();
+  if (stick === true || (stick !== 'keep' && near)) el.scrollTop = el.scrollHeight;
+}
+async function pollTick() {
+  if (S.view !== 'app' || !A || document.hidden || A.world !== 'ready' || A.polling) return;
+  const key = curKey(); if (!key || !A.loaded[key]) return;
+  const th = A.threads[key], last = th.length ? th[th.length - 1].id : 0;
+  const w = A; A.polling = true;
+  try {
+    const rows = await sb(`/rest/v1/messages?select=${FIELDS}&channel_id=eq.${key}&id=gt.${last}&order=id.asc&limit=100`);
+    if (A !== w) return;
+    const cur = w.threads[key];
+    const add = rows.map(mapMsg).filter((m) => !cur.some((x) => x.id === m.id));
+    if (add.length) { w.threads[key] = cur.concat(add); if (curKey() === key) paintMsgs(false); }
+  } catch (e) { /* tenta de novo */ }
+  finally { if (A === w) w.polling = false; }
+}
+async function loadOlder() {
+  const key = curKey(), th = A.threads[key];
+  if (!th || !th.length || A.older) return;
+  A.older = true;
+  try {
+    const rows = await sb(`/rest/v1/messages?select=${FIELDS}&channel_id=eq.${key}&id=lt.${th[0].id}&order=id.desc&limit=50`);
+    A.more[key] = rows.length === 50;
+    A.threads[key] = rows.reverse().map(mapMsg).concat(A.threads[key]);
+    const el = document.getElementById('msgs'), h = el ? el.scrollHeight : 0;
+    paintMsgs('keep');
+    if (el) el.scrollTop += el.scrollHeight - h;
+  } catch (e) { toast(errText(e)); }
+  finally { A.older = false; }
+}
+async function sendTo(key, text) {
+  const rows = await sb('/rest/v1/messages?select=' + FIELDS, { method: 'POST', body: { channel_id: key, content: text }, prefer: 'return=representation' });
+  const m = mapMsg(rows[0]), th = A.threads[key];
+  if (th && !th.some((x) => x.id === m.id)) th.push(m);
+}
+function syncSend() {
+  const b = document.getElementById('send-btn'); if (b) b.hidden = !A.draft.trim();
+  const h = document.getElementById('hsend'); if (h) h.hidden = !A.hdraft.trim();
+}
+async function doSend(hub) {
+  const key = hub ? A.hubKey : A.channel;
+  const text = (hub ? A.hdraft : A.draft).trim();
+  if (!text || !key || A.sending) return;
+  A.sending = true;
+  if (hub) A.hdraft = ''; else { A.draft = ''; A.emojiOpen = false; }
+  const input = document.getElementById(hub ? 'hmsg' : 'msg'); if (input) { input.value = ''; input.focus(); }
+  syncSend();
+  try { await sendTo(key, text); }
+  catch (e) {
+    if (hub ? !A.hdraft : !A.draft) { if (hub) A.hdraft = text; else A.draft = text; const i2 = document.getElementById(hub ? 'hmsg' : 'msg'); if (i2) i2.value = text; syncSend(); }
+    toast(errText(e));
+  }
+  A.sending = false;
+  if (curKey() === key) paintMsgs(true);
+}
+
+/* ----------------------------------------------------- painel inicial */
 const GAMES = [
   { n: 'Arena Estelar', h: '312 h', i: 'A', g: 'linear-gradient(160deg,#F4C7D3,#B79BDB)' },
   { n: 'Reinos de Vale', h: '188 h', i: 'R', g: 'linear-gradient(160deg,#CBE9D9,#78BE9D)' },
@@ -807,20 +920,20 @@ const FREE = [
   { src: 'Game Over Drive', t: 'Alien: Isolation grátis na Epic Games: data e como resgatar', s: 'Alien: Isolation e Mark of the Deep ficam grátis de 19 a 26 de novembro.', u: 'https://gameoverdrive.com.br/alien-isolation-gratis-epic-games-novembro-2026/', g: 'linear-gradient(160deg,#CBE9D9,#78BE9D)' },
   { src: 'Olhar Digital', t: 'Jogos grátis na Epic Games: Knightica', s: 'Roguelike auto-battler de estratégia, grátis de 12 a 19 de novembro.', u: 'https://olhardigital.com.br/2026/11/12/games-e-consoles/jogos-gratis-na-epic-games-knightica/', g: 'linear-gradient(160deg,#FAD3DC,#E897AB)' }
 ];
-const HUB_KEYS = ['s1:geral', 's2:geral'];
 const fmt = (s) => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
-const srvOf = (id) => SERVERS.find((s) => s.id === id) || SERVERS[0];
 
 function friendsList() {
   const seen = {}, out = [];
-  SERVERS.forEach((s) => s.online.forEach((p) => { if (!seen[p.id]) { seen[p.id] = 1; out.push({ p, sid: s.id }); } }));
+  SERVERS.forEach((s) => s.online.forEach((p) => { if (!p.me && !seen[p.id]) { seen[p.id] = 1; out.push(p); } }));
   return out;
 }
 function friendsHTML() {
   const q = (A.gq || '').trim().toLowerCase();
-  const list = friendsList().filter((f) => !q || f.p.name.toLowerCase().indexOf(q) !== -1);
+  const all = friendsList();
+  if (!all.length) return `<div class="hempty">${SERVERS.length ? 'Ninguém online agora.' : 'Entre em um servidor para ver as pessoas aqui.'}</div>`;
+  const list = all.filter((p) => !q || p.name.toLowerCase().indexOf(q) !== -1);
   if (!list.length) return '<div class="hempty">Nenhum amigo encontrado.</div>';
-  return list.map((f) => `<button type="button" class="frow hov" data-act="friend" data-sid="${f.sid}" data-id="${f.p.id}" aria-label="Conversar com ${esc(f.p.name)}"><span class="pf" style="background:${f.p.g}" aria-hidden="true">${esc(f.p.ini)}<i></i></span><span class="tx"><b>${esc(f.p.name)}</b><small>${esc(f.p.st)}</small></span></button>`).join('');
+  return list.map((p) => `<button type="button" class="frow hov" data-act="profile" data-id="${p.id}" aria-label="Ver perfil de ${esc(p.name)}"><span class="pf" style="background:${p.g}" aria-hidden="true">${esc(p.ini)}<i></i></span><span class="tx"><b>${esc(p.name)}</b><small>${esc(p.st)}</small></span></button>`).join('');
 }
 function refilter() {
   const f = document.getElementById('flist'); if (f) f.innerHTML = friendsHTML();
@@ -832,42 +945,50 @@ function topbarHTML() {
   return `<header class="tbar">
   <button type="button" class="tbh ${hub ? 'sel' : 'hov'}" data-act="hub" aria-label="Início" aria-pressed="${hub}">${ic(D.bubble, 22, '#33333A', 1.6)}</button>
   <i class="tsep" aria-hidden="true"></i>
-  <nav class="tsrv" aria-label="Seus servidores">${SERVERS.map((s) => { const on = !hub && A.server === s.id; return `<button type="button" class="stile${on ? ' on' : ''}" data-act="srv-open" data-id="${s.id}" aria-label="${esc(s.name)}" aria-pressed="${on}" title="${esc(s.name)}" style="background:${s.tile}">${s.ini}</button>`; }).join('')}<button type="button" class="stile add" data-act="toast-server" aria-label="Adicionar servidor" title="Adicionar servidor">${ic(D.plus, 20, '#33333A', 1.8)}</button></nav>
+  <nav class="tsrv" aria-label="Seus servidores">${SERVERS.map((s) => { const on = !hub && A.server === s.id; return `<button type="button" class="stile${on ? ' on' : ''}" data-act="srv-open" data-id="${s.id}" aria-label="${esc(s.name)}" aria-pressed="${on}" title="${esc(s.name)}" style="background:${s.tile}">${esc(s.ini)}</button>`; }).join('')}<button type="button" class="stile add" data-act="modal-open" data-k="srv" data-mode="create" aria-label="Criar ou entrar em um servidor" title="Criar ou entrar em um servidor">${ic(D.plus, 20, '#33333A', 1.8)}</button></nav>
   <span class="tsp"></span><i class="tsep" aria-hidden="true"></i>
   <div class="tsearch${A.searchOpen ? ' open' : ''}" id="tsearch"><input id="gsearch" type="text" placeholder="Buscar amigos" value="${esc(A.gq)}" data-app-bind="gq" autocomplete="off" aria-label="Buscar amigos"><button type="button" class="tbs hov" data-act="gsearch" aria-label="Buscar">${ic(D.search, 22, '#33333A', 1.7)}</button></div>
 </header>`;
 }
 
+function hubMsgsHTML() {
+  const key = A.hubKey, srv = serverOfChan(key), me = myId();
+  if (!A.loaded[key]) return `<div class="hempty">${A.terr[key] ? 'Não foi possível carregar. <button type="button" class="lnk" data-act="retry-thread">Tentar de novo</button>' : 'Carregando…'}</div>`;
+  const th = (A.threads[key] || []).slice(-3);
+  if (!th.length) return '<div class="hempty">Nenhuma mensagem ainda. Escreva a primeira!</div>';
+  return th.map((m) => {
+    if (m.from === me) return `<div class="mout"><div class="bub"><span class="sr">Você: </span>${esc(m.text)}</div></div>`;
+    const p = srv && srv.byId[m.from];
+    return `<div class="min"><button type="button" class="av40" data-act="profile" data-id="${m.from}" aria-label="Ver perfil de ${esc(p ? p.name : 'ex-membro')}" style="background:${p ? p.g : G.slate}">${esc(p ? p.ini : '')}</button><div class="bub"><span class="sr">${esc(p ? p.name : '')}: </span>${esc(m.text)}</div></div>`;
+  }).join('');
+}
 function hubChatHTML() {
-  const key = A.hubKey, srv = srvOf(key.split(':')[0]);
-  const people = {}; srv.online.concat(srv.offline).forEach((p) => { people[p.id] = p; });
-  const thread = (A.threads[key] || []).slice(-3);
-  const typingP = A.typing && A.typingKey === key ? people[A.typing] : null;
-  const tabs = HUB_KEYS.map((k) => { const s = srvOf(k.split(':')[0]), on = k === key; return `<button type="button" class="ctab${on ? ' on' : ''}" data-act="hubchat" data-key="${k}" aria-pressed="${on}" aria-label="${esc(s.name)}" title="${esc(s.name)}" style="background:${s.tile}">${s.ini}</button>`; }).join('');
+  if (A.world === 'loading') return '<div class="hchat"><div class="hmsgs"><div class="hempty">Carregando…</div></div></div>';
+  if (A.world === 'error') return `<div class="hchat"><div class="hmsgs"><div class="hempty">${esc(A.werr)}</div><div class="hcta"><button type="button" class="mbtn" data-act="reload-world">Tentar de novo</button></div></div></div>`;
+  if (!SERVERS.length) return `<div class="hchat"><div class="hmsgs"><div class="hempty">Você ainda não está em nenhum servidor.</div>
+    <div class="hcta"><button type="button" class="mbtn" data-act="modal-open" data-k="srv" data-mode="create">Criar servidor</button><button type="button" class="mbtn ghost" data-act="modal-open" data-k="srv" data-mode="join">Entrar com convite</button></div></div></div>`;
+  if (!A.hubKey) return '<div class="hchat"><div class="hmsgs"><div class="hempty">Seus servidores ainda não têm canais de texto.</div></div></div>';
+  const tabs = A.hubKeys.map((k) => { const s = serverOfChan(k), on = k === A.hubKey; return `<button type="button" class="ctab${on ? ' on' : ''}" data-act="hubchat" data-key="${k}" aria-pressed="${on}" aria-label="${esc(s.name)}" title="${esc(s.name)}" style="background:${s.tile}">${esc(s.ini)}</button>`; }).join('');
   return `<div class="hchat">
   <div class="hch">${tabs}<span class="tsp"></span><button type="button" class="hov wext" data-act="chat-open" aria-label="Abrir a conversa completa">${ic(D.ext, 17)}</button></div>
-  <div class="hmsgs" id="hmsgs" role="log" aria-label="Mensagens recentes" aria-live="polite">
-    ${thread.map((m) => {
-      if (m.from === 'me') return `<div class="mout"><div class="bub"><span class="sr">Você: </span>${esc(m.text)}</div></div>`;
-      const p = people[m.from];
-      return `<div class="min"><div class="av40" aria-hidden="true" style="background:${p ? p.g : G.slate}">${esc(p ? p.ini : '')}</div><div class="bub"><span class="sr">${esc(p ? p.name : '')}: </span>${esc(m.text)}</div></div>`;
-    }).join('')}
-    ${typingP ? `<div class="min"><div class="av40" aria-hidden="true" style="background:${typingP.g}">${esc(typingP.ini)}</div><div class="typing"><i></i><i></i><i></i></div></div>` : ''}
-  </div>
+  <div class="hmsgs" id="hmsgs" role="log" aria-label="Mensagens recentes" aria-live="polite">${hubMsgsHTML()}</div>
   <div class="cbar hbar">
     <button type="button" class="hov ib" data-act="toast-attach" aria-label="Anexar arquivo">${ic(D.clip, 18)}</button>
-    <input id="hmsg" type="text" placeholder="Escreva algo..." value="${esc(A.hdraft)}" data-app-bind="hdraft" autocomplete="off" aria-label="Escreva uma mensagem">
+    <input id="hmsg" type="text" placeholder="Escreva algo..." maxlength="2000" value="${esc(A.hdraft)}" data-app-bind="hdraft" autocomplete="off" aria-label="Escreva uma mensagem">
     <button type="button" class="go" id="hsend" data-act="hsend" aria-label="Enviar mensagem"${A.hdraft.trim() ? '' : ' hidden'}>${ic(D.send, 17, '#FFFFFF', 1.8)}</button>
   </div>
 </div>`;
 }
 
 function pinnedHTML() {
-  const s1 = srvOf('s1');
-  const av = s1.online.slice(0, 3).map((p, i) => `<span class="pav" style="background:${p.g};margin-left:${i ? -10 : 0}px"></span>`).join('');
+  const s = SERVERS[0];
+  const slot = () => `<button type="button" class="pslot" data-act="toast-pin" aria-label="Fixar uma festa">${ic(D.plus, 20, '#62626D', 1.6)}</button>`;
+  if (!s) return `<div class="pp"><h2>Festas fixadas</h2><div class="pgrid">${[0, 1, 2, 3].map(slot).join('')}</div></div>`;
+  const ppl = Object.keys(s.byId).map((k) => s.byId[k]).slice(0, 3);
+  const av = ppl.map((p, i) => `<span class="pav" style="background:${p.g};margin-left:${i ? -10 : 0}px"></span>`).join('');
   return `<div class="pp"><h2>Festas fixadas</h2><div class="pgrid">
-    <button type="button" class="pslot has" data-act="srv-open" data-id="s1" aria-label="Abrir ${esc(s1.name)}"><span class="pavs">${av}</span><small>${esc(s1.name)}</small></button>
-    ${[0, 1, 2].map(() => `<button type="button" class="pslot" data-act="toast-pin" aria-label="Fixar uma festa">${ic(D.plus, 20, '#62626D', 1.6)}</button>`).join('')}
+    <button type="button" class="pslot has" data-act="srv-open" data-id="${s.id}" aria-label="Abrir ${esc(s.name)}"><span class="pavs">${av}</span><small>${esc(s.name)}</small></button>
+    ${[0, 1, 2].map(slot).join('')}
   </div></div>`;
 }
 
@@ -896,17 +1017,21 @@ function newsHTML() {
   <div class="npane${A.ntab === 'free' ? ' on' : ''}" id="pane-free" role="tabpanel">${FREE.map(card).join('')}</div>`;
 }
 
+function menuHTML() {
+  if (!A.menu) return '';
+  return `<div class="menu" role="menu" aria-label="Menu da conta"><button type="button" role="menuitem" class="hov" data-act="profile" data-id="${myId()}">Meu perfil</button><button type="button" role="menuitem" class="hov" data-act="edit-profile">Editar perfil</button><button type="button" role="menuitem" class="hov" data-act="settings">Configurações</button><button type="button" role="menuitem" class="hov out" data-act="logout">Sair da conta</button></div>`;
+}
 function userbarHTML() {
   const me = displayName(), mutedEff = A.muted || A.deafened;
   const x = (act, icon, label, i, extra = '') => `<button type="button" class="hov tb" data-act="${act}" ${extra} aria-label="${label}" style="transition-delay:${i * 55}ms">${ic(icon, 20, '#33333A', 1.7)}</button>`;
   return `<div class="barwrap"><div class="ubar${A.barOpen ? ' open' : ''}" id="ubar">
-  ${A.menu ? `<div class="menu" role="menu" aria-label="Menu da conta"><button type="button" role="menuitem" class="hov" data-act="settings">Configurações</button><button type="button" role="menuitem" class="hov out" data-act="logout">Sair da conta</button></div>` : ''}
-  <span class="pic" title="${esc(me)}" aria-label="${esc(me)}" style="background:${meBg()}">${esc(meIni(me))}</span>
+  ${menuHTML()}
+  <button type="button" class="pic" data-act="profile" data-id="${myId()}" title="${esc(me)}" aria-label="Meu perfil: ${esc(me)}" style="background:${meBg()}">${esc(meIni(me))}</button>
   <button type="button" class="hov tb" data-act="deaf" aria-label="${A.deafened ? 'Ativar áudio' : 'Desativar áudio'}" aria-pressed="${A.deafened}">${A.deafened ? ic(D.head + '<path d="M4 4l16 16"/>', 20, '#D92D45', 1.8) : ic(D.head, 20, '#33333A', 1.7)}</button>
   <button type="button" class="hov tb" data-act="mute" aria-label="${mutedEff ? 'Ativar microfone' : 'Silenciar microfone'}" aria-pressed="${mutedEff}">${mutedEff ? ic(D.micOff, 20, '#D92D45', 1.8) : ic(D.mic, 20, '#33333A', 1.7)}</button>
   <button type="button" class="hov tb" data-act="menu" aria-label="Menu da conta" aria-haspopup="true" aria-expanded="${A.menu}">${ic(D.gear, 20, '#33333A', 1.6)}</button>
   <button type="button" class="hov tb dots" id="b-dots" data-act="bar" aria-label="Mais opções" aria-expanded="${A.barOpen}">${ic(D.dots, 20, '#33333A', 1.7)}</button>
-  <span class="xtra">${x('panel', D.bell, 'Notificações', 1, 'data-k="notif"')}${x('toast-friend', D.userPlus, 'Adicionar amigo', 2)}${x('toast-edit', D.edit, 'Editar perfil', 3)}${x('panel', D.help, 'Central de ajuda', 4, 'data-k="help"')}${x('bar', D.chevL, 'Recolher', 5)}</span>
+  <span class="xtra">${x('panel', D.bell, 'Notificações', 1, 'data-k="notif"')}${x('toast-friend', D.userPlus, 'Adicionar amigo', 2)}${x('edit-profile', D.edit, 'Editar perfil', 3)}${x('panel', D.help, 'Central de ajuda', 4, 'data-k="help"')}${x('bar', D.chevL, 'Recolher', 5)}</span>
 </div></div>`;
 }
 
@@ -929,7 +1054,7 @@ function startMusic() {
     if (S.view !== 'app' || !A || document.hidden || !A.playing) return;
     const t = TRACKS[A.track];
     A.prog++;
-    if (A.prog >= t.d) { A.track = (A.track + 1) % TRACKS.length; A.prog = 0; if (A.view === 'hub') render(); return; }
+    if (A.prog >= t.d) { A.track = (A.track + 1) % TRACKS.length; A.prog = 0; if (A.view === 'hub' && !A.modal) render(); return; }
     paintProg();
   }, 1000);
 }
@@ -939,25 +1064,17 @@ function paintProg() {
   const f = document.getElementById('mfill'), k = document.getElementById('mknob'), c = document.getElementById('mcur');
   if (f) f.style.width = p + '%'; if (k) k.style.left = p + '%'; if (c) c.textContent = fmt(A.prog);
 }
-function hubSend() {
-  const text = A.hdraft.trim();
-  if (!text) return;
-  A.threads[A.hubKey] = (A.threads[A.hubKey] || []).concat([{ id: Date.now(), from: 'me', text, time: nowHM() }]);
-  A.hdraft = '';
-  scheduleReply(A.hubKey);
-  render({ scroll: true });
-  const el = document.getElementById('hmsg'); if (el) el.focus();
-}
 
+/* ------------------------------------------------------- tela do servidor */
 function membersListHTML() {
-  const srv = curServer();
+  const srv = curServer(); if (!srv) return '';
   const q = (A.search || '').trim().toLowerCase();
   const match = (p) => !q || p.name.toLowerCase().indexOf(q) !== -1;
   const on = srv.online.filter(match), off = srv.offline.filter(match);
   const plural = (n) => (n === 1 ? ' membro' : ' membros');
-  const row = (p, offline) => `<div class="mrow${offline ? ' off' : ''}"><div class="pf" style="background:${p.g}" aria-hidden="true">${esc(p.ini)}</div>
-    <div class="tx"><b>${esc(p.name)}</b><span>${esc(offline ? 'Offline' : p.st)}</span></div>
-    <button type="button" class="hov dm" data-act="dm" data-id="${p.id}" aria-label="Enviar mensagem para ${esc(p.name)}">${ic(D.dm, 19, '#55555F', 1.6)}</button></div>`;
+  const row = (p, offline) => `<div class="mrow${offline ? ' off' : ''}"><button type="button" class="pf" data-act="profile" data-id="${p.id}" aria-label="Ver perfil de ${esc(p.name)}" style="background:${p.g}">${esc(p.ini)}</button>
+    <div class="tx" data-act="profile" data-id="${p.id}"><b>${esc(p.name)}${p.role === 'owner' ? ' 👑' : ''}</b><span>${esc(p.st)}</span></div>
+    ${p.me ? '' : `<button type="button" class="hov dm" data-act="dm" data-id="${p.id}" aria-label="Enviar mensagem para ${esc(p.name)}">${ic(D.dm, 19, '#55555F', 1.6)}</button>`}</div>`;
   const grp = (open, key, label) => `<button type="button" class="hov mg" data-act="${key}" aria-expanded="${open}"><span>${label}</span>${ic(open ? D.up : D.down, 18)}</button>`;
   return `${grp(A.onlineOpen, 'otoggle', 'Online (' + on.length + plural(on.length) + ')')}
   ${A.onlineOpen ? `<div style="display:flex;flex-direction:column;gap:4px">${on.map((p) => row(p, false)).join('')}</div>` : ''}
@@ -967,23 +1084,36 @@ function membersListHTML() {
   ${on.length + off.length === 0 ? '<div style="padding:12px 4px;font-size:13px;color:#55555F">Nenhum membro encontrado para essa busca.</div>' : ''}`;
 }
 
+function serverMsgsHTML() {
+  const srv = curServer(), key = A.channel, me = myId();
+  if (!srv || !key) return '<div class="fill"></div><div class="empty">Este servidor ainda não tem canais de texto.</div>';
+  if (!A.loaded[key]) return `<div class="fill"></div><div class="empty">${A.terr[key] ? 'Não foi possível carregar as mensagens. <button type="button" class="lnk" data-act="retry-thread">Tentar de novo</button>' : 'Carregando mensagens…'}</div>`;
+  const th = A.threads[key] || [];
+  const acts = (m) => {
+    const mine = m.from === me;
+    if (!mine && srv.owner !== me) return '';
+    return `<span class="mact">${mine ? `<button type="button" class="hov" data-act="msg-edit" data-id="${m.id}" aria-label="Editar mensagem">${ic(D.edit, 14, '#55555F', 1.8)}</button>` : ''}<button type="button" class="hov" data-act="msg-del" data-id="${m.id}" aria-label="Apagar mensagem">${ic(D.close, 14, '#55555F', 1.8)}</button></span>`;
+  };
+  return '<div class="fill"></div>'
+    + (A.more[key] ? '<button type="button" class="lnk older" data-act="older">Ver mensagens mais antigas</button>' : '')
+    + (th.length ? '' : '<div class="empty">Nenhuma mensagem ainda. Seja o primeiro a escrever.</div>')
+    + th.map((m) => {
+      const ed = m.edited ? ' <small class="ed">(editada)</small>' : '';
+      if (m.from === me) return `<div class="mout">${acts(m)}<div class="bub"><span class="sr">Você: </span>${esc(m.text)}${ed}</div></div>`;
+      const p = srv.byId[m.from], nm = p ? p.name : 'Ex-membro';
+      return `<div class="min"><div class="col"><button type="button" class="av40" data-act="profile" data-id="${m.from}" aria-label="Ver perfil de ${esc(nm)}" style="background:${p ? p.g : G.slate}">${esc(p ? p.ini : '')}</button><small>${esc(msgTime(m.at))}</small></div>
+        <div class="bub"><button type="button" class="an" data-act="profile" data-id="${m.from}">${esc(nm)}</button>${esc(m.text)}${ed}</div>${acts(m)}</div>`;
+    }).join('');
+}
+
 function serverHTML() {
   const srv = curServer();
   const mutedEff = A.muted || A.deafened;
   const me = displayName();
-  const initial = (me.charAt(0) || '?').toUpperCase();
-  const people = srv.online.concat(srv.offline); const byId = {}; people.forEach((p) => { byId[p.id] = p; });
-  const isDm = A.channel.indexOf('dm:') === 0;
-  const dmPerson = isDm ? byId[A.channel.slice(3)] : null;
   const chObj = srv.text.find((c) => c.id === A.channel);
-  const chTitle = isDm ? (dmPerson ? dmPerson.name : 'Conversa') : (chObj ? chObj.name : 'Geral');
-  const threadKey = srv.id + ':' + A.channel;
-  const thread = A.threads[threadKey] || [];
-  const typingP = A.typing && A.typingKey === threadKey ? byId[A.typing] : null;
-  let voiceName = '';
-  if (A.voice) { const [sid, gid] = A.voice.split(':'); const vs = SERVERS.find((s) => s.id === sid); const vg = vs && vs.voice.find((g) => g.id === gid); voiceName = vg ? vg.name + ' · ' + vs.name : ''; }
   const nav = (k, icon, label, on) => `<button type="button" class="nbtn ${on ? 'sel' : 'hov'}" data-act="nav" data-k="${k}" aria-pressed="${!!on}">${ic(icon, 18, '#55555F', 1.6)}${label}</button>`;
-  const plus = (label, act) => `<button type="button" class="hov sq" data-act="${act}" aria-label="${label}">${ic(D.plus, 18)}</button>`;
+  const plus = (label, kind) => (srv.mine ? `<button type="button" class="hov sq" data-act="modal-open" data-k="chan" data-kind="${kind}" aria-label="${label}">${ic(D.plus, 18)}</button>` : '');
+  const nMem = srv.users + (srv.users === 1 ? ' membro' : ' membros');
 
   return `<div class="ap">
 <div class="cloud" aria-hidden="true" style="left:-120px;bottom:-160px;width:560px;height:460px;background:radial-gradient(closest-side,rgba(140,140,158,.42),rgba(140,140,158,0))"></div>
@@ -994,34 +1124,25 @@ function serverHTML() {
   <label class="search"><input id="search" type="text" placeholder="Buscar membros" value="${esc(A.search)}" data-app-bind="search" autocomplete="off" aria-label="Buscar membros">${ic(D.search, 17)}</label>
   <div class="sscroll" id="sscroll">
     <div class="blk" style="gap:8px">
-      <div class="bh"><span>${ic(D.gamepad, 19, '#55555F', 1.6)}Seus servidores</span>${plus('Adicionar servidor', 'toast-server')}</div>
-      <div class="tiles">${SERVERS.map((s) => { const on = s.id === A.server; return `<button type="button" class="tile" data-act="srv" data-id="${s.id}" aria-pressed="${on}" aria-label="${esc(s.name)}, ${s.users} usuários">
-        <span class="art" style="background:${s.tile};box-shadow:${on ? '0 0 0 2px #FFFFFF,0 0 0 4px #1D1D22,0 10px 18px rgba(29,29,34,.2)' : '0 8px 16px rgba(29,29,34,.16)'}">${s.ini}</span>
-        <span class="n">${esc(s.name)}</span><span class="u">${s.users}</span></button>`; }).join('')}</div>
+      <div class="bh"><span>${ic(D.gamepad, 19, '#55555F', 1.6)}Seus servidores</span><button type="button" class="hov sq" data-act="modal-open" data-k="srv" data-mode="create" aria-label="Criar ou entrar em um servidor">${ic(D.plus, 18)}</button></div>
+      <div class="tiles">${SERVERS.map((s) => { const on = s.id === srv.id; return `<button type="button" class="tile" data-act="srv" data-id="${s.id}" aria-pressed="${on}" aria-label="${esc(s.name)}, ${s.users} membros">
+        <span class="art" style="background:${s.tile};box-shadow:${on ? '0 0 0 2px #FFFFFF,0 0 0 4px #1D1D22,0 10px 18px rgba(29,29,34,.2)' : '0 8px 16px rgba(29,29,34,.16)'}">${esc(s.ini)}</span>
+        <span class="n">${esc(s.name)}</span><span class="u">${s.users} ${s.users === 1 ? 'membro' : 'membros'}</span></button>`; }).join('')}</div>
     </div>
     <div class="div"></div>
     <div class="blk">
-      <div class="bh"><span>${ic(D.hash, 19, '#55555F', 1.6)}Canais de texto</span>${plus('Adicionar canal de texto', 'toast-channel')}</div>
+      <div class="bh"><span>${ic(D.hash, 19, '#55555F', 1.6)}Canais de texto</span>${plus('Adicionar canal de texto', 'text')}</div>
       ${srv.text.map((c) => { const on = A.channel === c.id; return `<button type="button" class="chan ${on ? 'sel' : 'hov'}" data-act="chan" data-id="${c.id}" aria-current="${on}" style="font-weight:${on ? 700 : 400}">${esc(c.name)}</button>`; }).join('')}
     </div>
     <div class="div"></div>
     <div class="blk">
-      <div class="bh"><span>${ic(D.volume, 19, '#55555F', 1.6)}Canais de voz</span>${plus('Adicionar canal de voz', 'toast-channel')}</div>
-      ${srv.voice.map((g) => {
-        const key = srv.id + ':' + g.id, joined = A.voice === key, open = !A.collapsed[key];
-        const members = g.members.map((m) => ({ name: m.name, g: m.g, bot: m.bot, muted: false, w: 500 }));
-        if (joined) members.unshift({ name: me + ' (você)', g: meBg(), bot: false, muted: mutedEff, w: 700 });
-        return `<div class="vg"><div class="vgh">
-          <button type="button" class="hov vjoin" data-act="vjoin" data-key="${key}" aria-pressed="${joined}" aria-label="${joined ? 'Sair de ' : 'Entrar em '}${esc(g.name)}" style="color:${joined ? '#1B6B47' : '#33333A'}"><i style="background:${joined ? '#2DA770' : 'rgba(29,29,34,.22)'}"></i><span>${esc(g.name)}</span></button>
-          <button type="button" class="hov sq" data-act="vopen" data-key="${key}" aria-label="${open ? 'Ocultar ' : 'Mostrar '}${esc(g.name)}" aria-expanded="${open}">${ic(open ? D.up : D.down, 17, '#55555F', 1.8)}</button></div>
-          ${open ? `<div style="display:flex;flex-direction:column;gap:2px">${members.map((m) => `<div class="vm"><span class="av" style="background:${m.g}"></span><span class="nm" style="font-weight:${m.w}">${esc(m.name)}</span>${m.muted ? ic(D.micOff, 15, '#D92D45', 1.8) : (m.bot ? ic(D.music, 15, '#62626D', 1.8) : ic(D.head, 15, '#62626D', 1.8))}</div>`).join('')}</div>` : ''}</div>`;
-      }).join('')}
+      <div class="bh"><span>${ic(D.volume, 19, '#55555F', 1.6)}Canais de voz</span>${plus('Adicionar canal de voz', 'voice')}</div>
+      ${srv.voice.map((g) => `<div class="vg"><div class="vgh"><button type="button" class="hov vjoin" data-act="vjoin" aria-label="Entrar em ${esc(g.name)}" style="color:#33333A"><i style="background:rgba(29,29,34,.22)"></i><span>${esc(g.name)}</span></button></div></div>`).join('')}
     </div>
   </div>
-  ${A.voice ? `<div class="vbar"><div style="min-width:0"><b>Voz conectada</b><span>${esc(voiceName)}</span></div><button type="button" class="hov tb" data-act="leave-voice" aria-label="Sair da chamada de voz">${ic(D.leave, 17, '#1B6B47', 1.8)}</button></div>` : ''}
   <div class="me">
-    ${A.menu ? `<div class="menu" role="menu" aria-label="Menu da conta"><button type="button" role="menuitem" class="hov" data-act="settings">Configurações</button><button type="button" role="menuitem" class="hov out" data-act="logout">Sair da conta</button></div>` : ''}
-    <div class="who"><span class="pic" aria-hidden="true" style="background:${meBg()}">${esc(USE_TEST_PHOTOS ? '' : initial)}</span><strong title="${esc(S.session && S.session.user ? S.session.user.email : '')}">${esc(me)}</strong></div>
+    ${menuHTML()}
+    <div class="who"><button type="button" class="pic" data-act="profile" data-id="${myId()}" aria-label="Meu perfil" style="background:${meBg()}">${esc(meIni(me))}</button><strong title="${esc(S.session && S.session.user ? S.session.user.email : '')}">${esc(me)}</strong></div>
     <div class="tools">
       <button type="button" class="hov tb" data-act="mute" aria-label="${mutedEff ? 'Ativar microfone' : 'Silenciar microfone'}" aria-pressed="${mutedEff}">${mutedEff ? ic(D.micOff, 18, '#D92D45', 1.8) : ic(D.mic)}</button>
       <button type="button" class="hov tb" data-act="deaf" aria-label="${A.deafened ? 'Ativar áudio' : 'Desativar áudio'}" aria-pressed="${A.deafened}">${A.deafened ? ic(D.head + '<path d="M4 4l16 16"/>', 18, '#D92D45', 1.8) : ic(D.head)}</button>
@@ -1032,31 +1153,21 @@ function serverHTML() {
 
 <div class="main">
   <header class="top">
-    <div class="t">${ic(D.gamepad, 24, '#55555F', 1.6)}<div style="min-width:0"><h1>${esc(srv.name)}</h1><small>Última atividade: ${esc(srv.activity)}</small></div></div>
+    <div class="t">${ic(D.gamepad, 24, '#55555F', 1.6)}<div style="min-width:0"><h1>${esc(srv.name)}</h1><small>${nMem}</small></div></div>
     <nav class="nav" aria-label="Ferramentas do servidor">
-      ${nav('notif', D.bell, 'Notificações', A.panel === 'notif')}${nav('pins', D.pin, 'Mensagens fixadas', A.panel === 'pins')}${nav('members', D.users, 'Lista de membros', A.showMembers)}${nav('mentions', D.at, 'Menções', A.panel === 'mentions')}${nav('help', D.help, 'Central de ajuda', A.panel === 'help')}
+      ${nav('invite', D.userPlus, 'Convidar', false)}${nav('notif', D.bell, 'Notificações', A.panel === 'notif')}${nav('pins', D.pin, 'Mensagens fixadas', A.panel === 'pins')}${nav('members', D.users, 'Lista de membros', A.showMembers)}${nav('mentions', D.at, 'Menções', A.panel === 'mentions')}${nav('help', D.help, 'Central de ajuda', A.panel === 'help')}
     </nav>
   </header>
   <div class="body">
     ${A.showMembers ? `<aside class="mem" aria-label="Lista de membros"><h3>${ic(D.users, 20, '#55555F', 1.6)}Lista de membros</h3><div class="mlist" id="mlist">${membersListHTML()}</div></aside>` : ''}
     <section class="chat" aria-label="Conversa">
-      <div class="ch">${ic(isDm ? D.at : D.hash, 19, '#55555F', 1.6)}<h2>${esc(chTitle)}</h2></div>
-      <div class="msgs" id="msgs" role="log" aria-label="Mensagens" aria-live="polite">
-        <div class="fill"></div>
-        ${thread.length === 0 ? `<div class="empty">Nenhuma mensagem ainda. Diga oi para ${esc(chTitle)}.</div>` : ''}
-        ${thread.map((m) => {
-          if (m.from === 'me') return `<div class="mout"><div class="bub"><span class="sr">Você: </span>${esc(m.text)}</div></div>`;
-          const p = byId[m.from];
-          return `<div class="min"><div class="col" aria-hidden="true"><div class="av40" style="background:${p ? p.g : G.slate}">${esc(p ? p.ini : '')}</div><small>${esc(m.time)}</small></div>
-            <div class="bub"><span class="sr">${esc(p ? p.name : '')} às ${esc(m.time)}: </span>${esc(m.text)}</div></div>`;
-        }).join('')}
-        ${typingP ? `<div class="min"><div class="av40" aria-hidden="true" style="background:${typingP.g}">${esc(typingP.ini)}</div><div class="typing"><i></i><i></i><i></i></div><span style="padding-bottom:6px;font-size:11.5px;color:#62626D">${esc(typingP.name.split(' ')[0])} está digitando</span></div>` : ''}
-      </div>
+      <div class="ch">${ic(D.hash, 19, '#55555F', 1.6)}<h2>${esc(chObj ? chObj.name : 'Sem canal')}</h2></div>
+      <div class="msgs" id="msgs" role="log" aria-label="Mensagens" aria-live="polite">${serverMsgsHTML()}</div>
       <div class="comp">
         ${A.emojiOpen ? `<div class="emoji" role="group" aria-label="Escolher emoji">${EMOJIS.map((e) => `<button type="button" class="hov" data-act="emoji" data-ch="${e[0]}" aria-label="Inserir emoji ${e[1]}">${e[0]}</button>`).join('')}</div>` : ''}
         <div class="cbar">
           <button type="button" class="hov plus" data-act="toast-attach" aria-label="Anexar arquivo">${ic(D.plus, 19)}</button>
-          <input id="msg" type="text" placeholder="Escreva algo..." value="${esc(A.draft)}" data-app-bind="draft" autocomplete="off" aria-label="Escreva uma mensagem">
+          <input id="msg" type="text" placeholder="${chObj ? 'Escreva algo...' : 'Crie um canal de texto para conversar'}" maxlength="2000" value="${esc(A.draft)}" data-app-bind="draft" autocomplete="off" aria-label="Escreva uma mensagem"${chObj ? '' : ' disabled'}>
           <button type="button" class="hov ib" data-act="toast-gift" aria-label="Enviar presente">${ic(D.gift, 19, '#55555F', 1.6)}</button>
           <button type="button" class="hov ib" data-act="toast-gif" aria-label="Escolher GIF"><span class="gif">GIF</span></button>
           <button type="button" class="hov ib" data-act="emoji-toggle" aria-label="Escolher emoji" aria-expanded="${A.emojiOpen}">${ic(D.smile, 19, '#55555F', 1.6)}</button>
@@ -1069,42 +1180,185 @@ function serverHTML() {
 </div>`;
 }
 
+/* ------------------------------------------------------------- janelas */
+const inviteCode = (v) => { const s = String(v || '').trim(); const mm = s.match(/[?&]c=([0-9a-z]+)/i); return (mm ? mm[1] : s).toLowerCase().replace(/[^0-9a-z]/g, ''); };
+const inviteLink = (code) => location.origin + location.pathname + '#join?c=' + code;
+const mField = (id, label, field, value, o = {}) => `<div class="mf"><label for="${id}">${label}</label>${o.area
+  ? `<textarea id="${id}" data-mf data-app-bind="m:${field}" maxlength="${o.max || 190}" rows="3" placeholder="${esc(o.ph || '')}">${esc(value)}</textarea>`
+  : `<input id="${id}" data-mf type="text" data-app-bind="m:${field}" maxlength="${o.max || 60}" value="${esc(value)}" placeholder="${esc(o.ph || '')}" autocomplete="off" spellcheck="false">`}${o.hint ? `<small>${esc(o.hint)}</small>` : ''}</div>`;
+
+function modalHTML() {
+  const m = A.modal; if (!m) return '';
+  let title = '', body = '', foot = '', label = 'Salvar';
+  const tabs = (items) => `<div class="mtabs" role="tablist">${items.map((t) => `<button type="button" role="tab" class="mtab${t.on ? ' on' : ''}" data-act="${t.act}" data-mode="${t.mode}" aria-selected="${t.on}">${t.l}</button>`).join('')}</div>`;
+  if (m.type === 'srv') {
+    title = m.mode === 'join' ? 'Entrar em um servidor' : 'Criar um servidor';
+    label = m.mode === 'join' ? 'Entrar' : 'Criar servidor';
+    body = tabs([{ act: 'modal-mode', mode: 'create', l: 'Criar servidor', on: m.mode !== 'join' }, { act: 'modal-mode', mode: 'join', l: 'Entrar com convite', on: m.mode === 'join' }])
+      + (m.mode === 'join' ? mField('mf-code', 'Código ou link do convite', 'code', m.code, { ph: 'Cole aqui o código', max: 200 })
+        : mField('mf-name', 'Nome do servidor', 'name', m.name, { ph: 'Ex.: Meus amigos', max: 40, hint: 'Você será o dono. Já vem com os canais Geral e Sala principal.' }));
+  } else if (m.type === 'chan') {
+    title = 'Criar canal'; label = 'Criar canal';
+    body = tabs([{ act: 'modal-mode', mode: 'text', l: 'Texto', on: m.kind !== 'voice' }, { act: 'modal-mode', mode: 'voice', l: 'Voz', on: m.kind === 'voice' }])
+      + mField('mf-name', 'Nome do canal', 'name', m.name, { ph: m.kind === 'voice' ? 'Ex.: Sala de jogos' : 'Ex.: Avisos', max: 30 })
+      + (m.kind === 'voice' ? '<p class="mnote">As chamadas de voz chegam em breve; o canal já fica guardado.</p>' : '');
+  } else if (m.type === 'invite') {
+    title = 'Convidar para o servidor';
+    body = m.busy ? '<p class="mnote">Gerando convite…</p>' : (m.code
+      ? `<div class="mf"><label for="mf-link">Link do convite</label><input id="mf-link" type="text" readonly value="${esc(inviteLink(m.code))}"><small>Código: <b>${esc(m.code)}</b> · vale por 7 dias e até 50 usos.</small></div>`
+      : '');
+    foot = m.code ? '<button type="button" class="mbtn" data-act="modal-copy">Copiar link</button>' : '';
+  } else if (m.type === 'edit') {
+    title = 'Editar mensagem'; label = 'Salvar';
+    body = mField('mf-text', 'Mensagem', 'text', m.text, { max: 2000 });
+  } else if (m.type === 'del') {
+    title = 'Apagar mensagem'; label = 'Apagar';
+    body = '<p class="mnote">Tem certeza? Isso não pode ser desfeito.</p>';
+  } else if (m.type === 'profile') {
+    const p = findPerson(m.id);
+    title = 'Perfil';
+    if (!p) body = '<p class="mnote">Não foi possível encontrar este perfil.</p>';
+    else {
+      const since = p.since ? new Date(p.since).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) : '—';
+      body = `<div class="pcard"><div class="pban" style="background:${esc(p.accent)}"></div><div class="pcb">
+        <span class="pavl" style="background:${p.g}" aria-hidden="true">${esc(p.ini)}</span>
+        <h3>${esc(p.name)}${p.on ? '<i class="pon" title="Online"></i>' : ''}</h3>
+        <div class="pu">${p.user ? '@' + esc(p.user) : ''}</div>
+        ${p.status ? `<div class="pst">${esc(p.status)}</div>` : ''}
+        <p class="pbio${p.bio ? '' : ' none'}">${p.bio ? esc(p.bio) : 'Esta pessoa ainda não escreveu uma bio.'}</p>
+        <dl class="pmeta"><div><dt>Membro desde</dt><dd>${esc(since)}</dd></div></dl>
+      </div></div>`;
+      foot = p.me ? '<button type="button" class="mbtn" data-act="edit-profile">Editar perfil</button>' : '<button type="button" class="mbtn" data-act="dm">Enviar mensagem</button>';
+    }
+  } else if (m.type === 'editprofile') {
+    title = 'Editar perfil'; label = 'Salvar';
+    body = mField('mf-display', 'Nome exibido', 'display', m.display, { max: 40 })
+      + mField('mf-status', 'Status', 'status', m.status, { max: 60, ph: 'O que você está fazendo?' })
+      + mField('mf-bio', 'Sobre mim', 'bio', m.bio, { max: 190, area: true, ph: 'Conte um pouco sobre você', hint: 'Até 190 caracteres.' })
+      + `<div class="mf"><span class="lblx">Cor do perfil</span><div class="swatches">${ACCENTS.map((c) => `<button type="button" class="swatch${m.accent === c ? ' on' : ''}" data-act="m-accent" data-c="${c}" aria-pressed="${m.accent === c}" aria-label="Cor ${c}" style="background:${c}"></button>`).join('')}</div></div>`;
+  }
+  const showSubmit = !(m.type === 'invite' || m.type === 'profile');
+  return `<div class="mback" data-act="modal-bg"><div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+    <header class="mhead"><h2>${esc(title)}</h2><button type="button" class="hov sq" data-act="modal-close" aria-label="Fechar">${ic(D.close, 16, '#55555F', 1.8)}</button></header>
+    <div class="mbody">${body}${m.err ? `<div class="merr" role="alert">${esc(m.err)}</div>` : ''}</div>
+    <footer class="mfoot">${showSubmit ? `<button type="button" class="mbtn ghost" data-act="modal-close">Cancelar</button><button type="button" class="mbtn${m.type === 'del' ? ' danger' : ''}" data-act="modal-submit"${m.busy ? ' disabled' : ''}>${m.busy ? 'Aguarde…' : label}</button>` : foot}</footer>
+  </div></div>`;
+}
+function focusModal() { setTimeout(() => { const f = document.querySelector('.modal [data-mf]'); if (f) f.focus(); }, 0); }
+function closeModal() { A.modal = null; render(); }
+
+async function openInvite() {
+  const s = curServer(); if (!s) return;
+  const m = A.modal = { type: 'invite', code: '', err: '', busy: true };
+  render();
+  try { const code = await rpc('create_invite', { p_server: s.id }); if (A.modal === m) { m.code = code; m.busy = false; render(); } }
+  catch (e) { if (A.modal === m) { m.busy = false; m.err = errText(e); render(); } }
+}
+function modalErr(msg) { A.modal.err = msg; render(); focusModal(); }
+async function modalSubmit() {
+  const m = A.modal; if (!m || m.busy) return;
+  m.err = '';
+  const run = async (fn) => {
+    m.busy = true; render();
+    try { await fn(); }
+    catch (e) { if (A.modal === m) { m.busy = false; m.err = errText(e); render(); } }
+  };
+  if (m.type === 'srv' && m.mode !== 'join') {
+    const name = m.name.trim();
+    if (name.length < 2) return modalErr('O nome precisa ter de 2 a 40 caracteres.');
+    return run(async () => { const id = await rpc('create_server', { p_name: name }); await loadWorld(() => {}); selectServer(id); A.modal = null; render({ scroll: true }); toast('Servidor criado'); });
+  }
+  if (m.type === 'srv') {
+    const code = inviteCode(m.code);
+    if (code.length < 4) return modalErr('Cole o código ou o link do convite.');
+    return run(async () => { const id = await rpc('join_server', { p_code: code }); await loadWorld(() => {}); selectServer(id); A.modal = null; render({ scroll: true }); toast('Você entrou no servidor'); });
+  }
+  if (m.type === 'chan') {
+    const name = m.name.trim(), s = curServer();
+    if (!name) return modalErr('Dê um nome ao canal.');
+    return run(async () => { const id = await rpc('create_channel', { p_server: s.id, p_name: name, p_kind: m.kind === 'voice' ? 'voice' : 'text' }); await loadWorld(() => {}); if (m.kind !== 'voice') A.channel = id; A.modal = null; render({ scroll: true }); toast('Canal criado'); });
+  }
+  if (m.type === 'edit') {
+    const text = m.text.trim();
+    if (!text) return modalErr('A mensagem não pode ficar vazia.');
+    return run(async () => {
+      await sb('/rest/v1/messages?id=eq.' + m.id, { method: 'PATCH', body: { content: text } });
+      const x = (A.threads[m.key] || []).find((y) => String(y.id) === String(m.id)); if (x) { x.text = text; x.edited = true; }
+      A.modal = null; render();
+    });
+  }
+  if (m.type === 'del') {
+    return run(async () => {
+      await sb('/rest/v1/messages?id=eq.' + m.id, { method: 'DELETE' });
+      A.threads[m.key] = (A.threads[m.key] || []).filter((y) => String(y.id) !== String(m.id));
+      A.modal = null; render();
+    });
+  }
+  if (m.type === 'editprofile') {
+    const display = m.display.trim();
+    if (!display) return modalErr('Informe um nome exibido.');
+    return run(async () => {
+      await sb('/rest/v1/profiles?id=eq.' + myId(), { method: 'PATCH', body: { display_name: display, status_text: m.status.trim(), bio: m.bio.trim(), accent: m.accent } });
+      await loadWorld(() => {}); A.modal = null; render(); toast('Perfil atualizado');
+    });
+  }
+}
+function openMsgModal(type, el) {
+  const key = curKey(), m = (A.threads[key] || []).find((y) => String(y.id) === String(el.dataset.id));
+  if (!m) return;
+  A.modal = { type, id: m.id, key, text: m.text, err: '', busy: false };
+  render(); focusModal();
+}
+/* ações das janelas; devolve true quando tratou */
+function modalAct(act, el, ev) {
+  switch (act) {
+    case 'modal-bg': if (ev && ev.target === el) closeModal(); return true;
+    case 'modal-close': closeModal(); return true;
+    case 'modal-submit': modalSubmit(); return true;
+    case 'modal-mode': if (A.modal) { if (A.modal.type === 'chan') A.modal.kind = el.dataset.mode; else A.modal.mode = el.dataset.mode; A.modal.err = ''; render(); focusModal(); } return true;
+    case 'modal-open': {
+      A.menu = false;
+      const k = el.dataset.k;
+      if (k === 'chan') {
+        const s = curServer(); if (!s) return true;
+        if (!s.mine) { toast('Só o dono do servidor cria canais.'); return true; }
+        A.modal = { type: 'chan', kind: el.dataset.kind === 'voice' ? 'voice' : 'text', name: '', err: '', busy: false };
+      } else A.modal = { type: 'srv', mode: el.dataset.mode === 'join' ? 'join' : 'create', name: '', code: '', err: '', busy: false };
+      render(); focusModal(); return true;
+    }
+    case 'modal-copy': {
+      const link = inviteLink(A.modal ? A.modal.code : '');
+      const fallback = () => { const i = document.getElementById('mf-link'); if (i) { i.focus(); i.select(); } toast('Selecione o link e copie'); };
+      try { navigator.clipboard.writeText(link).then(() => toast('Link copiado'), fallback); } catch (e) { fallback(); }
+      return true;
+    }
+    case 'm-accent': if (A.modal) { A.modal.accent = el.dataset.c; render(); } return true;
+    case 'profile': A.menu = false; A.modal = { type: 'profile', id: el.dataset.id }; render(); return true;
+    case 'edit-profile': {
+      A.menu = false; const me = A.me || {};
+      A.modal = { type: 'editprofile', display: me.name || displayName(), status: me.status || '', bio: me.bio || '', accent: me.accent || ACCENTS[0], err: '', busy: false };
+      render(); focusModal(); return true;
+    }
+    case 'msg-edit': openMsgModal('edit', el); return true;
+    case 'msg-del': openMsgModal('del', el); return true;
+    default: return false;
+  }
+}
+
 function appView() {
   const enter = !A.entered; A.entered = true;
   const panel = A.panel ? PANELS[A.panel] : null;
   const panelHTML = panel ? `<div class="panel" role="dialog" aria-label="${panel.title}"><div class="ph"><span>${panel.title}</span><button type="button" class="hov sq" data-act="close-panel" aria-label="Fechar painel">${ic(D.close, 16, '#55555F', 1.8)}</button></div>
-    ${panel.items.map((it) => `<div class="it"><b>${esc(it.t)}</b><span>${esc(it.s)}</span></div>`).join('')}</div>` : '';
+    ${panel.items.length ? panel.items.map((it) => `<div class="it"><b>${esc(it.t)}</b><span>${esc(it.s)}</span></div>`).join('') : '<div class="it"><span>Nada por aqui ainda.</span></div>'}</div>` : '';
+  const showServer = A.view === 'server' && SERVERS.length && A.world === 'ready';
   return `<div class="shell">
 <div class="cloud" aria-hidden="true" style="left:-140px;bottom:-180px;width:600px;height:480px;background:radial-gradient(closest-side,rgba(140,140,158,.34),rgba(140,140,158,0))"></div>
 <div class="cloud c2" aria-hidden="true" style="right:-160px;top:20%;width:520px;height:420px;background:radial-gradient(closest-side,rgba(214,200,240,.4),rgba(214,200,240,0))"></div>
-${topbarHTML()}${panelHTML}${A.view === 'hub' ? hubHTML(enter) : serverHTML()}</div>`;
-}
-
-function appSend() {
-  const text = A.draft.trim();
-  if (!text) return;
-  const key = A.server + ':' + A.channel;
-  A.threads[key] = (A.threads[key] || []).concat([{ id: Date.now(), from: 'me', text, time: nowHM() }]);
-  A.draft = ''; A.emojiOpen = false;
-  scheduleReply(key);
-  render({ scroll: true });
-  const el = document.getElementById('msg'); if (el) el.focus();
-}
-function scheduleReply(key) {
-  const sid = key.split(':')[0], ch = key.slice(sid.length + 1);
-  const srv = srvOf(sid);
-  const who = ch.indexOf('dm:') === 0 ? srv.online.find((p) => p.id === ch.slice(3)) : srv.online[Math.floor(Math.random() * srv.online.length)];
-  if (!who) return;
-  stopAppTimers();
-  A.t1 = setTimeout(() => { if (S.view !== 'app') return; A.typing = who.id; A.typingKey = key; render({ scroll: true }); }, 800);
-  A.t2 = setTimeout(() => {
-    if (S.view !== 'app') return;
-    A.threads[key] = (A.threads[key] || []).concat([{ id: Date.now() + 1, from: who.id, text: REPLIES[Math.floor(Math.random() * REPLIES.length)], time: nowHM() }]);
-    A.typing = null; A.typingKey = null; render({ scroll: true });
-  }, 2600);
+${topbarHTML()}${panelHTML}${showServer ? serverHTML() : hubHTML(enter)}${modalHTML()}</div>`;
 }
 
 function appAction(act, el, ev) {
+  if (modalAct(act, el, ev)) return;
   const wasMenu = A.menu;
   const quiet = () => { if (wasMenu) { A.menu = false; const m = document.querySelector('.menu'); if (m) m.remove(); } };
   // ações que só mexem no que já está na tela (assim as animações rodam sem recarregar tudo)
@@ -1138,37 +1392,36 @@ function appAction(act, el, ev) {
       if (i) { if (A.searchOpen) i.focus(); else { i.value = ''; A.gq = ''; A.search = ''; refilter(); } }
       return;
     }
+    case 'older': loadOlder(); return;
+    case 'retry-thread': { const k = curKey(); A.terr[k] = 0; ensureThread(k); paintMsgs(true); return; }
+    case 'reload-world': A.world = 'loading'; render(); loadWorld(); return;
     default: break;
   }
   if (act !== 'menu') A.menu = false;
   if (act !== 'emoji-toggle' && act !== 'emoji') A.emojiOpen = false;
-  const reset = () => { A.emojiOpen = false; A.typing = null; A.typingKey = null; };
   switch (act) {
-    case 'srv': { const s = SERVERS.find((x) => x.id === el.dataset.id); A.server = s.id; A.channel = s.text[0].id; A.search = ''; reset(); break; }
-    case 'chan': A.channel = el.dataset.id; reset(); break;
-    case 'dm': A.channel = 'dm:' + el.dataset.id; reset(); break;
-    case 'vjoin': A.voice = A.voice === el.dataset.key ? null : el.dataset.key; break;
-    case 'vopen': A.collapsed[el.dataset.key] = !A.collapsed[el.dataset.key]; break;
-    case 'leave-voice': A.voice = null; break;
+    case 'srv': { const s = SERVERS.find((x) => x.id === el.dataset.id); if (s) { A.server = s.id; A.channel = s.text[0] ? s.text[0].id : null; A.search = ''; A.draft = ''; } break; }
+    case 'chan': A.channel = el.dataset.id; A.draft = ''; break;
+    case 'dm': toast('Mensagens diretas chegam em breve'); if (wasMenu) render(); return;
+    case 'vjoin': toast('Chamadas de voz chegam em breve'); return;
     case 'mute': A.muted = !A.muted; break;
     case 'deaf': A.deafened = !A.deafened; break;
     case 'menu': A.menu = !A.menu; break;
-    case 'settings': A.menu = false; toast('Configurações chegam em breve'); break;
+    case 'settings': toast('Configurações chegam em breve'); break;
     case 'logout': logout(); return;
-    case 'nav': { const k = el.dataset.k; if (k === 'members') A.showMembers = !A.showMembers; else A.panel = A.panel === k ? null : k; break; }
+    case 'nav': { const k = el.dataset.k; if (k === 'invite') { openInvite(); return; } if (k === 'members') A.showMembers = !A.showMembers; else A.panel = A.panel === k ? null : k; break; }
     case 'close-panel': A.panel = null; break;
     case 'otoggle': A.onlineOpen = !A.onlineOpen; break;
     case 'ftoggle': A.offlineOpen = !A.offlineOpen; break;
     case 'emoji-toggle': A.emojiOpen = !A.emojiOpen; break;
     case 'emoji': A.draft += el.dataset.ch; A.emojiOpen = false; render(); { const m = document.getElementById('msg'); if (m) m.focus(); } return;
-    case 'send': appSend(); return;
-    case 'hsend': hubSend(); return;
-    case 'hub': A.view = 'hub'; A.panel = null; reset(); break;
-    case 'srv-open': { const s = SERVERS.find((x) => x.id === el.dataset.id) || SERVERS[0]; A.server = s.id; A.channel = s.text[0].id; A.search = ''; A.view = 'server'; A.panel = null; reset(); render({ scroll: true }); return; }
-    case 'friend': { A.server = el.dataset.sid; A.channel = 'dm:' + el.dataset.id; A.search = ''; A.view = 'server'; A.panel = null; reset(); render({ scroll: true }); return; }
-    case 'friends-open': A.view = 'server'; A.showMembers = true; A.panel = null; reset(); break;
-    case 'chat-open': { const k = A.hubKey, sid = k.split(':')[0]; A.server = sid; A.channel = k.slice(sid.length + 1); A.search = ''; A.view = 'server'; A.panel = null; reset(); render({ scroll: true }); return; }
-    case 'hubchat': A.hubKey = el.dataset.key; reset(); render({ scroll: true }); return;
+    case 'send': doSend(false); return;
+    case 'hsend': doSend(true); return;
+    case 'hub': A.view = 'hub'; A.panel = null; break;
+    case 'srv-open': { selectServer(el.dataset.id); render({ scroll: true }); return; }
+    case 'friends-open': if (SERVERS.length) { A.view = 'server'; A.showMembers = true; A.panel = null; } break;
+    case 'chat-open': { const s = serverOfChan(A.hubKey); if (s) { A.server = s.id; A.channel = A.hubKey; A.search = ''; A.view = 'server'; A.panel = null; render({ scroll: true }); } return; }
+    case 'hubchat': A.hubKey = el.dataset.key; render({ scroll: true }); return;
     case 'mprev': A.track = (A.track + TRACKS.length - 1) % TRACKS.length; A.prog = 0; break;
     case 'mnext': A.track = (A.track + 1) % TRACKS.length; A.prog = 0; break;
     case 'mtrack': A.track = Number(el.dataset.i) || 0; A.prog = 0; A.playing = true; break;
@@ -1176,15 +1429,12 @@ function appAction(act, el, ev) {
     case 'toast-soon': toast('Isso chega em breve'); return;
     case 'toast-pin': toast('Fixar festas chega em breve'); return;
     case 'toast-friend': toast('Adicionar amigos chega em breve'); return;
-    case 'toast-edit': toast('Editar perfil chega em breve'); return;
-    case 'toast-server': toast('Criar servidor chega em breve'); return;
-    case 'toast-channel': toast('Criar canais chega em breve'); return;
     case 'toast-attach': toast('Anexos chegam em breve'); return;
     case 'toast-gift': toast('Presentes chegam em breve'); return;
     case 'toast-gif': toast('GIFs chegam em breve'); return;
     default: return;
   }
-  render({ scroll: act === 'srv' || act === 'chan' || act === 'dm' });
+  render({ scroll: act === 'srv' || act === 'chan' });
 }
 
 /* ------------------------------------------------------------- eventos */
@@ -1214,6 +1464,7 @@ $root.addEventListener('input', (e) => {
   if (t.dataset.appBind) {
     if (t.dataset.appBind === 'search') { A.search = t.value; const l = document.getElementById('mlist'); if (l) l.innerHTML = membersListHTML(); }
     else if (t.dataset.appBind === 'gq') { A.gq = t.value; A.search = t.value; refilter(); }
+    else if (t.dataset.appBind.startsWith('m:')) { if (A.modal) A.modal[t.dataset.appBind.slice(2)] = t.value; }
     else if (t.dataset.appBind === 'hdraft') { A.hdraft = t.value; const b = document.getElementById('hsend'); if (b) b.hidden = !A.hdraft.trim(); }
     else { A.draft = t.value; const b = document.getElementById('send-btn'); if (b) b.hidden = !A.draft.trim(); }
     return;
@@ -1229,10 +1480,12 @@ $root.addEventListener('change', (e) => {
   else if (t.tagName === 'SELECT') { setPath(b, t.value); if (S.r.touched) render(); }
 });
 $root.addEventListener('keydown', (e) => {
-  if (e.target.id === 'msg' && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); appSend(); }
-  if (e.target.id === 'hmsg' && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); hubSend(); }
+  if (e.target.id === 'msg' && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend(false); }
+  if (e.target.id === 'hmsg' && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend(true); }
+  if (e.target.matches && e.target.matches('.modal input[data-mf]') && e.key === 'Enter') { e.preventDefault(); modalSubmit(); }
 });
 document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && S.view === 'app' && A.modal) { closeModal(); return; }
   if (e.key === 'Escape' && S.view === 'app' && (A.menu || A.panel || A.emojiOpen)) { A.menu = false; A.panel = null; A.emojiOpen = false; render(); }
 });
 $root.addEventListener('submit', (e) => {
