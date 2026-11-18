@@ -2,7 +2,7 @@
 
 > **Para a IA:** este arquivo é a fonte da verdade sobre o projeto. Leia tudo antes de começar e atualize **na hora** em que algo acontecer (regras completas em `agents.md`). Não duplique tarefas: procure aqui antes de adicionar.
 >
-> Última atualização: 2026-11-18 (tempo real, digitando e histórico)
+> Última atualização: 2026-11-18 (foto de perfil)
 
 ---
 
@@ -54,6 +54,7 @@ Fluxo de acesso: Home → "Entrar" → login (com painel de QR Code) → "Regist
 - [x] 2026-11-17 — **Base do banco para chat e perfil** (migração `0002_chat_e_perfil.sql` aplicada no Supabase): tabela `messages` com regras de segurança e tempo real, campos de perfil, funções auxiliares no schema `private`. Testado com transação desfeita: membro lê/envia, estranho não vê nem envia, autor não pode ser forjado, `birth_date` protegido.
 - [x] 2026-11-18 — **Etapa 2 + núcleo da 3 + perfil (plano 2, 3 e 4 em parte):** migração `0003_convites_canais_presenca.sql` aplicada (funções `create_channel`, `create_invite`, `join_server`; tabela `server_invites`; `last_seen` para presença). O site agora lê e grava no banco de verdade: servidores, canais, membros, mensagens; criar servidor, criar canal (só o dono), convite por link/código e "entrar com convite" (`#join?c=CÓDIGO`), conta nova com tela vazia, histórico de 50 mensagens, envio, recebimento automático (consulta a cada 3 s), editar/apagar a própria mensagem (dono do servidor apaga qualquer uma), cartão de perfil ao clicar no nome/avatar, editar perfil (nome, status, bio, cor), online/offline por presença (batimento a cada 60 s). Dados falsos de servidores/amigos/mensagens removidos (só música, jogos e notícias seguem estáticos). Testes de fumaça: 47 OK (`tests/smoke.js` com banco simulado). Publicado na Vercel (deployment `dpl_7Tvuz4LDyUUaLJ8JAhTwqBcaTaRN`, commit `eef39ee`; `app.js` no ar tem o código novo). Obs.: as duas primeiras tentativas deram 404 no download do GitHub (commit recém-enviado ainda não liberado); a terceira, após ~2 min, funcionou. O `fetch.sh` guardado no repositório continua o antigo (sem novas tentativas automáticas).
 - [x] 2026-11-18 — **Tempo real, "digitando…" e histórico:** decisão da pessoa ("pode incluir"). Como não dá baixar o `supabase-js` daqui (sem rede para pacotes), a conexão de tempo real foi escrita à mão no `site/app.js` (WebSocket do Supabase Realtime: novas mensagens, edições e exclusões chegam na hora; aviso "fulano está digitando…" por broadcast). Se a conexão cair, volta sozinha a consultar a cada 3 s e tenta reconectar. CSP em `site/vercel.json` liberou `wss://vjkqyqdabypdylhoupha.supabase.co`. Botão "Ver mensagens mais antigas" testado. Testes de fumaça com WebSocket simulado. Publicado na Vercel (deployment `dpl_7nGEgcwjPEVqMxvgnY1pRNM9xnqS`, commit `1872b2b`; fetch.sh com novas tentativas automáticas só no comando enviado, não no repositório). **Ainda não testado contra o Supabase real** (a pessoa precisa conferir com duas contas); se o tempo real não conectar, o chat segue funcionando pela consulta.
+- [x] 2026-11-18 — **Foto de perfil:** migração `0004_fotos_de_perfil.sql` aplicada (bucket público `avatars`, até 1 MB, JPG/PNG/WebP; cada pessoa só grava/apaga na própria pasta `<id>/`). Em "Editar perfil": escolher/trocar/remover foto; o navegador reduz para 256x256 antes de enviar. A foto aparece no cartão, na barra do usuário, na lista de membros e nas mensagens. CSP liberou imagens de `https://vjkqyqdabypdylhoupha.supabase.co`. A foto de teste do Playboi Carti deixou de ser o avatar da conta (agora é a foto real ou a inicial); `USE_TEST_PHOTOS` só controla a capa da música. Testes de fumaça: 60 OK.
 - [x] 2026-11-16 — **Etapa 2:** site completo (home + login + app) publicado na Vercel em https://square-chat-silk.vercel.app (deployment `dpl_2wsLZ3h1f7CT3kGt3w8N5rdQS6KS`, commit `495cab0` do GitHub). Conferido: `index.html`, `app.js` e `home.js` no ar são idênticos, byte a byte, aos do repositório.
 
 ## Análise do projeto (2026-11-17)
@@ -71,7 +72,7 @@ Fluxo de acesso: Home → "Entrar" → login (com painel de QR Code) → "Regist
 1. [x] **Base do banco (2026-11-17):** mensagens, campos de perfil, regras de segurança testadas, tempo real habilitado.
 2. [x] **Servidores e canais reais (2026-11-18):** o site lê do banco; criar servidor; criar canal (função nova `create_channel`, só o dono); tela para conta nova sem servidor; convites por código e "entrar num servidor"; remover os servidores de demonstração.
 3. [x] **Chat real (2026-11-18): histórico com "ver mensagens mais antigas", enviar, receber em tempo real, editar/apagar, "digitando…", reserva por consulta se a conexão cair. Falta só tratar melhor a queda de internet (aviso na tela).** carregar histórico (com "ver mais antigas"), enviar, receber em tempo real, editar e apagar a própria mensagem, "digitando…", tratar queda de internet. **Decisão da pessoa:** para o tempo real, incluir no site a biblioteca oficial `supabase-js` (um arquivo, sem build) ou escrever a conexão à mão (mais trabalho, mais frágil). Recomendo a biblioteca.
-4. [~] **Perfil (feito: editar nome/bio/status/cor, cartão ao clicar, lista de membros real; falta: foto via Storage):** editar perfil (nome, bio, status, cor), foto (Supabase Storage + liberar no CSP), **card ao clicar no nome ou avatar** (nome, @usuário, bio, status, "membro desde"), lista de membros real.
+4. [x] **Perfil (2026-11-18: editar nome/bio/status/cor, foto via Storage, cartão ao clicar, lista de membros real):** editar perfil (nome, bio, status, cor), foto (Supabase Storage + liberar no CSP), **card ao clicar no nome ou avatar** (nome, @usuário, bio, status, "membro desde"), lista de membros real.
 5. [ ] **Amigos e mensagens diretas:** pedido de amizade, conversa 1 a 1, painel inicial com dados reais, notificações.
 6. [ ] **Presença e extras:** online/offline real, imagens/anexos, emojis e GIFs, menções, busca de mensagens.
 7. [ ] **Voz** (WebRTC): por último, é a parte mais pesada.
@@ -103,7 +104,7 @@ Fluxo de acesso: Home → "Entrar" → login (com painel de QR Code) → "Regist
 
 ## Próximo passo
 
-Conferir o tempo real com duas contas (a pessoa pulou o teste do servidor por ora). Depois: foto de perfil (Storage), amigos e mensagens diretas (etapa 5).
+Etapa 5: amigos e mensagens diretas (pedido de amizade, conversa 1 a 1, painel inicial com dados reais). Pendente da pessoa: conferir tempo real e foto com duas contas.
 
 ---
 

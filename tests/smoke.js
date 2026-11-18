@@ -31,6 +31,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   const calls = [];
   const session = { access_token: 'tok-abc', refresh_token: 'ref-abc', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, token_type: 'bearer' };
   let qrPolls = 0;
+  const storageCalls = [];
   // ---- banco simulado (servidores, canais, membros, mensagens, perfis) ----
   const world = { servers: [], channels: [], members: [], messages: [], nextMsg: 1, nextId: 1,
     profiles: [
@@ -84,7 +85,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await ctx.route('https://vjkqyqdabypdylhoupha.supabase.co/**', async (route) => {
     const req = route.request();
     const url = new URL(req.url());
-    const body = req.postData() ? JSON.parse(req.postData()) : {};
+    let body = {}; try { body = req.postData() ? JSON.parse(req.postData()) : {}; } catch (e) { body = {}; }
     const p = url.pathname.replace('/functions/v1/auth', '');
     calls.push([req.method(), p, body]);
     const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' };
@@ -108,6 +109,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
       case '/qr/info': return send(200, { ok: true, device: 'Chrome no Windows' });
       case '/qr/approve': return send(200, { ok: true, status: 'approved' });
       default:
+        if (url.pathname.startsWith('/storage/v1/object/avatars/')) { storageCalls.push([req.method(), url.pathname]); return send(200, { Key: 'ok' }); }
         if (url.pathname.startsWith('/rest/v1/')) return rest(req, url, body, send);
         if (url.pathname.startsWith('/auth/v1/logout')) return send(204, {});
         return send(404, {});
@@ -257,6 +259,11 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await page.click('.who .pic');
   await page.waitForSelector('.pcard');
   await page.click('[data-act="edit-profile"]');
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+  await page.setInputFiles('#mf-avatar', { name: 'foto.png', mimeType: 'image/png', buffer: png });
+  await page.waitForFunction(() => { const e = document.querySelector('.who .pic'); return !!e && /avatars/.test(e.style.background + e.getAttribute('style')); }, null, { timeout: 5000 });
+  ok('foto enviada ao Storage na pasta da pessoa e salva no perfil', storageCalls.some((c) => c[0] === 'POST' && /\/avatars\/u1\/\d+\.jpg$/.test(c[1])) && /^u1\/\d+\.jpg$/.test(world.profiles[0].avatar_path || ''));
+  ok('avatar novo aparece na barra do usuário', true);
   await page.fill('#mf-bio', 'Minha bio de teste');
   await page.click('[data-act="modal-submit"]');
   await page.waitForFunction(() => !document.querySelector('.modal'));

@@ -673,8 +673,10 @@ const tileFor = (id) => TILES[hashOf(id) % TILES.length];
 /* FOTO DE TESTE (provisório): só a foto da própria conta. Antes do lançamento: USE_TEST_PHOTOS = false e apagar site/img/. */
 const USE_TEST_PHOTOS = true;
 const ph = (file, fallback) => (USE_TEST_PHOTOS ? `url('img/${file}.jpg') center/cover no-repeat, ${fallback}` : fallback);
-const meBg = () => ph('eu', G.lilac);
-const meIni = (name) => (USE_TEST_PHOTOS ? '' : (name.charAt(0) || '?').toUpperCase());
+const avatarUrl = (path) => C.SUPABASE_URL + '/storage/v1/object/public/avatars/' + path;
+const avBg = (path, fallback) => (path ? `url('${avatarUrl(path)}') center/cover no-repeat, ${fallback}` : fallback);
+const meBg = () => (A && A.me && A.me.g) || G.lilac;
+const meIni = (name) => (A && A.me && A.me.avatar ? '' : (name.charAt(0) || '?').toUpperCase());
 const myId = () => (S.session && S.session.user && S.session.user.id) || '';
 
 const PANELS = {
@@ -732,10 +734,11 @@ function person(p, uid, role) {
   const name = (p && (p.display_name || p.username)) || 'Membro';
   const on = me || !!(p && p.last_seen && Date.now() - Date.parse(p.last_seen) < ONLINE_MS);
   const status = (p && p.status_text) || '';
+  const av = (p && p.avatar_path) || '';
   return {
     id: uid, name, user: (p && p.username) || '', bio: (p && p.bio) || '', status, accent: (p && p.accent) || '#9D8CCF',
     since: (p && p.created_at) || '', role: role || '', me, on, st: on ? (status || 'Online') : 'Offline',
-    g: me ? meBg() : gradFor(uid), ini: me ? meIni(name) : name.charAt(0).toUpperCase()
+    avatar: av, g: avBg(av, me ? G.lilac : gradFor(uid)), ini: av ? '' : name.charAt(0).toUpperCase()
   };
 }
 
@@ -778,7 +781,7 @@ async function loadWorld(paint) {
       sb('/rest/v1/server_members?select=server_id,user_id,role')
     ]);
     const ids = Array.from(new Set(mem.map((m) => m.user_id).concat([myId()])));
-    const profs = await sb('/rest/v1/profiles?select=id,username,display_name,bio,status_text,accent,last_seen,created_at&id=in.(' + ids.join(',') + ')');
+    const profs = await sb('/rest/v1/profiles?select=id,username,display_name,bio,status_text,avatar_path,accent,last_seen,created_at&id=in.(' + ids.join(',') + ')');
     if (A !== w) return;
     const P = {}; profs.forEach((p) => { P[p.id] = p; });
     w.me = person(P[myId()] || { display_name: displayName(), username: S.profile && S.profile.username }, myId(), '');
@@ -1318,7 +1321,9 @@ function modalHTML() {
     }
   } else if (m.type === 'editprofile') {
     title = 'Editar perfil'; label = 'Salvar';
-    body = mField('mf-display', 'Nome exibido', 'display', m.display, { max: 40 })
+    const meP = A.me || {};
+    body = `<div class="avrow"><span class="pavl" style="background:${meP.g || G.lilac}" aria-hidden="true">${esc(meIni(m.display || ''))}</span><div class="avbtns"><button type="button" class="mbtn ghost sm" data-act="avatar-pick"${m.busy ? ' disabled' : ''}>${meP.avatar ? 'Trocar foto' : 'Escolher foto'}</button>${meP.avatar ? '<button type="button" class="lnk" data-act="avatar-remove">Remover foto</button>' : ''}<input type="file" id="mf-avatar" accept="image/jpeg,image/png,image/webp" hidden></div></div>`
+      + mField('mf-display', 'Nome exibido', 'display', m.display, { max: 40 })
       + mField('mf-status', 'Status', 'status', m.status, { max: 60, ph: 'O que você está fazendo?' })
       + mField('mf-bio', 'Sobre mim', 'bio', m.bio, { max: 190, area: true, ph: 'Conte um pouco sobre você', hint: 'Até 190 caracteres.' })
       + `<div class="mf"><span class="lblx">Cor do perfil</span><div class="swatches">${ACCENTS.map((c) => `<button type="button" class="swatch${m.accent === c ? ' on' : ''}" data-act="m-accent" data-c="${c}" aria-pressed="${m.accent === c}" aria-label="Cor ${c}" style="background:${c}"></button>`).join('')}</div></div>`;
@@ -1331,6 +1336,49 @@ function modalHTML() {
   </div></div>`;
 }
 function focusModal() { setTimeout(() => { const f = document.querySelector('.modal [data-mf]'); if (f) f.focus(); }, 0); }
+/* ---- foto de perfil: reduz para 256x256 no navegador e envia ao Supabase Storage ---- */
+async function shrinkImage(file) {
+  const bmp = await createImageBitmap(file);
+  const n = 256, side = Math.min(bmp.width, bmp.height), c = document.createElement('canvas');
+  c.width = c.height = n;
+  c.getContext('2d').drawImage(bmp, (bmp.width - side) / 2, (bmp.height - side) / 2, side, side, 0, 0, n, n);
+  return new Promise((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error('img'))), 'image/jpeg', 0.85));
+}
+async function storageCall(method, path, body, type) {
+  const t = await freshToken(); if (!t) throw { message: 'not_authenticated', status: 401 };
+  const h = { apikey: C.SUPABASE_KEY, authorization: 'Bearer ' + t };
+  if (type) h['content-type'] = type;
+  let r; try { r = await fetch(C.SUPABASE_URL + '/storage/v1/object/avatars/' + path, { method, headers: h, body }); } catch (e) { throw { message: 'network', status: 0 }; }
+  if (!r.ok) throw { message: 'upload_failed', status: r.status };
+}
+async function setAvatar(file) {
+  const m = A.modal; if (!m || m.type !== 'editprofile' || m.busy) return;
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { m.err = 'Use uma imagem JPG, PNG ou WebP.'; return render(); }
+  if (file.size > 10 * 1024 * 1024) { m.err = 'A imagem é muito grande (máximo 10 MB).'; return render(); }
+  m.busy = true; m.err = ''; render();
+  try {
+    const blob = await shrinkImage(file);
+    const old = (A.me && A.me.avatar) || '', path = myId() + '/' + Date.now() + '.jpg';
+    await storageCall('POST', path, blob, 'image/jpeg');
+    await sb('/rest/v1/profiles?id=eq.' + myId(), { method: 'PATCH', body: { avatar_path: path } });
+    if (old) storageCall('DELETE', old).catch(() => {});
+    await loadWorld(() => {});
+    toast('Foto atualizada');
+  } catch (e) { m.err = e && e.message === 'upload_failed' ? 'Não foi possível enviar a foto. Tente outra imagem.' : errText(e); }
+  m.busy = false; if (A.modal === m) render();
+}
+async function removeAvatar() {
+  const m = A.modal; if (!m || m.busy || !(A.me && A.me.avatar)) return;
+  m.busy = true; m.err = ''; render();
+  const old = A.me.avatar;
+  try {
+    await sb('/rest/v1/profiles?id=eq.' + myId(), { method: 'PATCH', body: { avatar_path: null } });
+    storageCall('DELETE', old).catch(() => {});
+    await loadWorld(() => {});
+    toast('Foto removida');
+  } catch (e) { m.err = errText(e); }
+  m.busy = false; if (A.modal === m) render();
+}
 function closeModal() { A.modal = null; render(); }
 
 async function openInvite() {
@@ -1420,6 +1468,8 @@ function modalAct(act, el, ev) {
     }
     case 'm-accent': if (A.modal) { A.modal.accent = el.dataset.c; render(); } return true;
     case 'profile': A.menu = false; A.modal = { type: 'profile', id: el.dataset.id }; render(); return true;
+    case 'avatar-pick': { const f = document.getElementById('mf-avatar'); if (f) f.click(); return true; }
+    case 'avatar-remove': removeAvatar(); return true;
     case 'edit-profile': {
       A.menu = false; const me = A.me || {};
       A.modal = { type: 'editprofile', display: me.name || displayName(), status: me.status || '', bio: me.bio || '', accent: me.accent || ACCENTS[0], err: '', busy: false };
@@ -1560,6 +1610,7 @@ $root.addEventListener('input', (e) => {
   setPath(b, t.value); onBound(b, t);
 });
 $root.addEventListener('change', (e) => {
+  if (e.target.id === 'mf-avatar') { const f = e.target.files && e.target.files[0]; if (f && A) setAvatar(f); return; }
   const t = e.target, b = t.dataset.bind;
   if (!b) return;
   if (t.type === 'checkbox') setPath(b, t.checked);
