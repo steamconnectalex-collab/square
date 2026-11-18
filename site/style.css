@@ -408,3 +408,5 @@ button.pic{cursor:pointer}
 @media (hover:none){.mact{opacity:1}}
 .mout{align-items:center;gap:6px}
 .older{align-self:center}
+
+.typing{min-height:18px;padding:0 6px 4px;font-size:12px;color:var(--soft)}

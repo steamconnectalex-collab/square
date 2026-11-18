@@ -245,6 +245,7 @@ function render(o = {}) {
     if (el) { el.focus(); if (snap.s && el.setSelectionRange) { try { el.setSelectionRange(snap.s[0], snap.s[1]); } catch (e) { /* tipo sem seleção */ } } }
   }
   if (S.view === 'app' && A && A.world === 'ready') ensureThread(curKey());
+  if (S.view === 'app' && A) updateTyping();
 }
 
 /* ----------------------------------------------------- peças de acesso */
@@ -746,7 +747,7 @@ function initApp() {
     owner: uid, world: 'loading', werr: '', me: null, server: null, channel: null, voice: null, muted: false, deafened: false,
     panel: null, showMembers: true, onlineOpen: true, offlineOpen: true, draft: '', search: '', emojiOpen: false, menu: false,
     view: 'hub', hubKey: '', hubKeys: [], hdraft: '', gq: '', searchOpen: false, barOpen: false, playing: true, track: 0, prog: 34, ntab: 'news', entered: false,
-    threads: {}, loaded: {}, loading: {}, more: {}, terr: {}, modal: null, poll: null, beat: null
+    threads: {}, loaded: {}, loading: {}, more: {}, terr: {}, modal: null, poll: null, beat: null, tt: null, typing: {}, pollN: 0
   };
   startLive(); loadWorld(); openJoin();
 }
@@ -757,9 +758,11 @@ function startLive() {
   stopAppTimers();
   A.poll = setInterval(pollTick, 3000);
   A.beat = setInterval(() => beat(false), 60000);
+  A.tt = setInterval(updateTyping, 1500);
+  rtStart();
   beat(true);
 }
-function stopAppTimers() { if (A) { clearInterval(A.poll); clearInterval(A.beat); A.poll = A.beat = null; } }
+function stopAppTimers() { if (A) { clearInterval(A.poll); clearInterval(A.beat); clearInterval(A.tt); A.poll = A.beat = A.tt = null; } rtStop(false); }
 
 const curServer = () => SERVERS.find((s) => s.id === A.server) || SERVERS[0] || null;
 const serverOfChan = (cid) => SERVERS.find((s) => s.text.some((c) => c.id === cid)) || null;
@@ -842,8 +845,9 @@ function paintMsgs(stick) {
   el.innerHTML = hub ? hubMsgsHTML() : serverMsgsHTML();
   if (stick === true || (stick !== 'keep' && near)) el.scrollTop = el.scrollHeight;
 }
-async function pollTick() {
+async function pollTick(force) {
   if (S.view !== 'app' || !A || document.hidden || A.world !== 'ready' || A.polling) return;
+  if (RT.ok && force !== true && ++A.pollN % 10 !== 0) return;
   const key = curKey(); if (!key || !A.loaded[key]) return;
   const th = A.threads[key], last = th.length ? th[th.length - 1].id : 0;
   const w = A; A.polling = true;
@@ -869,6 +873,86 @@ async function loadOlder() {
     if (el) el.scrollTop += el.scrollHeight - h;
   } catch (e) { toast(errText(e)); }
   finally { A.older = false; }
+}
+
+/* ------------------------------------------------ tempo real (WebSocket do Supabase, sem biblioteca) */
+const RT = { ws: null, ok: false, ref: 0, hb: null, tok: null, retry: 0, wait: null, last: 0 };
+const rtSend = (topic, event, payload) => { if (RT.ws && RT.ws.readyState === 1) RT.ws.send(JSON.stringify({ topic, event, payload, ref: String(++RT.ref) })); };
+async function rtStart() {
+  if (RT.ws || !A || S.view !== 'app') return;
+  const w = A;
+  let ws;
+  try { ws = new WebSocket(C.SUPABASE_URL.replace(/^http/, 'ws') + '/realtime/v1/websocket?apikey=' + encodeURIComponent(C.SUPABASE_KEY) + '&vsn=1.0.0'); }
+  catch (e) { return rtRetry(); }
+  RT.ws = ws;
+  ws.onopen = async () => {
+    const t = await freshToken().catch(() => null);
+    if (RT.ws !== ws || !t) { try { ws.close(); } catch (e) { /* já fechado */ } return; }
+    rtSend('realtime:sq', 'phx_join', { config: { broadcast: { self: false, ack: false }, presence: { key: '' }, postgres_changes: [{ event: '*', schema: 'public', table: 'messages' }], private: false }, access_token: t });
+    RT.hb = setInterval(async () => {
+      rtSend('phoenix', 'heartbeat', {});
+      const n = await freshToken().catch(() => null);
+      if (n && n !== RT.tok) { RT.tok = n; rtSend('realtime:sq', 'access_token', { access_token: n }); }
+    }, 25000);
+    RT.tok = t;
+  };
+  ws.onmessage = (ev) => {
+    let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+    if (A !== w) return;
+    if (m.event === 'phx_reply' && m.topic === 'realtime:sq') {
+      if (m.payload && m.payload.status === 'ok') { RT.ok = true; RT.retry = 0; if (S.view === 'app') pollTick(true); }
+      else { RT.ok = false; try { ws.close(); } catch (e) { /* já fechado */ } }
+    } else if (m.event === 'postgres_changes') rtChange(m.payload && m.payload.data);
+    else if (m.event === 'broadcast' && m.payload && m.payload.event === 'typing') rtTyping(m.payload.payload);
+  };
+  ws.onclose = () => { if (RT.ws === ws) { rtStop(true); } };
+  ws.onerror = () => { try { ws.close(); } catch (e) { /* já fechado */ } };
+}
+function rtStop(retry) {
+  clearInterval(RT.hb); RT.hb = null; RT.ok = false;
+  const ws = RT.ws; RT.ws = null;
+  if (ws) { ws.onclose = ws.onerror = ws.onmessage = null; try { ws.close(); } catch (e) { /* já fechado */ } }
+  if (retry) rtRetry(); else { clearTimeout(RT.wait); RT.wait = null; RT.retry = 0; }
+}
+function rtRetry() {
+  clearTimeout(RT.wait);
+  if (!A || S.view !== 'app') return;
+  RT.retry = Math.min(RT.retry + 1, 6);
+  RT.wait = setTimeout(rtStart, Math.min(30000, 1000 * 2 ** RT.retry));
+}
+function rtChange(d) {
+  if (!d || !A) return;
+  const r = d.record || {}, old = d.old_record || {};
+  if (d.type === 'INSERT') {
+    const ch = r.channel_id, th = A.threads[ch];
+    if (!th || th.some((x) => x.id === r.id)) return;
+    th.push(mapMsg(r));
+    if (A.typing) delete A.typing[ch + '|' + r.author_id];
+    if (curKey() === ch) { paintMsgs(false); updateTyping(); }
+  } else if (d.type === 'UPDATE') {
+    const th = A.threads[r.channel_id], x = th && th.find((y) => y.id === r.id);
+    if (x) { x.text = r.content; x.edited = !!r.edited_at; if (curKey() === r.channel_id) paintMsgs('keep'); }
+  } else if (d.type === 'DELETE') {
+    const id = old.id; let hit = null;
+    Object.keys(A.threads).forEach((k) => { const th = A.threads[k]; if (th.some((y) => y.id === id)) { A.threads[k] = th.filter((y) => y.id !== id); hit = k; } });
+    if (hit && curKey() === hit) paintMsgs('keep');
+  }
+}
+function rtTyping(p) {
+  if (!p || !A || p.uid === myId() || !p.ch) return;
+  A.typing[p.ch + '|' + p.uid] = { name: String(p.name || 'Alguém').slice(0, 40), t: Date.now() };
+  updateTyping();
+}
+function sendTyping() {
+  const key = curKey(); if (!key || !RT.ok || Date.now() - RT.last < 3000) return;
+  RT.last = Date.now();
+  rtSend('realtime:sq', 'broadcast', { type: 'broadcast', event: 'typing', payload: { ch: key, uid: myId(), name: (A.me && A.me.name) || displayName() } });
+}
+function updateTyping() {
+  const el = document.getElementById('typing'); if (!el || !A) return;
+  const key = curKey(), now = Date.now();
+  const names = Object.keys(A.typing).filter((k) => k.startsWith(key + '|') && now - A.typing[k].t < 5000).map((k) => A.typing[k].name);
+  el.textContent = !names.length ? '' : names.length === 1 ? names[0] + ' está digitando…' : names.length === 2 ? names[0] + ' e ' + names[1] + ' estão digitando…' : 'Várias pessoas estão digitando…';
 }
 async function sendTo(key, text) {
   const rows = await sb('/rest/v1/messages?select=' + FIELDS, { method: 'POST', body: { channel_id: key, content: text }, prefer: 'return=representation' });
@@ -972,6 +1056,7 @@ function hubChatHTML() {
   return `<div class="hchat">
   <div class="hch">${tabs}<span class="tsp"></span><button type="button" class="hov wext" data-act="chat-open" aria-label="Abrir a conversa completa">${ic(D.ext, 17)}</button></div>
   <div class="hmsgs" id="hmsgs" role="log" aria-label="Mensagens recentes" aria-live="polite">${hubMsgsHTML()}</div>
+  <div class="typing" id="typing" aria-live="polite"></div>
   <div class="cbar hbar">
     <button type="button" class="hov ib" data-act="toast-attach" aria-label="Anexar arquivo">${ic(D.clip, 18)}</button>
     <input id="hmsg" type="text" placeholder="Escreva algo..." maxlength="2000" value="${esc(A.hdraft)}" data-app-bind="hdraft" autocomplete="off" aria-label="Escreva uma mensagem">
@@ -1165,6 +1250,7 @@ function serverHTML() {
       <div class="msgs" id="msgs" role="log" aria-label="Mensagens" aria-live="polite">${serverMsgsHTML()}</div>
       <div class="comp">
         ${A.emojiOpen ? `<div class="emoji" role="group" aria-label="Escolher emoji">${EMOJIS.map((e) => `<button type="button" class="hov" data-act="emoji" data-ch="${e[0]}" aria-label="Inserir emoji ${e[1]}">${e[0]}</button>`).join('')}</div>` : ''}
+        <div class="typing" id="typing" aria-live="polite"></div>
         <div class="cbar">
           <button type="button" class="hov plus" data-act="toast-attach" aria-label="Anexar arquivo">${ic(D.plus, 19)}</button>
           <input id="msg" type="text" placeholder="${chObj ? 'Escreva algo...' : 'Crie um canal de texto para conversar'}" maxlength="2000" value="${esc(A.draft)}" data-app-bind="draft" autocomplete="off" aria-label="Escreva uma mensagem"${chObj ? '' : ' disabled'}>
@@ -1465,8 +1551,8 @@ $root.addEventListener('input', (e) => {
     if (t.dataset.appBind === 'search') { A.search = t.value; const l = document.getElementById('mlist'); if (l) l.innerHTML = membersListHTML(); }
     else if (t.dataset.appBind === 'gq') { A.gq = t.value; A.search = t.value; refilter(); }
     else if (t.dataset.appBind.startsWith('m:')) { if (A.modal) A.modal[t.dataset.appBind.slice(2)] = t.value; }
-    else if (t.dataset.appBind === 'hdraft') { A.hdraft = t.value; const b = document.getElementById('hsend'); if (b) b.hidden = !A.hdraft.trim(); }
-    else { A.draft = t.value; const b = document.getElementById('send-btn'); if (b) b.hidden = !A.draft.trim(); }
+    else if (t.dataset.appBind === 'hdraft') { A.hdraft = t.value; const b = document.getElementById('hsend'); if (b) b.hidden = !A.hdraft.trim(); if (t.value) sendTyping(); }
+    else { A.draft = t.value; const b = document.getElementById('send-btn'); if (b) b.hidden = !A.draft.trim(); if (t.value) sendTyping(); }
     return;
   }
   const b = t.dataset.bind;

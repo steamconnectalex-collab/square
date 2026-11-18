@@ -69,8 +69,10 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
       if (m === 'POST') { const row = { id: world.nextMsg++, channel_id: body.channel_id, author_id: 'u1', content: body.content, created_at: new Date().toISOString(), edited_at: null }; world.messages.push(row); return send(201, [row]); }
       if (m === 'GET') {
         let rows = world.messages.filter((r) => r.channel_id === ch);
-        const gt = (q.get('id') || '').match(/^gt\.(\d+)/); if (gt) rows = rows.filter((r) => r.id > +gt[1]);
+        const gt = (q.get('id') || '').match(/^gt\.(-?\d+)/); if (gt) rows = rows.filter((r) => r.id > +gt[1]);
+        const lt = (q.get('id') || '').match(/^lt\.(-?\d+)/); if (lt) rows = rows.filter((r) => r.id < +lt[1]);
         rows = rows.slice().sort((a, b) => (q.get('order') === 'id.desc' ? b.id - a.id : a.id - b.id));
+        if (q.get('limit')) rows = rows.slice(0, +q.get('limit'));
         return send(200, rows);
       }
     }
@@ -112,6 +114,12 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
     }
   });
 
+  // WebSocket do tempo real simulado
+  let wsConn = null; const wsIn = [];
+  await ctx.routeWebSocket(/realtime\/v1\/websocket/, (ws) => {
+    wsConn = ws;
+    ws.onMessage((m) => { const j = JSON.parse(m); wsIn.push(j); if (j.event === 'phx_join') ws.send(JSON.stringify({ topic: j.topic, event: 'phx_reply', payload: { status: 'ok', response: {} }, ref: j.ref })); });
+  });
   const base = 'http://localhost:3100/';
   // 0. home
   await page.goto(base);
@@ -177,6 +185,8 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   // conta nova: sem servidores
   ok('conta nova mostra estado vazio com convite para criar servidor', /ainda não está em nenhum servidor/.test(await page.textContent('.hchat')));
   await page.screenshot({ path: OUT + '/2d-vazio.png' });
+  // 55 mensagens antigas já guardadas no futuro canal Geral (para testar o histórico)
+  for (let i = 0; i < 55; i++) world.messages.push({ id: i - 54, channel_id: 'srv1c1', author_id: 'u2', content: 'antiga ' + i, created_at: '2026-11-17T10:00:00Z', edited_at: null });
   // criar servidor pela janela
   await page.click('.hcta .mbtn:not(.ghost)');
   await page.waitForSelector('.modal');
@@ -190,11 +200,40 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await page.fill('#msg', 'Olá, mundo real');
   await page.press('#msg', 'Enter');
   await page.waitForFunction(() => /Olá, mundo real/.test(document.getElementById('msgs').textContent), null, { timeout: 5000 }).catch(async () => { console.log('DEBUG msgs:', await page.textContent('#msgs'), '| erros:', errors.join(' | '), '| calls:', JSON.stringify(calls.slice(-5))); });
-  ok('mensagem enviada aparece no chat e foi gravada', world.messages.length === 1 && world.messages[0].content === 'Olá, mundo real');
-  // mensagem de outra pessoa chega por atualização automática
-  world.messages.push({ id: world.nextMsg++, channel_id: 'srv1c1', author_id: 'u2', content: 'Oi do outro lado', created_at: new Date().toISOString(), edited_at: null });
-  await page.waitForFunction(() => /Oi do outro lado/.test(document.getElementById('msgs').textContent), null, { timeout: 8000 });
-  ok('mensagem de outro usuário chega sozinha', true);
+  ok('mensagem enviada aparece no chat e foi gravada', world.messages.some((m) => m.content === 'Olá, mundo real'));
+  // histórico: botão "ver mensagens mais antigas"
+  ok('chat mostra o botão de mensagens mais antigas', (await page.locator('#msgs .older').count()) === 1 && !/antiga 0\b/.test(await page.textContent('#msgs')));
+  await page.click('#msgs .older');
+  await page.waitForFunction(() => /antiga 0(?!\d)/.test(document.getElementById('msgs').textContent), null, { timeout: 4000 });
+  ok('"ver mais antigas" carrega o resto do histórico e o botão some', (await page.locator('#msgs .older').count()) === 0);
+  // mensagem de outra pessoa chega pelo tempo real (WebSocket)
+  await page.waitForFunction(() => true);
+  for (let i = 0; i < 40 && !wsIn.some((j) => j.event === 'phx_join'); i++) await page.waitForTimeout(100);
+  ok('app abre a conexão de tempo real e pede as mensagens', wsIn.some((j) => j.event === 'phx_join' && JSON.stringify(j.payload).includes('"table":"messages"') && j.payload.access_token));
+  await page.waitForTimeout(300);
+  const row = { id: world.nextMsg++, channel_id: 'srv1c1', author_id: 'u2', content: 'Oi do outro lado', created_at: new Date().toISOString(), edited_at: null };
+  world.messages.push(row);
+  wsConn.send(JSON.stringify({ topic: 'realtime:sq', event: 'postgres_changes', payload: { data: { type: 'INSERT', record: row } } }));
+  await page.waitForFunction(() => /Oi do outro lado/.test(document.getElementById('msgs').textContent), null, { timeout: 4000 });
+  ok('mensagem de outro usuário chega na hora (tempo real)', true);
+  wsConn.send(JSON.stringify({ topic: 'realtime:sq', event: 'postgres_changes', payload: { data: { type: 'UPDATE', record: Object.assign({}, row, { content: 'Oi editado', edited_at: new Date().toISOString() }) } } }));
+  await page.waitForFunction(() => /Oi editado/.test(document.getElementById('msgs').textContent) && /editada/.test(document.getElementById('msgs').textContent), null, { timeout: 4000 });
+  ok('edição chega em tempo real', true);
+  wsConn.send(JSON.stringify({ topic: 'realtime:sq', event: 'broadcast', payload: { type: 'broadcast', event: 'typing', payload: { ch: 'srv1c1', uid: 'u2', name: 'Marina Rocha' } } }));
+  await page.waitForFunction(() => /Marina Rocha está digitando/.test(document.getElementById('typing').textContent), null, { timeout: 4000 });
+  ok('aviso "digitando…" aparece', true);
+  await page.fill('#msg', 'estou digitando');
+  await page.waitForTimeout(300);
+  ok('digitar envia o aviso aos outros', wsIn.some((j) => j.event === 'broadcast' && j.payload.event === 'typing' && j.payload.payload.ch === 'srv1c1'));
+  await page.fill('#msg', '');
+  wsConn.send(JSON.stringify({ topic: 'realtime:sq', event: 'postgres_changes', payload: { data: { type: 'DELETE', old_record: { id: row.id } } } }));
+  await page.waitForFunction(() => !/Oi editado/.test(document.getElementById('msgs').textContent), null, { timeout: 4000 });
+  ok('mensagem apagada some em tempo real', true);
+  // queda da conexão: volta a funcionar pela consulta de reserva
+  wsConn.close();
+  world.messages.push({ id: world.nextMsg++, channel_id: 'srv1c1', author_id: 'u2', content: 'Chegou pela reserva', created_at: new Date().toISOString(), edited_at: null });
+  await page.waitForFunction(() => /Chegou pela reserva/.test(document.getElementById('msgs').textContent), null, { timeout: 9000 });
+  ok('sem tempo real, as mensagens ainda chegam (consulta de reserva)', true);
   await page.screenshot({ path: OUT + '/2e-chat.png' });
   // cartão de perfil de outra pessoa
   await page.click('#msgs [data-act="profile"][data-id="u2"]');
