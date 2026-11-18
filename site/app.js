@@ -708,7 +708,8 @@ const ERRS = {
   not_authenticated: 'Sua sessão expirou. Entre de novo.', network: 'Sem conexão. Verifique sua internet e tente de novo.',
   invalid_name: 'O nome está fora do tamanho permitido.', too_many_servers: 'Você atingiu o limite de servidores.',
   too_many_channels: 'Esse servidor já tem o máximo de canais.', not_owner: 'Só o dono do servidor pode fazer isso.',
-  not_member: 'Você não faz parte deste servidor.', invalid_invite: 'Convite inválido ou expirado.',
+  not_member: 'Você não faz parte deste servidor.', user_not_found: 'Não encontramos ninguém com esse @usuário.', cannot_add_self: 'Você não pode adicionar a si mesmo.',
+  too_many_requests: 'Você já tem pedidos demais esperando resposta.', no_request: 'Esse pedido não existe mais.', not_friends: 'Vocês ainda não são amigos.', invalid_invite: 'Convite inválido ou expirado.',
   'row-level security': 'Você não tem permissão para isso.', 'violates check constraint': 'Algum campo está fora do tamanho permitido.'
 };
 function errText(e) {
@@ -750,7 +751,7 @@ function initApp() {
     owner: uid, world: 'loading', werr: '', me: null, server: null, channel: null, voice: null, muted: false, deafened: false,
     panel: null, showMembers: true, onlineOpen: true, offlineOpen: true, draft: '', search: '', emojiOpen: false, menu: false,
     view: 'hub', hubKey: '', hubKeys: [], hdraft: '', gq: '', searchOpen: false, barOpen: false, playing: true, track: 0, prog: 34, ntab: 'news', entered: false,
-    threads: {}, loaded: {}, loading: {}, more: {}, terr: {}, modal: null, poll: null, beat: null, tt: null, typing: {}, pollN: 0
+    threads: {}, loaded: {}, loading: {}, more: {}, terr: {}, modal: null, poll: null, beat: null, tt: null, typing: {}, pollN: 0, friends: [], incoming: [], outgoing: [], known: {}, dmByUser: {}, dmUser: {}
   };
   startLive(); loadWorld(); openJoin();
 }
@@ -770,21 +771,36 @@ function stopAppTimers() { if (A) { clearInterval(A.poll); clearInterval(A.beat)
 const curServer = () => SERVERS.find((s) => s.id === A.server) || SERVERS[0] || null;
 const serverOfChan = (cid) => SERVERS.find((s) => s.text.some((c) => c.id === cid)) || null;
 const curKey = () => (A.view === 'hub' ? A.hubKey : (A.channel || ''));
-const findPerson = (id) => { if (A.me && id === A.me.id) return A.me; for (const s of SERVERS) if (s.byId[id]) return s.byId[id]; return null; };
+const findPerson = (id) => { if (A.me && id === A.me.id) return A.me; for (const s of SERVERS) if (s.byId[id]) return s.byId[id]; return (A.known && A.known[id]) || null; };
+const relOf = (id) => (A.friends.some((f) => f.id === id) ? 'friend' : A.incoming.some((f) => f.id === id) ? 'incoming' : A.outgoing.some((f) => f.id === id) ? 'outgoing' : 'none');
+const dmPeer = (key) => A.friends.find((f) => f.dm === key) || (A.dmUser[key] && A.known[A.dmUser[key]]) || null;
 
 async function loadWorld(paint) {
   const w = A;
   try {
-    const [srv, chs, mem] = await Promise.all([
+    const [srv, chs, mem, fr, dmc, dmm] = await Promise.all([
       sb('/rest/v1/servers?select=id,name,owner_id,created_at&order=created_at.asc'),
-      sb('/rest/v1/channels?select=id,server_id,name,kind,position&order=position.asc'),
-      sb('/rest/v1/server_members?select=server_id,user_id,role')
+      sb('/rest/v1/channels?select=id,server_id,name,kind,position&server_id=not.is.null&order=position.asc'),
+      sb('/rest/v1/server_members?select=server_id,user_id,role'),
+      sb('/rest/v1/friendships?select=user_a,user_b,requester,status'),
+      sb('/rest/v1/channels?select=id&kind=eq.dm'),
+      sb('/rest/v1/dm_members?select=channel_id,user_id')
     ]);
-    const ids = Array.from(new Set(mem.map((m) => m.user_id).concat([myId()])));
+    const other = (f) => (f.user_a === myId() ? f.user_b : f.user_a);
+    const ids = Array.from(new Set(mem.map((m) => m.user_id).concat(fr.map(other), [myId()])));
     const profs = await sb('/rest/v1/profiles?select=id,username,display_name,bio,status_text,avatar_path,accent,last_seen,created_at&id=in.(' + ids.join(',') + ')');
     if (A !== w) return;
     const P = {}; profs.forEach((p) => { P[p.id] = p; });
     w.me = person(P[myId()] || { display_name: displayName(), username: S.profile && S.profile.username }, myId(), '');
+    const dmByUser = {}, dmUser = {};
+    dmc.forEach((c) => { const o = dmm.find((x) => x.channel_id === c.id && x.user_id !== myId()); if (o) { dmByUser[o.user_id] = c.id; dmUser[c.id] = o.user_id; } });
+    const known = {};
+    ids.forEach((id) => { if (id !== myId() && P[id]) known[id] = person(P[id], id, ''); });
+    const byName = (a, b) => (a.on === b.on ? a.name.localeCompare(b.name) : (a.on ? -1 : 1));
+    w.known = known; w.dmByUser = dmByUser; w.dmUser = dmUser;
+    w.friends = fr.filter((f) => f.status === 'accepted').map((f) => known[other(f)]).filter(Boolean).map((p) => Object.assign({}, p, { dm: dmByUser[p.id] || '' })).sort(byName);
+    w.incoming = fr.filter((f) => f.status === 'pending' && f.requester !== myId()).map((f) => known[other(f)]).filter(Boolean);
+    w.outgoing = fr.filter((f) => f.status === 'pending' && f.requester === myId()).map((f) => known[other(f)]).filter(Boolean);
     SERVERS = srv.map((s) => {
       const people = mem.filter((m) => m.server_id === s.id).map((m) => person(P[m.user_id], m.user_id, m.role));
       const byId = {}; people.forEach((p) => { byId[p.id] = p; });
@@ -807,11 +823,17 @@ async function loadWorld(paint) {
   (paint || render)();
 }
 function fixSelection() {
-  if (!SERVERS.length) { A.server = null; A.channel = null; A.hubKeys = []; A.hubKey = ''; A.view = 'hub'; return; }
-  let s = SERVERS.find((x) => x.id === A.server);
-  if (!s) { s = SERVERS[0]; A.server = s.id; A.channel = null; }
-  if (!s.text.some((c) => c.id === A.channel)) A.channel = s.text[0] ? s.text[0].id : null;
-  A.hubKeys = SERVERS.slice(0, 3).map((x) => (x.text[0] ? x.text[0].id : '')).filter(Boolean);
+  const dms = A.friends.filter((f) => f.dm).map((f) => f.dm);
+  const dmKeys = dms.slice(0, 4);
+  if (A.hubKey && dms.includes(A.hubKey) && !dmKeys.includes(A.hubKey)) dmKeys[3] = A.hubKey;
+  if (!SERVERS.length) {
+    A.server = null; A.channel = null; A.view = 'hub';
+  } else {
+    let s = SERVERS.find((x) => x.id === A.server);
+    if (!s) { s = SERVERS[0]; A.server = s.id; A.channel = null; }
+    if (!s.text.some((c) => c.id === A.channel)) A.channel = s.text[0] ? s.text[0].id : null;
+  }
+  A.hubKeys = SERVERS.slice(0, 3).map((x) => (x.text[0] ? x.text[0].id : '')).filter(Boolean).concat(dmKeys);
   if (!A.hubKeys.includes(A.hubKey)) A.hubKey = A.hubKeys[0] || '';
 }
 function selectServer(id) {
@@ -891,7 +913,7 @@ async function rtStart() {
   ws.onopen = async () => {
     const t = await freshToken().catch(() => null);
     if (RT.ws !== ws || !t) { try { ws.close(); } catch (e) { /* já fechado */ } return; }
-    rtSend('realtime:sq', 'phx_join', { config: { broadcast: { self: false, ack: false }, presence: { key: '' }, postgres_changes: [{ event: '*', schema: 'public', table: 'messages' }], private: false }, access_token: t });
+    rtSend('realtime:sq', 'phx_join', { config: { broadcast: { self: false, ack: false }, presence: { key: '' }, postgres_changes: [{ event: '*', schema: 'public', table: 'messages' }, { event: '*', schema: 'public', table: 'friendships' }], private: false }, access_token: t });
     RT.hb = setInterval(async () => {
       rtSend('phoenix', 'heartbeat', {});
       const n = await freshToken().catch(() => null);
@@ -923,11 +945,20 @@ function rtRetry() {
   RT.retry = Math.min(RT.retry + 1, 6);
   RT.wait = setTimeout(rtStart, Math.min(30000, 1000 * 2 ** RT.retry));
 }
+let wrTimer = null;
+function reloadSoon() { clearTimeout(wrTimer); const w = A; wrTimer = setTimeout(() => { if (A === w && S.view === 'app') loadWorld(); }, 400); }
 function rtChange(d) {
   if (!d || !A) return;
   const r = d.record || {}, old = d.old_record || {};
+  if (d.table === 'friendships') {
+    if (d.type === 'INSERT' && r.requester && r.requester !== myId()) toast('Novo pedido de amizade');
+    else if (d.type === 'UPDATE' && r.status === 'accepted' && r.requester === myId()) toast('Seu pedido de amizade foi aceito');
+    reloadSoon(); return;
+  }
   if (d.type === 'INSERT') {
     const ch = r.channel_id, th = A.threads[ch];
+    if (r.author_id !== myId() && !serverOfChan(ch) && !A.dmUser[ch]) { reloadSoon(); return; }
+    if (r.author_id !== myId() && A.dmUser[ch] && curKey() !== ch) { const f = dmPeer(ch); toast('Nova mensagem de ' + (f ? f.name : 'um amigo')); if (!th) reloadSoon(); }
     if (!th || th.some((x) => x.id === r.id)) return;
     th.push(mapMsg(r));
     if (A.typing) delete A.typing[ch + '|' + r.author_id];
@@ -1009,18 +1040,14 @@ const FREE = [
 ];
 const fmt = (s) => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
 
-function friendsList() {
-  const seen = {}, out = [];
-  SERVERS.forEach((s) => s.online.forEach((p) => { if (!p.me && !seen[p.id]) { seen[p.id] = 1; out.push(p); } }));
-  return out;
-}
+function friendsList() { return A.friends; }
 function friendsHTML() {
   const q = (A.gq || '').trim().toLowerCase();
   const all = friendsList();
-  if (!all.length) return `<div class="hempty">${SERVERS.length ? 'Ninguém online agora.' : 'Entre em um servidor para ver as pessoas aqui.'}</div>`;
+  if (!all.length) return `<div class="hempty">Você ainda não tem amigos.<div class="hcta"><button type="button" class="mbtn sm" data-act="toast-friend">Adicionar amigo</button></div></div>`;
   const list = all.filter((p) => !q || p.name.toLowerCase().indexOf(q) !== -1);
   if (!list.length) return '<div class="hempty">Nenhum amigo encontrado.</div>';
-  return list.map((p) => `<button type="button" class="frow hov" data-act="profile" data-id="${p.id}" aria-label="Ver perfil de ${esc(p.name)}"><span class="pf" style="background:${p.g}" aria-hidden="true">${esc(p.ini)}<i></i></span><span class="tx"><b>${esc(p.name)}</b><small>${esc(p.st)}</small></span></button>`).join('');
+  return list.map((p) => `<button type="button" class="frow hov${p.on ? '' : ' off'}" data-act="profile" data-id="${p.id}" aria-label="Ver perfil de ${esc(p.name)}"><span class="pf" style="background:${p.g}" aria-hidden="true">${esc(p.ini)}${p.on ? '<i></i>' : ''}</span><span class="tx"><b>${esc(p.name)}</b><small>${esc(p.st)}</small></span></button>`).join('');
 }
 function refilter() {
   const f = document.getElementById('flist'); if (f) f.innerHTML = friendsHTML();
@@ -1039,25 +1066,30 @@ function topbarHTML() {
 }
 
 function hubMsgsHTML() {
-  const key = A.hubKey, srv = serverOfChan(key), me = myId();
+  const key = A.hubKey, srv = serverOfChan(key), me = myId(), peer = srv ? null : dmPeer(key);
   if (!A.loaded[key]) return `<div class="hempty">${A.terr[key] ? 'Não foi possível carregar. <button type="button" class="lnk" data-act="retry-thread">Tentar de novo</button>' : 'Carregando…'}</div>`;
-  const th = (A.threads[key] || []).slice(-3);
+  const th = (A.threads[key] || []).slice(srv ? -3 : -30);
   if (!th.length) return '<div class="hempty">Nenhuma mensagem ainda. Escreva a primeira!</div>';
   return th.map((m) => {
     if (m.from === me) return `<div class="mout"><div class="bub"><span class="sr">Você: </span>${esc(m.text)}</div></div>`;
-    const p = srv && srv.byId[m.from];
+    const p = srv ? srv.byId[m.from] : peer;
     return `<div class="min"><button type="button" class="av40" data-act="profile" data-id="${m.from}" aria-label="Ver perfil de ${esc(p ? p.name : 'ex-membro')}" style="background:${p ? p.g : G.slate}">${esc(p ? p.ini : '')}</button><div class="bub"><span class="sr">${esc(p ? p.name : '')}: </span>${esc(m.text)}</div></div>`;
   }).join('');
 }
 function hubChatHTML() {
   if (A.world === 'loading') return '<div class="hchat"><div class="hmsgs"><div class="hempty">Carregando…</div></div></div>';
   if (A.world === 'error') return `<div class="hchat"><div class="hmsgs"><div class="hempty">${esc(A.werr)}</div><div class="hcta"><button type="button" class="mbtn" data-act="reload-world">Tentar de novo</button></div></div></div>`;
-  if (!SERVERS.length) return `<div class="hchat"><div class="hmsgs"><div class="hempty">Você ainda não está em nenhum servidor.</div>
-    <div class="hcta"><button type="button" class="mbtn" data-act="modal-open" data-k="srv" data-mode="create">Criar servidor</button><button type="button" class="mbtn ghost" data-act="modal-open" data-k="srv" data-mode="join">Entrar com convite</button></div></div></div>`;
+  if (!SERVERS.length && !A.hubKeys.length) return `<div class="hchat"><div class="hmsgs"><div class="hempty">Você ainda não está em nenhum servidor e não tem conversas.</div>
+    <div class="hcta"><button type="button" class="mbtn" data-act="modal-open" data-k="srv" data-mode="create">Criar servidor</button><button type="button" class="mbtn ghost" data-act="modal-open" data-k="srv" data-mode="join">Entrar com convite</button><button type="button" class="mbtn ghost" data-act="toast-friend">Adicionar amigo</button></div></div></div>`;
   if (!A.hubKey) return '<div class="hchat"><div class="hmsgs"><div class="hempty">Seus servidores ainda não têm canais de texto.</div></div></div>';
-  const tabs = A.hubKeys.map((k) => { const s = serverOfChan(k), on = k === A.hubKey; return `<button type="button" class="ctab${on ? ' on' : ''}" data-act="hubchat" data-key="${k}" aria-pressed="${on}" aria-label="${esc(s.name)}" title="${esc(s.name)}" style="background:${s.tile}">${esc(s.ini)}</button>`; }).join('');
+  const tabs = A.hubKeys.map((k) => {
+    const s = serverOfChan(k), on = k === A.hubKey;
+    if (s) return `<button type="button" class="ctab${on ? ' on' : ''}" data-act="hubchat" data-key="${k}" aria-pressed="${on}" aria-label="${esc(s.name)}" title="${esc(s.name)}" style="background:${s.tile}">${esc(s.ini)}</button>`;
+    const f = dmPeer(k); if (!f) return '';
+    return `<button type="button" class="ctab dmtab${on ? ' on' : ''}" data-act="hubchat" data-key="${k}" aria-pressed="${on}" aria-label="Conversa com ${esc(f.name)}" title="${esc(f.name)}" style="background:${f.g}">${esc(f.ini)}</button>`;
+  }).join('');
   return `<div class="hchat">
-  <div class="hch">${tabs}<span class="tsp"></span><button type="button" class="hov wext" data-act="chat-open" aria-label="Abrir a conversa completa">${ic(D.ext, 17)}</button></div>
+  <div class="hch">${tabs}<span class="tsp"></span>${serverOfChan(A.hubKey) ? `<button type="button" class="hov wext" data-act="chat-open" aria-label="Abrir a conversa completa">${ic(D.ext, 17)}</button>` : `<b class="dmname">${esc((dmPeer(A.hubKey) || {}).name || '')}</b>`}</div>
   <div class="hmsgs" id="hmsgs" role="log" aria-label="Mensagens recentes" aria-live="polite">${hubMsgsHTML()}</div>
   <div class="typing" id="typing" aria-live="polite"></div>
   <div class="cbar hbar">
@@ -1126,7 +1158,7 @@ function userbarHTML() {
 function hubHTML(enter) {
   const w = (cls, i, inner) => `<section class="w ${cls}" style="--i:${i}">${inner}</section>`;
   return `<main class="hub${enter ? ' enter' : ''}" aria-label="Painel inicial">
-  ${w('w-fr', 0, `<div class="wh"><h2>Amigos online</h2><button type="button" class="hov wext" data-act="friends-open" aria-label="Abrir lista de membros">${ic(D.ext, 17)}</button></div><div class="flist" id="flist">${friendsHTML()}</div>`)}
+  ${w('w-fr', 0, `<div class="wh"><h2>Amigos</h2><button type="button" class="hov wext" data-act="friends-open" aria-label="Abrir lista de membros">${ic(D.ext, 17)}</button></div><div class="flist" id="flist">${friendsHTML()}</div>`)}
   ${w('w-chat', 1, `${hubChatHTML()}${pinnedHTML()}`)}
   ${w('w-most', 2, `<div class="wh"><h2>Mais jogados</h2></div>${mostHTML()}`)}
   ${w('w-mus', 3, musicHTML())}
@@ -1317,8 +1349,16 @@ function modalHTML() {
         <p class="pbio${p.bio ? '' : ' none'}">${p.bio ? esc(p.bio) : 'Esta pessoa ainda não escreveu uma bio.'}</p>
         <dl class="pmeta"><div><dt>Membro desde</dt><dd>${esc(since)}</dd></div></dl>
       </div></div>`;
-      foot = p.me ? '<button type="button" class="mbtn" data-act="edit-profile">Editar perfil</button>' : '<button type="button" class="mbtn" data-act="dm">Enviar mensagem</button>';
+      const rel = p.me ? 'me' : relOf(p.id), dis = m.busy ? ' disabled' : '';
+      foot = rel === 'me' ? '<button type="button" class="mbtn" data-act="edit-profile">Editar perfil</button>'
+        : rel === 'friend' ? `<button type="button" class="mbtn ghost" data-act="fr-remove" data-id="${p.id}"${dis}>Remover amigo</button><button type="button" class="mbtn" data-act="dm" data-id="${p.id}"${dis}>Enviar mensagem</button>`
+        : rel === 'incoming' ? `<button type="button" class="mbtn ghost" data-act="fr-decline" data-id="${p.id}"${dis}>Recusar</button><button type="button" class="mbtn" data-act="fr-accept" data-id="${p.id}"${dis}>Aceitar pedido</button>`
+        : rel === 'outgoing' ? `<button type="button" class="mbtn ghost" data-act="fr-remove" data-id="${p.id}"${dis}>Cancelar pedido</button>`
+        : `<button type="button" class="mbtn" data-act="fr-add" data-user="${esc(p.user)}"${dis}>Adicionar amigo</button>`;
     }
+  } else if (m.type === 'addfriend') {
+    title = 'Adicionar amigo'; label = 'Enviar pedido';
+    body = mField('mf-user', '@usuário do seu amigo', 'user', m.user, { ph: 'Ex.: marina', max: 30, hint: 'A pessoa recebe o pedido na central de notificações.' });
   } else if (m.type === 'editprofile') {
     title = 'Editar perfil'; label = 'Salvar';
     const meP = A.me || {};
@@ -1428,6 +1468,11 @@ async function modalSubmit() {
       A.modal = null; render();
     });
   }
+  if (m.type === 'addfriend') {
+    const u = m.user.trim().replace(/^@/, '');
+    if (!u) return modalErr('Digite o @usuário da pessoa.');
+    return run(async () => { const r = await rpc('send_friend_request', { p_username: u }); await loadWorld(() => {}); A.modal = null; render(); toast(FR_MSG[r] || 'Pronto'); });
+  }
   if (m.type === 'editprofile') {
     const display = m.display.trim();
     if (!display) return modalErr('Informe um nome exibido.');
@@ -1435,6 +1480,32 @@ async function modalSubmit() {
       await sb('/rest/v1/profiles?id=eq.' + myId(), { method: 'PATCH', body: { display_name: display, status_text: m.status.trim(), bio: m.bio.trim(), accent: m.accent } });
       await loadWorld(() => {}); A.modal = null; render(); toast('Perfil atualizado');
     });
+  }
+}
+/* ---- amigos e conversas privadas ---- */
+const FR_MSG = { pending: 'Pedido de amizade enviado', accepted: 'Agora vocês são amigos!', friends: 'Vocês já são amigos' };
+async function friendAct(kind, id, user) {
+  const m = A.modal; if (m && m.busy) return;
+  if (m) { m.busy = true; m.err = ''; render(); }
+  const w = A;
+  try {
+    let msg = '';
+    if (kind === 'add') msg = FR_MSG[await rpc('send_friend_request', { p_username: user })] || 'Pronto';
+    else if (kind === 'accept') { await rpc('respond_friend_request', { p_other: id, p_accept: true }); msg = 'Agora vocês são amigos!'; }
+    else if (kind === 'decline') { await rpc('respond_friend_request', { p_other: id, p_accept: false }); msg = 'Pedido recusado'; }
+    else if (kind === 'remove') { await rpc('remove_friend', { p_other: id }); msg = 'Pronto'; }
+    else if (kind === 'dm') {
+      const ch = await rpc('open_dm', { p_other: id });
+      await loadWorld(() => {});
+      if (A !== w) return;
+      A.hubKey = ch; A.view = 'hub'; A.panel = null; A.modal = null; A.menu = false;
+      render({ scroll: true }); return;
+    }
+    await loadWorld(() => {});
+    if (A !== w) return;
+    A.modal = null; render(); toast(msg);
+  } catch (e) {
+    if (A === w) { if (A.modal) { A.modal.busy = false; A.modal.err = errText(e); render(); } else toast(errText(e)); }
   }
 }
 function openMsgModal(type, el) {
@@ -1475,6 +1546,12 @@ function modalAct(act, el, ev) {
       A.modal = { type: 'editprofile', display: me.name || displayName(), status: me.status || '', bio: me.bio || '', accent: me.accent || ACCENTS[0], err: '', busy: false };
       render(); focusModal(); return true;
     }
+    case 'toast-friend': A.menu = false; A.modal = { type: 'addfriend', user: '', err: '', busy: false }; render(); focusModal(); return true;
+    case 'fr-add': friendAct('add', '', el.dataset.user); return true;
+    case 'fr-accept': friendAct('accept', el.dataset.id); return true;
+    case 'fr-decline': friendAct('decline', el.dataset.id); return true;
+    case 'fr-remove': friendAct('remove', el.dataset.id); return true;
+    case 'dm': A.menu = false; friendAct('dm', el.dataset.id); return true;
     case 'msg-edit': openMsgModal('edit', el); return true;
     case 'msg-del': openMsgModal('del', el); return true;
     default: return false;
@@ -1484,8 +1561,9 @@ function modalAct(act, el, ev) {
 function appView() {
   const enter = !A.entered; A.entered = true;
   const panel = A.panel ? PANELS[A.panel] : null;
+  const reqRow = (p) => `<div class="it req"><button type="button" class="pf" data-act="profile" data-id="${p.id}" aria-label="Ver perfil de ${esc(p.name)}" style="background:${p.g}">${esc(p.ini)}</button><span class="tx"><b>${esc(p.name)}</b><span>Quer ser seu amigo${p.user ? ' · @' + esc(p.user) : ''}</span></span><button type="button" class="mbtn sm ghost" data-act="fr-decline" data-id="${p.id}">Recusar</button><button type="button" class="mbtn sm" data-act="fr-accept" data-id="${p.id}">Aceitar</button></div>`;
   const panelHTML = panel ? `<div class="panel" role="dialog" aria-label="${panel.title}"><div class="ph"><span>${panel.title}</span><button type="button" class="hov sq" data-act="close-panel" aria-label="Fechar painel">${ic(D.close, 16, '#55555F', 1.8)}</button></div>
-    ${panel.items.length ? panel.items.map((it) => `<div class="it"><b>${esc(it.t)}</b><span>${esc(it.s)}</span></div>`).join('') : '<div class="it"><span>Nada por aqui ainda.</span></div>'}</div>` : '';
+    ${A.panel === 'notif' ? (A.incoming.length ? A.incoming.map(reqRow).join('') : '<div class="it"><span>Nada por aqui ainda.</span></div>') : panel.items.length ? panel.items.map((it) => `<div class="it"><b>${esc(it.t)}</b><span>${esc(it.s)}</span></div>`).join('') : '<div class="it"><span>Nada por aqui ainda.</span></div>'}</div>` : '';
   const showServer = A.view === 'server' && SERVERS.length && A.world === 'ready';
   return `<div class="shell">
 <div class="cloud" aria-hidden="true" style="left:-140px;bottom:-180px;width:600px;height:480px;background:radial-gradient(closest-side,rgba(140,140,158,.34),rgba(140,140,158,0))"></div>
@@ -1538,7 +1616,6 @@ function appAction(act, el, ev) {
   switch (act) {
     case 'srv': { const s = SERVERS.find((x) => x.id === el.dataset.id); if (s) { A.server = s.id; A.channel = s.text[0] ? s.text[0].id : null; A.search = ''; A.draft = ''; } break; }
     case 'chan': A.channel = el.dataset.id; A.draft = ''; break;
-    case 'dm': toast('Mensagens diretas chegam em breve'); if (wasMenu) render(); return;
     case 'vjoin': toast('Chamadas de voz chegam em breve'); return;
     case 'mute': A.muted = !A.muted; break;
     case 'deaf': A.deafened = !A.deafened; break;
@@ -1564,7 +1641,6 @@ function appAction(act, el, ev) {
     case 'panel': A.panel = A.panel === el.dataset.k ? null : el.dataset.k; break;
     case 'toast-soon': toast('Isso chega em breve'); return;
     case 'toast-pin': toast('Fixar festas chega em breve'); return;
-    case 'toast-friend': toast('Adicionar amigos chega em breve'); return;
     case 'toast-attach': toast('Anexos chegam em breve'); return;
     case 'toast-gift': toast('Presentes chegam em breve'); return;
     case 'toast-gif': toast('GIFs chegam em breve'); return;

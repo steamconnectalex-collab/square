@@ -33,9 +33,10 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   let qrPolls = 0;
   const storageCalls = [];
   // ---- banco simulado (servidores, canais, membros, mensagens, perfis) ----
-  const world = { servers: [], channels: [], members: [], messages: [], nextMsg: 1, nextId: 1,
+  const world = { servers: [], channels: [], members: [], messages: [], nextMsg: 1, nextId: 1, friendships: [], dms: [],
     profiles: [
       { id: 'u1', username: 'tester', display_name: 'Tester Um', bio: '', status_text: '', accent: '#9D8CCF', last_seen: null, created_at: '2026-11-16T10:00:00Z' },
+      { id: 'u3', username: 'pedro', display_name: 'Pedro Alves', bio: '', status_text: '', accent: '#6FB3A0', last_seen: null, created_at: '2026-11-12T10:00:00Z' },
       { id: 'u2', username: 'marina', display_name: 'Marina Rocha', bio: 'Gosto de jogos de plataforma.', status_text: 'Jogando', accent: '#E58FB0', last_seen: new Date().toISOString(), created_at: '2026-11-10T10:00:00Z' }
     ] };
   const rest = (req, url, body, send) => {
@@ -54,12 +55,32 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
         world.channels.push({ id, server_id: body.p_server, name: body.p_name, kind: body.p_kind, position: world.channels.length });
         return send(200, id);
       }
+      if (fn === 'send_friend_request') {
+        const u = world.profiles.find((x) => x.username === String(body.p_username).toLowerCase());
+        if (!u) return send(400, { message: 'user_not_found' });
+        world.friendships.push({ user_a: 'u1' < u.id ? 'u1' : u.id, user_b: 'u1' < u.id ? u.id : 'u1', requester: 'u1', status: 'pending' });
+        return send(200, 'pending');
+      }
+      if (fn === 'respond_friend_request') {
+        const f = world.friendships.find((x) => x.requester === body.p_other && x.status === 'pending');
+        if (!f) return send(400, { message: 'no_request' });
+        if (body.p_accept) f.status = 'accepted'; else world.friendships.splice(world.friendships.indexOf(f), 1);
+        return send(204, null);
+      }
+      if (fn === 'remove_friend') { world.friendships = world.friendships.filter((x) => x.user_a !== body.p_other && x.user_b !== body.p_other); return send(204, null); }
+      if (fn === 'open_dm') {
+        let d = world.dms.find((x) => x.user === body.p_other);
+        if (!d) { d = { id: 'dm' + world.nextId++, user: body.p_other }; world.dms.push(d); }
+        return send(200, d.id);
+      }
       if (fn === 'create_invite') return send(200, 'abc123def0');
       if (fn === 'join_server') return send(400, { message: 'invalid_invite' });
       return send(404, {});
     }
     if (path === 'servers') return send(200, world.servers);
-    if (path === 'channels') return send(200, world.channels);
+    if (path === 'channels') return send(200, q.get('kind') === 'eq.dm' ? world.dms.map((d) => ({ id: d.id })) : world.channels);
+    if (path === 'friendships') return send(200, world.friendships);
+    if (path === 'dm_members') return send(200, world.dms.flatMap((d) => [{ channel_id: d.id, user_id: 'u1' }, { channel_id: d.id, user_id: d.user }]));
     if (path === 'server_members') return send(200, world.members);
     if (path === 'profiles') {
       if (m === 'PATCH') { Object.assign(world.profiles[0], body); return send(204, null); }
@@ -190,7 +211,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   // 55 mensagens antigas já guardadas no futuro canal Geral (para testar o histórico)
   for (let i = 0; i < 55; i++) world.messages.push({ id: i - 54, channel_id: 'srv1c1', author_id: 'u2', content: 'antiga ' + i, created_at: '2026-11-17T10:00:00Z', edited_at: null });
   // criar servidor pela janela
-  await page.click('.hcta .mbtn:not(.ghost)');
+  await page.click('.hchat .hcta .mbtn:not(.ghost)');
   await page.waitForSelector('.modal');
   await page.fill('#mf-name', 'Clube do Teste');
   await page.click('[data-act="modal-submit"]');
@@ -272,15 +293,72 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await page.click('.tbh');
   await page.waitForSelector('.hub');
   ok('ícone de conversa volta ao painel', true);
-  await page.click('[data-act="gsearch"]');
-  await page.fill('#gsearch', 'marina');
-  ok('busca filtra os amigos (membros reais)', (await page.locator('.frow').count()) === 1);
-  await page.fill('#gsearch', '');
-  await page.click('[data-act="gsearch"]');
+  ok('sem amigos: o painel convida a adicionar', /ainda não tem amigos/.test(await page.textContent('#flist')));
   await page.fill('#hmsg', 'Oi pessoal');
   await page.press('#hmsg', 'Enter');
   await page.waitForFunction(() => /Oi pessoal/.test(document.getElementById('hmsgs').textContent));
   ok('mensagem aparece na conversa do painel', true);
+  // adicionar amigo pelo @usuário
+  await page.click('#flist [data-act="toast-friend"]');
+  await page.fill('#mf-user', '@Marina');
+  await page.click('[data-act="modal-submit"]');
+  await page.waitForFunction(() => !document.querySelector('.modal'));
+  ok('pedido de amizade enviado pelo @usuário', world.friendships.length === 1 && world.friendships[0].requester === 'u1' && world.friendships[0].status === 'pending');
+  await page.click('[data-act="toast-friend"] >> nth=0').catch(() => {});
+  await page.waitForSelector('.modal');
+  await page.fill('#mf-user', 'ninguemassim');
+  await page.click('[data-act="modal-submit"]');
+  await page.waitForSelector('.merr');
+  ok('@usuário que não existe mostra erro em português', /Não encontramos/.test(await page.textContent('.merr')));
+  await page.click('[data-act="modal-close"]');
+  // o cartão de quem recebeu o pedido mostra "Cancelar pedido"
+  await page.click('[data-act="srv-open"] >> nth=0');
+  await page.waitForSelector('.ap .chat');
+  await page.click('#msgs [data-act="profile"][data-id="u2"]');
+  await page.waitForSelector('.pcard');
+  ok('cartão de pedido enviado oferece cancelar', /Cancelar pedido/.test(await page.textContent('.mfoot')));
+  await page.click('[data-act="modal-close"]');
+  // Marina aceita (chega pelo tempo real)
+  world.friendships[0].status = 'accepted';
+  wsConn.send(JSON.stringify({ topic: 'realtime:sq', event: 'postgres_changes', payload: { data: { type: 'UPDATE', table: 'friendships', record: { requester: 'u1', status: 'accepted' } } } }));
+  await page.click('.tbh');
+  await page.waitForFunction(() => document.querySelectorAll('#flist .frow').length === 1, null, { timeout: 5000 });
+  ok('amiga aceita aparece na lista de amigos', /Marina Rocha/.test(await page.textContent('#flist')));
+  await page.click('[data-act="gsearch"]');
+  await page.fill('#gsearch', 'marina');
+  ok('busca filtra os amigos', (await page.locator('#flist .frow').count()) === 1);
+  await page.fill('#gsearch', 'zzz');
+  ok('busca sem resultado', /Nenhum amigo/.test(await page.textContent('#flist')));
+  await page.fill('#gsearch', '');
+  await page.click('[data-act="gsearch"]');
+  // conversa privada
+  await page.click('#flist .frow');
+  await page.waitForSelector('.pcard');
+  ok('cartão de amigo oferece enviar mensagem', /Enviar mensagem/.test(await page.textContent('.mfoot')) && /Remover amigo/.test(await page.textContent('.mfoot')));
+  await page.click('[data-act="dm"]');
+  await page.waitForFunction(() => !document.querySelector('.modal') && document.querySelector('.dmtab.on'));
+  await page.fill('#hmsg', 'Oi Marina, tudo bem?');
+  await page.press('#hmsg', 'Enter');
+  await page.waitForFunction(() => /Oi Marina, tudo bem/.test(document.getElementById('hmsgs').textContent));
+  ok('conversa privada: mensagem enviada ao canal da conversa', world.messages.some((m) => /^dm/.test(m.channel_id) && m.content === 'Oi Marina, tudo bem?'));
+  await page.screenshot({ path: OUT + '/2g-dm.png' });
+  const dmId = world.dms[0].id;
+  const rowdm = { id: world.nextMsg++, channel_id: dmId, author_id: 'u2', content: 'Tudo ótimo!', created_at: new Date().toISOString(), edited_at: null };
+  world.messages.push(rowdm);
+  wsConn.send(JSON.stringify({ topic: 'realtime:sq', event: 'postgres_changes', payload: { data: { type: 'INSERT', table: 'messages', record: rowdm } } }));
+  await page.waitForFunction(() => /Tudo ótimo/.test(document.getElementById('hmsgs').textContent), null, { timeout: 4000 });
+  ok('resposta da amiga chega em tempo real na conversa privada', true);
+  // pedido recebido: sino mostra e aceita
+  world.friendships.push({ user_a: 'u1', user_b: 'u3', requester: 'u3', status: 'pending' });
+  wsConn.send(JSON.stringify({ topic: 'realtime:sq', event: 'postgres_changes', payload: { data: { type: 'INSERT', table: 'friendships', record: { requester: 'u3', status: 'pending' } } } }));
+  await page.waitForTimeout(700);
+  if (!(await page.locator('#ubar.open, #ubar.exp').count())) { await page.click('#b-dots'); await page.waitForTimeout(800); }
+  await page.click('#ubar [data-act="panel"][data-k="notif"]');
+  await page.waitForSelector('.panel .it.req');
+  ok('sino mostra o pedido de amizade recebido', /Pedro Alves/.test(await page.textContent('.panel')));
+  await page.click('.panel [data-act="fr-accept"]');
+  await page.waitForFunction(() => document.querySelectorAll('#flist .frow').length === 2, null, { timeout: 5000 });
+  ok('aceitar o pedido adiciona o novo amigo', world.friendships.every((f) => f.status === 'accepted'));
   await page.setViewportSize({ width: 390, height: 800 });
   await page.waitForTimeout(300);
   ok('painel no celular sem rolagem lateral', await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
