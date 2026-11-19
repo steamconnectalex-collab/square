@@ -33,7 +33,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   let qrPolls = 0;
   const storageCalls = [];
   // ---- banco simulado (servidores, canais, membros, mensagens, perfis) ----
-  const world = { servers: [], channels: [], members: [], messages: [], nextMsg: 1, nextId: 1, friendships: [], dms: [], blocks: [], voice: [],
+  const world = { servers: [], channels: [], members: [], messages: [], nextMsg: 1, nextId: 1, friendships: [], dms: [], blocks: [], voice: [], bans: [],
     profiles: [
       { id: 'u1', username: 'tester', display_name: 'Tester Um', bio: '', status_text: '', accent: '#9D8CCF', last_seen: null, created_at: '2026-11-16T10:00:00Z' },
       { id: 'u3', username: 'pedro', display_name: 'Pedro Alves', bio: '', status_text: '', accent: '#6FB3A0', last_seen: null, created_at: '2026-11-12T10:00:00Z' },
@@ -70,6 +70,9 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
       if (fn === 'remove_friend') { world.friendships = world.friendships.filter((x) => x.user_a !== body.p_other && x.user_b !== body.p_other); return send(204, null); }
       if (fn === 'block_user') { world.blocks.push({ blocked: body.p_other }); world.friendships = world.friendships.filter((x) => x.user_a !== body.p_other && x.user_b !== body.p_other); return send(204, null); }
       if (fn === 'unblock_user') { world.blocks = world.blocks.filter((b) => b.blocked !== body.p_other); return send(204, null); }
+      if (fn === 'kick_member' || fn === 'ban_member') { world.members = world.members.filter((x) => !(x.server_id === body.p_server && x.user_id === body.p_user)); if (fn === 'ban_member') world.bans.push({ user_id: body.p_user, username: 'marina', display_name: 'Marina Rocha' }); return send(204, null); }
+      if (fn === 'list_bans') return send(200, world.bans);
+      if (fn === 'unban_member') { world.bans = world.bans.filter((b) => b.user_id !== body.p_user); return send(204, null); }
       if (fn === 'voice_join') { world.voice = [{ channel_id: body.p_channel, user_id: 'u1', seen_at: new Date().toISOString() }]; return send(204, null); }
       if (fn === 'voice_ping') return send(204, null);
       if (fn === 'voice_leave') { world.voice = []; return send(204, null); }
@@ -130,6 +133,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
         return send(200, { ok: true, session, user: { id: 'u1', email: 'teste@exemplo.com' }, profile: { username: 'tester', display_name: 'Tester Um' } });
       case '/signup':
         if (body.username === 'ocupado') return send(409, { ok: false, error: 'username_taken', message: 'Esse nome de usuário já está em uso. Escolha outro.' });
+        if (body.accept_terms !== true) return send(400, { ok: false, error: 'terms_required', message: 'x' });
         return send(200, { ok: true, email: body.email.toLowerCase(), sent: true });
       case '/verify':
         if (body.code !== 'ABC234') return send(400, { ok: false, error: 'wrong_code', message: 'Esse código não confere. Confira o e-mail e tente de novo.', attempts_left: 4 });
@@ -338,6 +342,27 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await page.click('[data-act="vleave"]');
   await page.waitForFunction(() => !document.querySelector('.vbar'), null, { timeout: 4000 });
   ok('sair da voz: avisa os outros ("bye") e limpa a sala', wsIn.some((j) => j.event === 'broadcast' && j.payload && j.payload.event === 'bye') && world.voice.length === 0);
+  // etapa 8: banir e desbanir (só o dono do servidor)
+  const srvId = world.servers[0].id;
+  if (!(await page.locator('.banlnk').count())) await page.click('.nav [data-act="nav"][data-k="members"]');
+  await page.waitForSelector('.banlnk');
+  if (!(await page.locator('.mlist .pf[data-id="u2"]').count())) { for (const b of await page.locator('.mlist .mg[aria-expanded="false"]').all()) await b.click(); }
+  await page.click('.mlist .pf[data-id="u2"]');
+  await page.waitForSelector('.pcard');
+  ok('dono vê "Expulsar" e "Banir" no cartão de um membro', (await page.locator('.modal [data-act="mod"][data-k="kick"]').count()) === 1 && (await page.locator('.modal [data-act="mod"][data-k="ban"]').count()) === 1);
+  await page.click('.modal [data-act="mod"][data-k="ban"]');
+  await page.waitForSelector('.modal:has-text("Banir do servidor")');
+  await page.click('[data-act="modal-submit"]');
+  await page.waitForFunction(() => !document.querySelector('.modal'), null, { timeout: 5000 });
+  ok('banir tira a pessoa do servidor e guarda o banimento', !world.members.some((x) => x.server_id === srvId && x.user_id === 'u2') && world.bans.length === 1);
+  await page.click('.banlnk');
+  await page.waitForSelector('.banrow', { timeout: 5000 });
+  ok('lista de banidos mostra a pessoa', /Marina/.test(await page.textContent('.modal')));
+  await page.click('[data-act="unban"]');
+  await page.waitForFunction(() => !document.querySelector('.banrow'), null, { timeout: 5000 });
+  ok('desbanir remove da lista', world.bans.length === 0);
+  await page.click('.modal [data-act="modal-close"]');
+  world.members.push({ server_id: srvId, user_id: 'u2', role: 'member' });
   // painel inicial agora com dados reais
   await page.click('.tbh');
   await page.waitForSelector('.hub');
@@ -463,7 +488,17 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await page.fill('#r-email', 'Novo@Exemplo.com');
   await page.fill('#r-user', 'ocupado');
   await page.fill('#r-pass', 'Senha1234!');
-  await page.selectOption('#r-day', '10'); await page.selectOption('#r-month', '5'); await page.selectOption('#r-year', '2000');
+  const anoAtual = new Date().getFullYear();
+  await page.selectOption('#r-day', '10'); await page.selectOption('#r-month', '5'); await page.selectOption('#r-year', String(anoAtual - 8));
+  await page.click('button.btn[type=submit]');
+  await page.waitForFunction(() => /pelo menos 13 anos/.test(document.body.textContent));
+  ok('cadastro: menor de 13 anos é barrado', true);
+  await page.selectOption('#r-year', '2000');
+  await page.click('button.btn[type=submit]');
+  await page.waitForFunction(() => /Aceite os Termos de Uso/.test(document.body.textContent));
+  ok('cadastro: sem aceitar os termos não segue', true);
+  ok('cadastro: links para Termos e Privacidade', (await page.locator('a[href="/termos"]').count()) === 1 && (await page.locator('a[href="/privacidade"]').count()) === 1);
+  await page.check('#r-terms');
   await page.click('button.btn[type=submit]');
   await page.waitForSelector('#r-user.bad');
   ok('erro do servidor no campo (username_taken)', /em uso/.test(await page.textContent('.field:has(#r-user) .err')));

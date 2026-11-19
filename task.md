@@ -59,6 +59,7 @@ Fluxo de acesso: Home → "Entrar" → login (com painel de QR Code) → "Regist
 - [x] 2026-11-18 — **Etapa 5 (parte 2): tela cheia, não lidas e bloquear.** Migração `0006_bloqueios.sql` aplicada (tabela `blocks`; funções `block_user` e `unblock_user`; bloquear desfaz a amizade; quem bloqueou não escreve e o bloqueado não consegue mandar pedido). No site: conversa privada em tela cheia (lista de amigos à esquerda, botão de expandir no painel, "Voltar ao painel"), bolinha vermelha de não lidas (no ícone do painel, nas abas e na lista; guarda "última lida" no navegador), "Bloquear" no cartão de perfil com confirmação e "Desbloquear"; mensagens e "digitando…" de bloqueados somem da tela. Testes de fumaça: 76 OK. Publicado na Vercel (deployment `dpl_G4iz6zp3YGMP6g6BnFUjAgjmYxNH`, commit `f97e59d`; `app.js` no ar tem o código novo). Limites: o filtro de mensagens de bloqueados é só na tela; para desbloquear é preciso abrir o perfil da pessoa.
 - [x] 2026-11-18 — **Etapa 6: menções, imagens, busca.** Migração `0007_anexos_de_imagem.sql` aplicada (coluna `attachment_path` em `messages`; bucket público `attachments`, até 3 MB, JPG/PNG/WebP, cada pessoa só grava/apaga na própria pasta). No site: botão de clipe/“+” envia imagem (reduzida a 1280 px no navegador, com legenda opcional), `@usuário` fica destacado (mais forte se for você) e avisa na hora quando alguém menciona você, painel "Menções" (últimas 20), painel "Buscar mensagens" (no canal aberto ou na conversa privada). Presença online/offline já era real (batimento a cada 60 s). **Fora do escopo por limitação:** GIFs (não há como chamar serviço externo de GIF sem chave e sem liberar no CSP) e presentes continuam "em breve"; emojis são os 8 que já existiam. Testes de fumaça: 80 OK.
 - [x] 2026-11-19 — **Etapa 7: voz (WebRTC).** Migração `0008_voz.sql` aplicada (tabela `voice_members` = quem está em cada sala, com `seen_at` renovado a cada 15 s; funções `voice_join` (máx. 6 pessoas, só membro do servidor, uma sala por vez), `voice_ping`, `voice_leave`; canal privado do Realtime `voice:<id do canal>` liberado por regra de segurança só para membros). Testado no banco (transação desfeita): membro entra e vê a sala; estranho não vê, não entra, não escreve e não acessa o canal privado. No site: clicar no canal de voz pede o microfone e entra; o áudio vai direto entre as pessoas (malha P2P, servidores STUN do Google); a sinalização (oferta/resposta/ICE) passa pelo canal privado; lista de quem está em cada sala na barra lateral (atualiza em tempo real); barra "Voz conectada" com botão Sair; mudo e ensurdecer funcionam na chamada; `Permissions-Policy` do microfone liberada para o próprio site. Testes de fumaça: 86 OK (microfone falso do Chromium; confere entrada, canal privado, criação da oferta de áudio, mudo e saída). **Não testado com duas pessoas de verdade** (o teste automático simula o outro lado). **Limites conhecidos:** sem servidor TURN, quem está atrás de rede muito restrita (alguns 4G/empresas) pode não ouvir/ser ouvido; sala até 6 pessoas; sem indicador de "falando"; sem compartilhamento de tela/vídeo.
+- [x] 2026-11-19 — **Etapa 8 (parte feita por mim):** (1) **Limite de mensagens:** migração `0009_limite_e_banimentos.sql` aplicada; no banco, no máximo 5 mensagens a cada 5 s e 40 por minuto por pessoa (erro "Calma! Você está enviando mensagens rápido demais"). (2) **Expulsar e banir:** só o dono do servidor; funções `kick_member`, `ban_member`, `unban_member`, `list_bans`; quem foi banido não entra de novo por convite (erro `banned`); no site: "Expulsar" e "Banir" no cartão de perfil de um membro (dono) e "Ver banidos" (com Desbanir) na lista de membros. Testado no banco (transação desfeita). (3) **Termos e idade mínima:** migração `aceite_dos_termos` (coluna `profiles.terms_accepted_at`); função `auth` publicada na versão 5 exigindo `accept_terms` e **idade mínima de 13 anos** (constante `MIN_AGE` em `supabase/functions/auth/index.ts`; é uma escolha minha, mude se quiser outra idade); caixa "Li e aceito os Termos de Uso e a Política de Privacidade" no cadastro; páginas `site/termos.html` e `site/privacidade.html` (**texto-modelo sem revisão de advogado; falta colocar o contato oficial**). (4) **Fotos de teste desligadas** (`USE_TEST_PHOTOS = false`); `deploy/fetch.sh` não baixa mais `site/img/` (a pasta continua no repositório, sem uso; pode ser apagada quando você quiser) e agora tem novas tentativas automáticas. Testes de fumaça: 93 OK. A função `auth` nova **não foi testada ao vivo** (não consigo chamá-la daqui): confira criando uma conta.
 - [x] 2026-11-16 — **Etapa 2:** site completo (home + login + app) publicado na Vercel em https://square-chat-silk.vercel.app (deployment `dpl_2wsLZ3h1f7CT3kGt3w8N5rdQS6KS`, commit `495cab0` do GitHub). Conferido: `index.html`, `app.js` e `home.js` no ar são idênticos, byte a byte, aos do repositório.
 
 ## Análise do projeto (2026-11-17)
@@ -80,11 +81,11 @@ Fluxo de acesso: Home → "Entrar" → login (com painel de QR Code) → "Regist
 5. [x] **Amigos e mensagens diretas (2026-11-18: pedido por @usuário, aceitar/recusar/remover, lista real, conversa 1 a 1 em tempo real e em tela cheia com "ver mais antigas", bolinha de não lidas, bloquear/desbloquear; "festas fixadas" e "mais jogados" do painel seguem de demonstração):** pedido de amizade, conversa 1 a 1, painel inicial com dados reais, notificações.
 6. [x] **Presença e extras (2026-11-18: imagens, menções, busca; GIFs/presentes ficam para depois):** online/offline real, imagens/anexos, emojis e GIFs, menções, busca de mensagens.
 7. [x] **Voz** (2026-11-19, WebRTC em malha até 6 pessoas; falta teste real com duas pessoas e, se preciso, servidor TURN).
-8. [ ] **Antes de lançar:** limite de mensagens por segundo, proteção contra senhas vazadas, domínio verificado no Resend, ligar Vercel ↔ GitHub, trocar fotos de teste por ícone de boneco (`USE_TEST_PHOTOS = false`), expulsar/banir, termos e idade mínima.
+8. [~] **Antes de lançar (2026-11-19):** feitos — limite de mensagens, expulsar/banir, termos e idade mínima, fotos de teste desligadas. **Faltam, e dependem de você:** proteção contra senhas vazadas, domínio verificado no Resend, ligar Vercel ↔ GitHub, contato oficial nos termos (ver "O que ainda falta fazer").
 
 ## Em andamento agora
 
-- Nada em andamento; a pessoa testa o site no ar.
+- Nada em andamento; a pessoa testa o site no ar (etapas 6, 7 e 8 publicadas).
 
 ## Como publicar o site (enquanto a Vercel não estiver ligada ao GitHub)
 
@@ -96,11 +97,12 @@ Fluxo de acesso: Home → "Entrar" → login (com painel de QR Code) → "Regist
 ## O que ainda falta fazer
 
 - [ ] Ligar a Vercel ao repositório do GitHub, para o site publicar sozinho a cada envio (hoje a publicação é feita por `deploy/fetch.sh`, passo a passo acima). Precisa de um passo da pessoa no painel da Vercel: projeto `square-chat` → Settings → Git → Connect Git Repository → GitHub → `steamconnectalex-collab/square`. Depois: Root Directory = `site`, e apagar o Build Command e o Output Directory (hoje `sh fetch.sh …` e `out`).
-- [ ] Chat com dados reais (servidores, canais, mensagens guardadas no banco, tempo real). Hoje a tela principal usa dados de demonstração.
-- [ ] Botões "em breve" da tela principal: criar servidor, criar canais, anexos, presentes, GIFs, configurações.
+- [ ] Botões ainda "em breve": presentes, GIFs, configurações. Painel inicial: "festas fixadas", "mais jogados", música e notícias ainda são demonstração.
+- [ ] Contato oficial (e-mail) nas páginas `termos.html` e `privacidade.html` e revisão por um advogado antes do lançamento.
+- [ ] Voz: testar com duas pessoas reais; se alguém não ouvir, adicionar servidor TURN (serviço pago/externo).
 - [ ] Verificar um domínio no Resend e trocar o remetente (hoje `onboarding@resend.dev`, que só entrega para o e-mail da conta Resend e pode cair no spam).
-- [ ] Ligar a proteção contra senhas vazadas no painel do Supabase (Authentication).
-- [ ] Decidir sobre login por telefone (hoje não existe) e idade mínima (hoje não há regra).
+- [ ] Ligar a proteção contra senhas vazadas no painel do Supabase (Authentication → Sign In / Providers → Password security; costuma exigir o plano Pro). O alerta aparece no verificador de segurança do Supabase.
+- [ ] Decidir sobre login por telefone (hoje não existe). Idade mínima já é 13 anos (pode mudar).
 
 ## Erros a corrigir
 
@@ -108,7 +110,7 @@ Fluxo de acesso: Home → "Entrar" → login (com painel de QR Code) → "Regist
 
 ## Próximo passo
 
-Etapa 6 (anexos, emojis/GIFs, menções, busca de mensagens, presença). Pendente da pessoa: testar com duas contas reais (amizade, conversa privada, tempo real, foto).
+Pendente da pessoa: testar com duas contas reais (amizade, conversa privada, tempo real, foto, imagem, voz, banir) e os passos do painel (Vercel ↔ GitHub, senhas vazadas, domínio no Resend). Depois: GIFs/presentes, configurações, painel inicial com dados reais, servidor TURN se a voz falhar.
 
 ---
 
@@ -125,4 +127,5 @@ Etapa 6 (anexos, emojis/GIFs, menções, busca de mensagens, presença). Pendent
 - **Problemas:** no meio do caminho faltavam ligar os campos das janelas, o envio com Enter e o carregamento do histórico ao abrir o canal; corrigidos e cobertos pelos testes.
 - **Próximo passo:** ver "Próximo passo" acima.
 - **Feito (tarde):** foto de perfil publicada; migração 0005 e site de amigos/conversas privadas prontos e testados (71 OK). **Problema:** repositório ficou privado e a publicação falhou (404). Próximo passo: ver acima.
+- **2026-11-19:** etapas 6, 7 e 8 feitas (migrações 0007, 0008, 0009, `aceite_dos_termos`; função `auth` v5). Testes 93 OK. Sem erros pendentes. Próximo passo: ver acima.
 - **Resolvido:** repositório voltou a ser público e a etapa 5 foi publicada (`dpl_2y69UbKFG1yaoR533Lt6iMc5mAQm`).

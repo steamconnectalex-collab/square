@@ -100,7 +100,7 @@ const logoMark = (s = 18) => ic(D.bubble, s, '#FFFFFF', 1.8);
 const logo = (s = 18) => `<span class="logo" aria-hidden="true">${logoMark(s)}</span>`;
 
 /* --------------------------------------------------------------- state */
-const freshR = () => ({ email: '', display: '', user: '', pass: '', day: '', month: '', year: '', opt: false, show: false, touched: false, srv: {}, busy: false, err: '' });
+const freshR = () => ({ email: '', display: '', user: '', pass: '', day: '', month: '', year: '', opt: false, terms: false, show: false, touched: false, srv: {}, busy: false, err: '' });
 const freshV = () => ({ code: '', err: '', notice: '', busy: false, coolUntil: 0 });
 const freshF = () => ({ email: '', touched: false, busy: false, err: '', notice: '' });
 const freshN = () => ({ email: '', code: '', manual: false, pass: '', conf: '', show: false, touched: false, busy: false, err: '' });
@@ -311,7 +311,10 @@ function regErrors() {
   if (!validEmail(r.email)) e.email = 'Informe um e-mail válido, como nome@exemplo.com.';
   if (!userOk(r.user)) e.user = 'Use de 3 a 20 letras, números, ponto ou sublinhado.';
   if (r.pass.length < 8) e.pass = 'Use pelo menos 8 caracteres.';
-  if (!dobParts(r)) e.dob = 'Informe uma data de nascimento válida.';
+  const dob = dobParts(r);
+  if (!dob) e.dob = 'Informe uma data de nascimento válida.';
+  else { const t = new Date(), cut = (t.getFullYear() - 13) + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); if (dob > cut) e.dob = 'É preciso ter pelo menos 13 anos para criar uma conta.'; }
+  if (!r.terms) e.terms = 'Aceite os Termos de Uso e a Política de Privacidade para continuar.';
   return e;
 }
 function registerView() {
@@ -343,7 +346,8 @@ function registerView() {
     ${e.dob ? `<div class="err" role="alert">${esc(e.dob)}</div>` : ''}
   </div>
   <div class="chk"><input id="r-opt" type="checkbox" data-bind="r.opt"${r.opt ? ' checked' : ''}><label for="r-opt">(Opcional) Pode me mandar e-mails com novidades, dicas e ofertas especiais. Você pode mudar isso a qualquer momento.</label></div>
-  <p class="fine">Ao clicar em “Criar conta”, você concorda com os termos de serviço e confirma que leu a política de privacidade.</p>
+  <div class="chk"><input id="r-terms" type="checkbox" data-bind="r.terms"${r.terms ? ' checked' : ''}><label for="r-terms">Li e aceito os <a href="/termos" target="_blank" rel="noopener">Termos de Uso</a> e a <a href="/privacidade" target="_blank" rel="noopener">Política de Privacidade</a>. Tenho pelo menos 13 anos.</label></div>
+  ${e.terms ? `<div class="err" role="alert">${esc(e.terms)}</div>` : ''}
   ${alertBox(r.err)}
   ${submitBtn(r.busy, 'Criar conta', 'Criando conta…')}
   <div class="small">Já tem uma conta? <button type="button" class="lnk" data-act="to-login">Entre aqui</button></div>
@@ -586,7 +590,7 @@ async function doRegister() {
   try {
     const d = await api('/signup', {
       email: r.email.trim(), username: r.user.trim(), display_name: r.display.trim(), password: r.pass,
-      birth_date: dobParts(r), marketing_opt_in: !!r.opt
+      birth_date: dobParts(r), marketing_opt_in: !!r.opt, accept_terms: !!r.terms
     });
     S.pendingEmail = d.email; tab.set('sq.pending', d.email);
     S.v = freshV(); S.v.coolUntil = Date.now() + 30000;
@@ -595,7 +599,7 @@ async function doRegister() {
     go('verify');
   } catch (e) {
     r.busy = false;
-    const m = { email_taken: 'email', invalid_email: 'email', username_taken: 'user', invalid_username: 'user', weak_password: 'pass', invalid_birth_date: 'dob' }[e.error];
+    const m = { email_taken: 'email', invalid_email: 'email', username_taken: 'user', invalid_username: 'user', weak_password: 'pass', invalid_birth_date: 'dob', too_young: 'dob', terms_required: 'terms' }[e.error];
     if (m) r.srv = { [m]: e.message }; else r.err = e.message || 'Não foi possível criar a conta agora.';
     if (S.view === 'register') render();
   }
@@ -670,8 +674,8 @@ const ACCENTS = ['#9D8CCF', '#E897AB', '#7DB8CF', '#78BE9D', '#EBBA6C', '#9A9AA7
 const hashOf = (s) => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
 const gradFor = (id) => { const k = Object.keys(G); return G[k[hashOf(id) % k.length]]; };
 const tileFor = (id) => TILES[hashOf(id) % TILES.length];
-/* FOTO DE TESTE (provisório): só a foto da própria conta. Antes do lançamento: USE_TEST_PHOTOS = false e apagar site/img/. */
-const USE_TEST_PHOTOS = true;
+/* Fotos de teste desligadas (USE_TEST_PHOTOS = false): sem imagens de exemplo; as pastas site/img/ ficam no repositório, mas não vão mais para o site. */
+const USE_TEST_PHOTOS = false;
 const ph = (file, fallback) => (USE_TEST_PHOTOS ? `url('img/${file}.jpg') center/cover no-repeat, ${fallback}` : fallback);
 const avatarUrl = (path) => C.SUPABASE_URL + '/storage/v1/object/public/avatars/' + path;
 const avBg = (path, fallback) => (path ? `url('${avatarUrl(path)}') center/cover no-repeat, ${fallback}` : fallback);
@@ -709,7 +713,7 @@ const ERRS = {
   not_authenticated: 'Sua sessão expirou. Entre de novo.', network: 'Sem conexão. Verifique sua internet e tente de novo.',
   invalid_name: 'O nome está fora do tamanho permitido.', too_many_servers: 'Você atingiu o limite de servidores.',
   too_many_channels: 'Esse servidor já tem o máximo de canais.', not_owner: 'Só o dono do servidor pode fazer isso.',
-  not_member: 'Você não faz parte deste servidor.', user_not_found: 'Não encontramos ninguém com esse @usuário.', voice_full: 'A sala de voz está cheia (máximo de 6 pessoas).', not_member: 'Você não faz parte deste servidor.', you_blocked: 'Você bloqueou essa pessoa. Desbloqueie para adicioná-la.', cannot_add_self: 'Você não pode adicionar a si mesmo.',
+  not_member: 'Você não faz parte deste servidor.', user_not_found: 'Não encontramos ninguém com esse @usuário.', rate_limited: 'Calma! Você está enviando mensagens rápido demais. Espere alguns segundos.', banned: 'Você foi banido deste servidor.', cannot_remove_self: 'Você não pode fazer isso com você mesmo.', voice_full: 'A sala de voz está cheia (máximo de 6 pessoas).', not_member: 'Você não faz parte deste servidor.', you_blocked: 'Você bloqueou essa pessoa. Desbloqueie para adicioná-la.', cannot_add_self: 'Você não pode adicionar a si mesmo.',
   too_many_requests: 'Você já tem pedidos demais esperando resposta.', no_request: 'Esse pedido não existe mais.', not_friends: 'Vocês ainda não são amigos.', invalid_invite: 'Convite inválido ou expirado.',
   'row-level security': 'Você não tem permissão para isso.', 'violates check constraint': 'Algum campo está fora do tamanho permitido.'
 };
@@ -1519,7 +1523,7 @@ function serverHTML() {
     </nav>
   </header>
   <div class="body">
-    ${A.showMembers ? `<aside class="mem" aria-label="Lista de membros"><h3>${ic(D.users, 20, '#55555F', 1.6)}Lista de membros</h3><div class="mlist" id="mlist">${membersListHTML()}</div></aside>` : ''}
+    ${A.showMembers ? `<aside class="mem" aria-label="Lista de membros"><h3>${ic(D.users, 20, '#55555F', 1.6)}Lista de membros</h3>${srv.mine ? '<button type="button" class="lnk banlnk" data-act="bans">Ver banidos</button>' : ''}<div class="mlist" id="mlist">${membersListHTML()}</div></aside>` : ''}
     <section class="chat" aria-label="Conversa">
       <div class="ch">${ic(D.hash, 19, '#55555F', 1.6)}<h2>${esc(chObj ? chObj.name : 'Sem canal')}</h2></div>
       <div class="msgs" id="msgs" role="log" aria-label="Mensagens" aria-live="polite">${serverMsgsHTML()}</div>
@@ -1585,8 +1589,17 @@ function modalHTML() {
         : rel === 'blocked' ? `<button type="button" class="mbtn" data-act="fr-unblock" data-id="${p.id}"${dis}>Desbloquear</button>`
         : rel === 'outgoing' ? `<button type="button" class="mbtn ghost" data-act="fr-remove" data-id="${p.id}"${dis}>Cancelar pedido</button>`
         : `<button type="button" class="mbtn" data-act="fr-add" data-user="${esc(p.user)}"${dis}>Adicionar amigo</button>`;
+      const sv = A.view === 'server' ? curServer() : null;
+      if (sv && sv.mine && !p.me && sv.byId[p.id]) foot = `<button type="button" class="blink" data-act="mod" data-k="kick" data-id="${p.id}"${dis}>Expulsar</button><button type="button" class="blink" data-act="mod" data-k="ban" data-id="${p.id}"${dis}>Banir</button>` + foot;
       if (rel !== 'me' && rel !== 'blocked') foot = `<button type="button" class="blink" data-act="fr-block" data-id="${p.id}"${dis}>Bloquear</button>` + foot;
     }
+  } else if (m.type === 'mod') {
+    title = m.k === 'ban' ? 'Banir do servidor' : 'Expulsar do servidor'; label = m.k === 'ban' ? 'Banir' : 'Expulsar';
+    body = `<p class="mnote">${m.k === 'ban' ? 'Banir' : 'Expulsar'} ${esc(m.name)}? ${m.k === 'ban' ? 'A pessoa sai do servidor e não consegue voltar por convite, até você desbanir.' : 'A pessoa sai do servidor, mas pode voltar com um novo convite.'}</p>`;
+  } else if (m.type === 'bans') {
+    title = 'Pessoas banidas';
+    body = m.items == null ? '<p class="mnote">Carregando…</p>' : m.items.length ? `<div class="banlist">${m.items.map((b) => `<div class="banrow"><span><b>${esc(b.display_name || 'Pessoa')}</b>${b.username ? ' <small>@' + esc(b.username) + '</small>' : ''}</span><button type="button" class="mbtn sm ghost" data-act="unban" data-id="${b.user_id}"${m.busy ? ' disabled' : ''}>Desbanir</button></div>`).join('')}</div>` : '<p class="mnote">Ninguém foi banido deste servidor.</p>';
+    foot = '<button type="button" class="mbtn ghost" data-act="modal-close">Fechar</button>';
   } else if (m.type === 'block') {
     title = 'Bloquear pessoa'; label = 'Bloquear';
     body = `<p class="mnote">Bloquear ${esc(m.name)}? Vocês deixam de ser amigos e você não verá as mensagens dela nos servidores. Você pode desbloquear depois, no perfil dela.</p>`;
@@ -1602,11 +1615,11 @@ function modalHTML() {
       + mField('mf-bio', 'Sobre mim', 'bio', m.bio, { max: 190, area: true, ph: 'Conte um pouco sobre você', hint: 'Até 190 caracteres.' })
       + `<div class="mf"><span class="lblx">Cor do perfil</span><div class="swatches">${ACCENTS.map((c) => `<button type="button" class="swatch${m.accent === c ? ' on' : ''}" data-act="m-accent" data-c="${c}" aria-pressed="${m.accent === c}" aria-label="Cor ${c}" style="background:${c}"></button>`).join('')}</div></div>`;
   }
-  const showSubmit = !(m.type === 'invite' || m.type === 'profile');
+  const showSubmit = !(m.type === 'invite' || m.type === 'profile' || m.type === 'bans');
   return `<div class="mback" data-act="modal-bg"><div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}">
     <header class="mhead"><h2>${esc(title)}</h2><button type="button" class="hov sq" data-act="modal-close" aria-label="Fechar">${ic(D.close, 16, '#55555F', 1.8)}</button></header>
     <div class="mbody">${body}${m.err ? `<div class="merr" role="alert">${esc(m.err)}</div>` : ''}</div>
-    <footer class="mfoot">${showSubmit ? `<button type="button" class="mbtn ghost" data-act="modal-close">Cancelar</button><button type="button" class="mbtn${m.type === 'del' || m.type === 'block' ? ' danger' : ''}" data-act="modal-submit"${m.busy ? ' disabled' : ''}>${m.busy ? 'Aguarde…' : label}</button>` : foot}</footer>
+    <footer class="mfoot">${showSubmit ? `<button type="button" class="mbtn ghost" data-act="modal-close">Cancelar</button><button type="button" class="mbtn${m.type === 'del' || m.type === 'block' || m.type === 'mod' ? ' danger' : ''}" data-act="modal-submit"${m.busy ? ' disabled' : ''}>${m.busy ? 'Aguarde…' : label}</button>` : foot}</footer>
   </div></div>`;
 }
 function focusModal() { setTimeout(() => { const f = document.querySelector('.modal [data-mf]'); if (f) f.focus(); }, 0); }
@@ -1702,6 +1715,10 @@ async function modalSubmit() {
       A.modal = null; render();
     });
   }
+  if (m.type === 'mod') {
+    const s = curServer();
+    return run(async () => { await rpc(m.k === 'ban' ? 'ban_member' : 'kick_member', { p_server: s.id, p_user: m.id }); await loadWorld(() => {}); A.modal = null; render(); toast(m.k === 'ban' ? 'Pessoa banida' : 'Pessoa expulsa'); });
+  }
   if (m.type === 'block') {
     return run(async () => { await rpc('block_user', { p_other: m.id }); await loadWorld(() => {}); A.modal = null; render(); toast('Pessoa bloqueada'); });
   }
@@ -1793,6 +1810,9 @@ function modalAct(act, el, ev) {
     case 'dm': A.menu = false; friendAct('dm', el.dataset.id); return true;
     case 'dm-open': friendAct('dm', el.dataset.id, '', true); return true;
     case 'dm-sel': A.channel = el.dataset.ch; A.panel = null; render({ scroll: true }); return true;
+    case 'mod': { const p = findPerson(el.dataset.id); if (p) { A.modal = { type: 'mod', k: el.dataset.k, id: p.id, name: p.name, err: '', busy: false }; render(); } return true; }
+    case 'bans': { const s = curServer(); if (!s) return true; const m = A.modal = { type: 'bans', items: null, err: '', busy: false }; render(); rpc('list_bans', { p_server: s.id }).then((r) => { if (A.modal === m) { m.items = r || []; render(); } }).catch((e) => { if (A.modal === m) { m.items = []; m.err = errText(e); render(); } }); return true; }
+    case 'unban': { const m = A.modal, s = curServer(); if (!m || !s) return true; m.busy = true; render(); rpc('unban_member', { p_server: s.id, p_user: el.dataset.id }).then(() => { m.items = (m.items || []).filter((b) => b.user_id !== el.dataset.id); m.busy = false; render(); toast('Pessoa desbanida'); }).catch((e) => { m.busy = false; m.err = errText(e); render(); }); return true; }
     case 'fr-unblock': friendAct('unblock', el.dataset.id); return true;
     case 'fr-block': { const p = findPerson(el.dataset.id); if (p) { A.modal = { type: 'block', id: p.id, name: p.name, err: '', busy: false }; render(); focusModal(); } return true; }
     case 'msg-edit': openMsgModal('edit', el); return true;

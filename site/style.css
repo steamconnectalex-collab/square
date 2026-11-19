@@ -461,3 +461,4 @@ button.pic{cursor:pointer}
 .vbar small{color:#55555F;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vdot{width:9px;height:9px;border-radius:50%;background:#3BB273;box-shadow:0 0 0 3px rgba(59,178,115,.25);flex:none}
 .vbar.fix{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:60;margin:0;background:#fff;box-shadow:0 10px 30px rgba(40,40,70,.18)}
+.banlist{display:flex;flex-direction:column;gap:8px}.banrow{display:flex;align-items:center;justify-content:space-between;gap:10px}.banrow small{color:#77777F}.banlnk{margin:0 0 8px 4px;font-size:13px}

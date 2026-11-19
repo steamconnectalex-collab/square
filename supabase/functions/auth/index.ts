@@ -80,6 +80,12 @@ function parseBirth(v: unknown) {
   if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d || y < 1900 || dt.getTime() > Date.now()) throw bad();
   return `${m[1]}-${m[2]}-${m[3]}`;
 }
+const MIN_AGE = 13; // idade mínima para criar conta
+function checkAge(birth: string) {
+  const t = new Date();
+  const cut = `${t.getUTCFullYear() - MIN_AGE}-${String(t.getUTCMonth() + 1).padStart(2, "0")}-${String(t.getUTCDate()).padStart(2, "0")}`;
+  if (birth > cut) throw new HttpError(400, "too_young", `É preciso ter pelo menos ${MIN_AGE} anos para criar uma conta.`);
+}
 
 function clientIp(req: Request) {
   return req.headers.get("cf-connecting-ip") ?? req.headers.get("x-real-ip") ??
@@ -195,6 +201,8 @@ async function signup(body: Record<string, unknown>, ip: string) {
   const username = normUsername(body.username);
   const password = checkPassword(body.password);
   const birth = parseBirth(body.birth_date);
+  checkAge(birth);
+  if (body.accept_terms !== true) throw new HttpError(400, "terms_required", "Aceite os Termos de Uso e a Política de Privacidade para continuar.");
   const display = String(body.display_name ?? "").replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 40) || username;
   const optIn = body.marketing_opt_in === true;
   await limit(`signup:ip:${ip}`, 10, 3600, "Muitos cadastros deste endereço. Tente de novo mais tarde.");
@@ -213,7 +221,7 @@ async function signup(body: Record<string, unknown>, ip: string) {
     await admin.auth.admin.deleteUser(owner.id);
   }
 
-  const fields = { username, display_name: display, birth_date: birth, marketing_opt_in: optIn };
+  const fields = { username, display_name: display, birth_date: birth, marketing_opt_in: optIn, terms_accepted_at: new Date().toISOString() };
   const taken = () => new HttpError(409, "username_taken", "Esse nome de usuário já está em uso. Escolha outro.");
   if (existing) {
     // cadastro anterior que nunca confirmou o e-mail: atualiza e reenvia o código
