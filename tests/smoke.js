@@ -33,7 +33,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   let qrPolls = 0;
   const storageCalls = [];
   // ---- banco simulado (servidores, canais, membros, mensagens, perfis) ----
-  const world = { servers: [], channels: [], members: [], messages: [], nextMsg: 1, nextId: 1, friendships: [], dms: [], blocks: [], voice: [], bans: [],
+  const world = { servers: [], channels: [], members: [], messages: [], nextMsg: 1, nextId: 1, friendships: [], dms: [], blocks: [], voice: [], bans: [], favs: [], pls: [], ptracks: [], nextPl: 1, nextPt: 1, moves: [],
     profiles: [
       { id: 'u1', username: 'tester', display_name: 'Tester Um', bio: '', status_text: '', accent: '#9D8CCF', last_seen: null, created_at: '2026-11-16T10:00:00Z' },
       { id: 'u3', username: 'pedro', display_name: 'Pedro Alves', bio: '', status_text: '', accent: '#6FB3A0', last_seen: null, created_at: '2026-11-12T10:00:00Z' },
@@ -81,9 +81,30 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
         if (!d) { d = { id: 'dm' + world.nextId++, user: body.p_other }; world.dms.push(d); }
         return send(200, d.id);
       }
+      if (fn === 'playlist_move') { world.moves.push([body.p_track, body.p_dir]); const a = world.ptracks.findIndex((x) => x.id === body.p_track), b = a + body.p_dir; if (a >= 0 && world.ptracks[b]) [world.ptracks[a], world.ptracks[b]] = [world.ptracks[b], world.ptracks[a]]; return send(204, null); }
       if (fn === 'create_invite') return send(200, 'abc123def0');
       if (fn === 'join_server') return send(400, { message: 'invalid_invite' });
       return send(404, {});
+    }
+    if (path === 'music_favorites') {
+      if (m === 'POST') { world.favs.unshift({ track_id: body.track_id, track: body.track }); return send(201, null); }
+      if (m === 'DELETE') { const id = (q.get('track_id') || '').replace('eq.', ''); world.favs = world.favs.filter((f) => f.track_id !== id); return send(204, null); }
+      return send(200, world.favs);
+    }
+    if (path === 'playlists') {
+      if (m === 'POST') { world.pls.unshift({ id: '00000000-0000-4000-8000-00000000000' + world.nextPl++, name: body.name, shared: false, owner_id: 'u1' }); return send(201, null); }
+      if (m === 'PATCH') { world.pls.forEach((x) => Object.assign(x, body)); return send(204, null); }
+      if (m === 'DELETE') { const id = (q.get('id') || '').replace('eq.', ''); world.pls = world.pls.filter((x) => x.id !== id); return send(204, null); }
+      if (q.get('id')) return send(200, world.pls.filter((x) => x.id === q.get('id').replace('eq.', '')));
+      return send(200, world.pls.map((x) => ({ id: x.id, name: x.name, shared: x.shared, playlist_tracks: [{ count: world.ptracks.filter((t) => t.playlist_id === x.id).length }] })));
+    }
+    if (path === 'playlist_tracks') {
+      if (m === 'POST') { world.ptracks.push({ id: world.nextPt++, playlist_id: body.playlist_id, track: body.track, position: body.position }); return send(201, null); }
+      if (m === 'DELETE') { const id = +(q.get('id') || '').replace('eq.', ''); world.ptracks = world.ptracks.filter((x) => x.id !== id); return send(204, null); }
+      const pid = (q.get('playlist_id') || '').replace('eq.', '');
+      const rows = world.ptracks.filter((x) => x.playlist_id === pid);
+      if ((q.get('select') || '').startsWith('position')) return send(200, rows.length ? [{ position: Math.max(...rows.map((r) => r.position)) }] : []);
+      return send(200, rows.map((r) => ({ id: r.id, track: r.track })));
     }
     if (path === 'servers') return send(200, world.servers);
     if (path === 'channels') return send(200, q.get('kind') === 'eq.dm' ? world.dms.map((d) => ({ id: d.id })) : world.channels);
@@ -113,6 +134,12 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
     return send(404, {});
   };
 
+  const wav = (() => { const n = 8000, b = Buffer.alloc(44 + n * 2); b.write('RIFF', 0); b.writeUInt32LE(36 + n * 2, 4); b.write('WAVEfmt ', 8); b.writeUInt32LE(16, 16); b.writeUInt16LE(1, 20); b.writeUInt16LE(1, 22); b.writeUInt32LE(8000, 24); b.writeUInt32LE(16000, 28); b.writeUInt16LE(2, 32); b.writeUInt16LE(16, 34); b.write('data', 36); b.writeUInt32LE(n * 2, 40); return b; })();
+  const itCors = { 'access-control-allow-origin': '*' };
+  const itTracks = [101, 102].map((id) => ({ trackId: id, trackName: id === 101 ? 'Magnolia' : 'Sky', artistName: id === 101 ? 'Playboi Carti' : 'Banda Teste', artworkUrl100: 'https://is1-ssl.mzstatic.com/a/' + id + '/100x100bb.jpg', previewUrl: 'https://audio-ssl.itunes.apple.com/x/p' + id + '.wav' }));
+  await ctx.route('https://itunes.apple.com/**', (r) => r.fulfill({ status: 200, headers: itCors, contentType: 'application/json', body: JSON.stringify({ results: new URL(r.request().url()).pathname.includes('lookup') ? [itTracks[0]] : itTracks.concat([{ trackId: 103, trackName: 'Sem prévia' }]) }) }));
+  await ctx.route('https://audio-ssl.itunes.apple.com/**', (r) => r.fulfill({ status: 200, headers: itCors, contentType: 'audio/wav', body: wav }));
+  await ctx.route('https://is1-ssl.mzstatic.com/**', (r) => r.fulfill({ status: 200, headers: itCors, contentType: 'image/gif', body: Buffer.from('R0lGODlhAQABAAAAACw=', 'base64') }));
   await ctx.route('https://fonts.googleapis.com/**', (r) => r.fulfill({ status: 200, contentType: 'text/css', body: '' }));
   await ctx.route('https://fonts.gstatic.com/**', (r) => r.abort());
   await ctx.route('https://vjkqyqdabypdylhoupha.supabase.co/**', async (route) => {
@@ -213,11 +240,65 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   // abas de notícias
   await page.click('#tab-free');
   ok('aba Jogos grátis troca o conteúdo', await page.isVisible('#pane-free') && !(await page.isVisible('#pane-news')));
-  // player
-  ok('disco gira ao tocar', await page.locator('#disc.spin').count() === 1);
+  // música: busca, fila, favoritas, playlists
+  ok('player começa vazio e parado', (await page.locator('#disc.spin').count()) === 0 && /Nenhuma música/.test(await page.textContent('#mt')));
+  await page.click('.w-mus [data-act="mus-open"][data-tab="search"]');
+  await page.waitForSelector('.modal.wide #mf-q');
+  await page.fill('#mf-q', 'magnolia');
+  await page.waitForSelector('#mus-res .mrow2');
+  ok('busca mostra só músicas com prévia', (await page.locator('#mus-res .mrow2').count()) === 2);
+  await page.screenshot({ path: OUT + '/9-musica-busca.png' });
+  await page.click('#mus-res .mrow2:nth-child(1) [data-act="mus-q"]');
+  await page.click('#mus-res .mrow2:nth-child(2) [data-act="mus-q"]');
+  await page.click('#mus-res .mrow2:nth-child(1) [data-act="mus-fav"]');
+  await page.waitForTimeout(200);
+  ok('favoritar grava no banco', world.favs.length === 1 && world.favs[0].track_id === '101');
+  await page.click('.mtab[data-tab="pl"]');
+  await page.fill('#mf-new', 'Treino');
+  await page.click('[data-act="mus-pl-new"]');
+  await page.waitForSelector('.plrow');
+  ok('criar playlist', world.pls.length === 1 && /Treino/.test(await page.textContent('.plrow')));
+  await page.click('.mtab[data-tab="fav"]');
+  await page.click('.mrow2 [data-act="mus-pick"]');
+  await page.click('[data-act="mus-addpl"]');
+  await page.waitForTimeout(300);
+  await page.click('.mtab[data-tab="search"]');
+  await page.fill('#mf-q', 'sky');
+  await page.waitForSelector('#mus-res .mrow2');
+  await page.click('#mus-res .mrow2:nth-child(2) [data-act="mus-pick"]');
+  await page.click('[data-act="mus-addpl"]');
+  await page.waitForTimeout(300);
+  ok('adicionar músicas à playlist (posição crescente)', world.ptracks.length === 2 && world.ptracks[1].position === 2);
+  await page.click('.mtab[data-tab="pl"]');
+  await page.click('[data-act="mus-pl-open"]');
+  await page.waitForSelector('.plhead');
+  ok('abrir playlist mostra as faixas', (await page.locator('.modal .mrow2').count()) === 2);
+  await page.click('.modal .mrow2:nth-child(2) [data-act="mus-pl-mv"][data-d="-1"]');
+  await page.waitForTimeout(200);
+  ok('mover para cima chama o banco e muda a ordem', world.moves.length === 1 && world.moves[0][1] === -1 && /Sky/.test(await page.textContent('.modal .mrow2:first-child')));
+  await page.click('[data-act="mus-pl-share"]');
+  await page.waitForSelector('#toast .toast');
+  ok('compartilhar sem conversa aberta avisa', /conversa primeiro/.test(await page.textContent('#toast')));
+  await page.click('[data-act="mus-pl-playall"]');
+  await page.click('.modal [data-act="modal-close"]');
+  await page.waitForSelector('#disc.spin', { timeout: 4000 });
+  await page.screenshot({ path: OUT + '/9-musica-player.png' });
+  ok('tocar playlist enche a fila e o disco gira', (await page.locator('.w-mus .trk').count()) === 2 && (await page.locator('#disc.spin').count()) === 1);
+  ok('capa da música aparece no disco', /mzstatic/.test((await page.getAttribute('#disc .core', 'style')) || ''));
+  await page.click('.w-mus [data-act="mus-qmove"][data-i="0"][data-d="1"]');
+  ok('mover na fila troca a ordem', /Magnolia/.test(await page.textContent('.w-mus .trk:first-child')) || /Sky|Magnolia/.test(await page.textContent('.w-mus .tracks')));
+  await page.click('.w-mus [data-act="mus-qdel"][data-i="1"]');
+  ok('tirar da fila', (await page.locator('.w-mus .trk').count()) === 1);
+  ok('tirar a música que toca para o disco', await page.locator('#disc.spin').count() === 0);
   await page.click('#mplay');
+  await page.waitForSelector('#disc.spin', { timeout: 4000 });
+  ok('tocar começa a música', true);
+  await page.click('#mplay');
+  await page.waitForTimeout(300);
   ok('pausar para o disco', await page.locator('#disc.spin').count() === 0);
-  await page.click('#mplay');
+  await page.reload();
+  await page.waitForSelector('.hub');
+  ok('fila lembrada depois de recarregar', (await page.locator('.w-mus .trk').count()) === 1);
   // conta nova: sem servidores
   ok('conta nova mostra estado vazio com convite para criar servidor', /ainda não está em nenhum servidor/.test(await page.textContent('.hchat')));
   await page.screenshot({ path: OUT + '/2d-vazio.png' });

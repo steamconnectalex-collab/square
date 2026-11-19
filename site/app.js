@@ -63,6 +63,9 @@ const D = {
   check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
   gamepad: '<rect x="2.5" y="7" width="19" height="11" rx="5.5"/><path d="M7 10.5v4M5 12.5h4M15.5 11.5h.01M18 13.5h.01"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
+  heart: '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/>',
+  share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/>',
+  list: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
   hash: '<path d="M5 9h14M5 15h14M10 4 8 20M16 4l-2 16"/>',
   volume: '<path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/>',
   up: '<path d="m18 15-6-6-6 6"/>',
@@ -218,7 +221,7 @@ function route() {
   }
   if (authed && AUTH_ONLY.includes(view)) { go('app'); return; }
   S.view = view;
-  if (view === 'app') { initApp(); startMusic(); }
+  if (view === 'app') { initApp(); }
   render({ top: true });
   setTimeout(() => { const el = document.querySelector('[data-autofocus]'); if (el) el.focus(); }, 0);
   if (view === 'login') qrEnsure();
@@ -710,6 +713,7 @@ async function sb(path, o = {}) {
 }
 const rpc = (name, args) => sb('/rest/v1/rpc/' + name, { method: 'POST', body: args || {} });
 const ERRS = {
+  music_limit: 'Limite atingido (500 favoritas, 30 playlists, 200 músicas por playlist).', music_unavailable: 'A busca de músicas está indisponível agora. Tente de novo.',
   not_authenticated: 'Sua sessão expirou. Entre de novo.', network: 'Sem conexão. Verifique sua internet e tente de novo.',
   invalid_name: 'O nome está fora do tamanho permitido.', too_many_servers: 'Você atingiu o limite de servidores.',
   too_many_channels: 'Esse servidor já tem o máximo de canais.', not_owner: 'Só o dono do servidor pode fazer isso.',
@@ -735,6 +739,7 @@ function msgBody(m) {
   const me = A && A.me && A.me.user ? A.me.user.toLowerCase() : '';
   let t = m.img && m.text === '📷 Imagem' ? '' : esc(m.text);
   t = t.replace(/(^|[\s(])@([a-zA-Z0-9_]{2,30})/g, (x, a, u) => a + '<span class="mention' + (u.toLowerCase() === me ? ' me' : '') + '">@' + u + '</span>');
+  t = t.replace(/\[trk:(\d{1,12})\]/g, '<button type="button" class="mtk" data-act="mus-shared-trk" data-tid="$1">▶ Ouvir prévia</button>').replace(/\[pl:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\]/g, '<button type="button" class="mtk" data-act="mus-open-pl" data-id="$1">Abrir playlist</button>');
   const img = m.img ? `<a class="att" href="${esc(attUrl(m.img))}" target="_blank" rel="noopener"><img src="${esc(attUrl(m.img))}" alt="Imagem enviada" loading="lazy"></a>` : '';
   return t + img;
 }
@@ -764,10 +769,10 @@ function initApp() {
   A = {
     owner: uid, world: 'loading', werr: '', me: null, server: null, channel: null, voice: null, muted: false, deafened: false,
     panel: null, showMembers: true, onlineOpen: true, offlineOpen: true, draft: '', search: '', emojiOpen: false, menu: false,
-    view: 'hub', hubKey: '', hubKeys: [], hdraft: '', gq: '', searchOpen: false, barOpen: false, playing: true, track: 0, prog: 34, ntab: 'news', entered: false,
+    view: 'hub', hubKey: '', hubKeys: [], hdraft: '', gq: '', searchOpen: false, barOpen: false, playing: false, prog: 0, queue: [], qi: -1, tcache: {}, favs: [], loadedId: '', ntab: 'news', entered: false,
     threads: {}, loaded: {}, loading: {}, more: {}, terr: {}, modal: null, poll: null, beat: null, tt: null, typing: {}, pollN: 0, friends: [], incoming: [], outgoing: [], known: {}, dmByUser: {}, dmUser: {}, blocked: new Set(), unread: {}, vrost: {}
   };
-  startLive(); loadWorld(); openJoin();
+  restoreQueue(); startLive(); loadWorld(); openJoin(); loadFavs();
 }
 function openJoin() {
   if (S.joinCode && A) { A.modal = { type: 'srv', mode: 'join', name: '', code: S.joinCode, err: '', busy: false }; S.joinCode = null; }
@@ -780,7 +785,7 @@ function startLive() {
   rtStart();
   beat(true);
 }
-function stopAppTimers() { voiceLeave(true); if (A) { clearInterval(A.poll); clearInterval(A.beat); clearInterval(A.tt); A.poll = A.beat = A.tt = null; } rtStop(false); }
+function stopAppTimers() { try { AUD.pause(); } catch (e) { /* ok */ } voiceLeave(true); if (A) { clearInterval(A.poll); clearInterval(A.beat); clearInterval(A.tt); A.poll = A.beat = A.tt = null; } rtStop(false); }
 
 const curServer = () => SERVERS.find((s) => s.id === A.server) || SERVERS[0] || null;
 const serverOfChan = (cid) => SERVERS.find((s) => s.text.some((c) => c.id === cid)) || null;
@@ -1206,12 +1211,6 @@ const GAMES = [
   { n: 'Dunas', h: '141 h', i: 'D', g: 'linear-gradient(160deg,#F7DDB5,#E39B6B)' },
   { n: 'Cidade Neon', h: '97 h', i: 'N', g: 'linear-gradient(160deg,#BFE3EE,#6C9AD0)' }
 ];
-const TRACKS = [
-  { t: 'Magnolia', a: 'Playboi Carti', d: 181, g: ph('capa', G.rose), img: true },
-  { t: 'Fim de Tarde', a: 'Banda Lume', d: 261, g: G.rose },
-  { t: 'Noite em Neon', a: 'Os Faróis', d: 215, g: G.sky },
-  { t: 'Rota das Dunas', a: 'Vale Sonoro', d: 243, g: G.sand }
-];
 /* Notícias reais (pesquisa feita em 17/11/2026). Cada item abre a matéria na fonte. As artes são degradês de exemplo. */
 const NEWS = [
   { src: 'Game Over Drive', t: 'Sony confirma fim da PS Store no PS3 e PS Vita; veja o que muda no Brasil', s: 'Compras digitais acabam até 2027, mas jogos já comprados poderão ser baixados.', u: 'https://gameoverdrive.com.br/sony-fim-ps-store-ps3-ps-vita-datas-brasil/', g: 'linear-gradient(160deg,#BFE3EE,#6C9AD0)' },
@@ -1223,7 +1222,7 @@ const FREE = [
   { src: 'Game Over Drive', t: 'Alien: Isolation grátis na Epic Games: data e como resgatar', s: 'Alien: Isolation e Mark of the Deep ficam grátis de 19 a 26 de novembro.', u: 'https://gameoverdrive.com.br/alien-isolation-gratis-epic-games-novembro-2026/', g: 'linear-gradient(160deg,#CBE9D9,#78BE9D)' },
   { src: 'Olhar Digital', t: 'Jogos grátis na Epic Games: Knightica', s: 'Roguelike auto-battler de estratégia, grátis de 12 a 19 de novembro.', u: 'https://olhardigital.com.br/2026/11/12/games-e-consoles/jogos-gratis-na-epic-games-knightica/', g: 'linear-gradient(160deg,#FAD3DC,#E897AB)' }
 ];
-const fmt = (s) => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+const fmt = (s) => { s = Math.max(0, Math.floor(s) || 0); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 
 function friendsList() { return A.friends; }
 function friendsHTML() {
@@ -1301,17 +1300,287 @@ function mostHTML() {
   return `<div class="ggrid">${GAMES.map((g) => `<button type="button" class="gtile" data-act="toast-soon" aria-label="${esc(g.n)}, ${esc(g.h)} jogadas"><span class="gart" style="background:${g.g}">${g.i}</span><b>${esc(g.n)}</b><small>${esc(g.h)}</small></button>`).join('')}</div>`;
 }
 
+/* ---- música: busca no iTunes (prévia de 30 s), fila, favoritas e playlists ---- */
+const safeUrl = (u) => (/^https:\/\/[a-z0-9.-]+\.(mzstatic|apple)\.com\//i.test(u || '') ? u : '');
+const cleanTrack = (x) => ({ id: String((x && x.id) || '').slice(0, 20), t: String((x && x.t) || '').slice(0, 120), a: String((x && x.a) || '').slice(0, 120), art: safeUrl(x && x.art), url: safeUrl(x && x.url) });
+const fromItunes = (r) => cleanTrack({ id: r.trackId, t: r.trackName, a: r.artistName, art: String(r.artworkUrl100 || '').replace('100x100bb', '200x200bb'), url: r.previewUrl });
+async function itunes(path) {
+  let res; try { res = await fetch('https://itunes.apple.com/' + path); } catch (e) { throw { message: 'network' }; }
+  if (!res.ok) throw { message: 'music_unavailable' };
+  const j = await res.json().catch(() => ({}));
+  return (j.results || []).filter((r) => r.previewUrl && r.trackId).map(fromItunes).filter((t) => t.id && t.url);
+}
+const AUD = new Audio();
+AUD.preload = 'none';
+let musT = null;
+const curTrack = () => (A && A.queue[A.qi]) || null;
+const isFav = (id) => !!A && A.favs.some((f) => f.id === id);
+const cacheT = (t) => { A.tcache[t.id] = t; return t; };
+const artStyle = (t) => (t && t.art ? `background-image:url('${esc(t.art)}')` : '');
+const saveQueue = () => store.set('sq.q.' + myId(), { q: A.queue, i: A.qi });
+function restoreQueue() {
+  const sv = store.get('sq.q.' + myId());
+  A.queue = sv && Array.isArray(sv.q) ? sv.q.map(cleanTrack).filter((t) => t.id && t.url).slice(0, 100) : [];
+  A.qi = A.queue.length ? Math.min(Math.max(Number(sv.i) || 0, 0), A.queue.length - 1) : -1;
+  A.queue.forEach(cacheT);
+}
+async function loadFavs() {
+  const w = A;
+  try {
+    const rows = await sb('/rest/v1/music_favorites?select=track_id,track&order=created_at.desc&limit=500');
+    if (A !== w) return;
+    A.favs = (rows || []).map((r) => cleanTrack(Object.assign({}, r.track, { id: r.track_id }))).filter((t) => t.id);
+    A.favs.forEach(cacheT); paintMusic(); if (A.modal && A.modal.type === 'music') musRefresh();
+  } catch (e) { /* sem favoritas por enquanto */ }
+}
+function paintMusic() {
+  if (!A || S.view !== 'app') return;
+  const w = document.querySelector('.w-mus'); if (w) w.innerHTML = musicHTML();
+}
+function paintProg() {
+  if (S.view !== 'app' || !A) return;
+  const d = AUD.duration || 30, p = Math.min(100, (A.prog / d) * 100);
+  const f = document.getElementById('mfill'), k = document.getElementById('mknob'), c = document.getElementById('mcur'), e = document.getElementById('mend');
+  if (f) f.style.width = p + '%'; if (k) k.style.left = p + '%'; if (c) c.textContent = fmt(A.prog); if (e) e.textContent = fmt(d);
+}
+function playIdx(i) {
+  const t = A.queue[i]; if (!t) return;
+  A.qi = i; A.prog = 0; A.playing = true; A.loadedId = t.id; saveQueue();
+  AUD.src = t.url;
+  AUD.play().catch(() => { A.playing = false; paintMusic(); toast('Não foi possível tocar essa música.'); });
+  paintMusic();
+}
+function nextTrack(dir) {
+  if (!A || !A.queue.length) return;
+  playIdx((A.qi + dir + A.queue.length) % A.queue.length);
+}
+AUD.addEventListener('timeupdate', () => { if (A) { A.prog = AUD.currentTime; paintProg(); } });
+AUD.addEventListener('ended', () => { if (A) nextTrack(1); });
+AUD.addEventListener('pause', () => { if (A && A.playing && !AUD.ended) { A.playing = false; paintMusic(); } });
+AUD.addEventListener('play', () => { if (A && !A.playing) { A.playing = true; paintMusic(); } });
+function addQueue(t) {
+  if (A.queue.some((x) => x.id === t.id)) return toast('Essa música já está na fila');
+  if (A.queue.length >= 100) return toast('A fila está cheia (máximo 100).');
+  A.queue.push(cacheT(t)); if (A.qi < 0) A.qi = 0; saveQueue(); paintMusic(); toast('Adicionada à fila');
+}
+function playNow(t) {
+  cacheT(t);
+  let i = A.queue.findIndex((x) => x.id === t.id);
+  if (i < 0) { i = A.qi < 0 ? A.queue.length : A.qi + 1; A.queue.splice(i, 0, t); }
+  playIdx(i);
+  if (S.view === 'app' && A.view !== 'hub') toast('Tocando: ' + t.t + ' (controles no painel inicial)');
+}
+function queueMove(i, d) {
+  const j = i + d; if (j < 0 || j >= A.queue.length) return;
+  [A.queue[i], A.queue[j]] = [A.queue[j], A.queue[i]];
+  if (A.qi === i) A.qi = j; else if (A.qi === j) A.qi = i;
+  saveQueue(); paintMusic();
+}
+function queueDel(i) {
+  A.queue.splice(i, 1);
+  if (i < A.qi) A.qi--;
+  else if (i === A.qi) { AUD.pause(); A.playing = false; A.loadedId = ''; A.prog = 0; if (A.qi >= A.queue.length) A.qi = A.queue.length - 1; }
+  saveQueue(); paintMusic();
+}
+async function toggleFav(t) {
+  const had = isFav(t.id), c = cleanTrack(t);
+  A.favs = had ? A.favs.filter((f) => f.id !== t.id) : [c].concat(A.favs);
+  paintMusic(); musRefresh();
+  try {
+    if (had) await sb('/rest/v1/music_favorites?track_id=eq.' + encodeURIComponent(t.id), { method: 'DELETE' });
+    else await sb('/rest/v1/music_favorites', { method: 'POST', body: { track_id: c.id, track: c }, prefer: 'resolution=ignore-duplicates' });
+  } catch (e) {
+    A.favs = had ? [c].concat(A.favs) : A.favs.filter((f) => f.id !== t.id);
+    paintMusic(); musRefresh(); toast(errText(e));
+  }
+}
+async function shareTo(text) {
+  const key = curKey();
+  if (!key) { toast('Abra uma conversa primeiro para compartilhar.'); return false; }
+  try { await sendTo(key, text); if (curKey() === key) paintMsgs(true); toast('Enviado na conversa aberta'); return true; }
+  catch (e) { toast(errText(e)); return false; }
+}
+async function sharedTrack(id) {
+  if (A.tcache[id]) return playNow(A.tcache[id]);
+  try { const r = await itunes('lookup?country=BR&id=' + encodeURIComponent(id)); if (r[0]) playNow(cacheT(r[0])); else toast('Essa música não está mais disponível.'); }
+  catch (e) { toast(errText(e)); }
+}
+/* playlists */
+async function loadPls() {
+  const m = A.modal; if (!m || m.type !== 'music') return;
+  try {
+    const rows = await sb('/rest/v1/playlists?owner_id=eq.' + myId() + '&select=id,name,shared,playlist_tracks(count)&order=created_at.desc');
+    if (A.modal === m) { m.pls = (rows || []).map((r) => ({ id: r.id, name: r.name, shared: !!r.shared, n: r.playlist_tracks && r.playlist_tracks[0] ? r.playlist_tracks[0].count : 0 })); musRefresh(); }
+  } catch (e) { if (A.modal === m) { m.pls = m.pls || []; m.err = errText(e); musRefresh(); } }
+}
+async function openPl(id) {
+  const m = A.modal; if (!m || m.type !== 'music') return;
+  m.tab = 'pl'; m.pick = null; m.err = ''; m.open = { id, name: '…', mine: false, shared: false, loading: true }; m.ptr = null; render();
+  try {
+    const q = encodeURIComponent(id);
+    const [p, rows] = await Promise.all([sb('/rest/v1/playlists?id=eq.' + q + '&select=id,name,shared,owner_id'), sb('/rest/v1/playlist_tracks?playlist_id=eq.' + q + '&select=id,track&order=position.asc,id.asc')]);
+    if (A.modal !== m) return;
+    if (!p || !p[0]) { m.open = null; m.err = 'Essa playlist não existe ou deixou de ser compartilhada.'; loadPls(); render(); return; }
+    m.open = { id, name: p[0].name, shared: !!p[0].shared, mine: p[0].owner_id === myId() };
+    m.ptr = (rows || []).map((r) => ({ row: r.id, t: cacheT(cleanTrack(r.track)) })).filter((x) => x.t.id);
+    musRefresh();
+  } catch (e) { if (A.modal === m) { m.open = null; m.err = errText(e); render(); } }
+}
+async function createPl() {
+  const m = A.modal; if (!m || m.busy) return;
+  const name = m.newname.trim();
+  if (!name) { m.err = 'Dê um nome à playlist.'; musRefresh(); return; }
+  m.busy = true; m.err = '';
+  try { await sb('/rest/v1/playlists', { method: 'POST', body: { name } }); m.newname = ''; m.busy = false; toast('Playlist criada'); render(); await loadPls(); }
+  catch (e) { m.busy = false; m.err = errText(e); musRefresh(); }
+}
+async function delPl(id) {
+  const m = A.modal; if (!m || m.busy) return;
+  if (m.delq !== id) { m.delq = id; musRefresh(); return; }
+  m.busy = true; m.delq = '';
+  try { await sb('/rest/v1/playlists?id=eq.' + encodeURIComponent(id), { method: 'DELETE' }); m.busy = false; toast('Playlist excluída'); await loadPls(); }
+  catch (e) { m.busy = false; m.err = errText(e); musRefresh(); }
+}
+async function addToPl(plId, t) {
+  const m = A.modal; if (!m || m.busy || !t) return;
+  m.busy = true; m.err = '';
+  try {
+    const last = await sb('/rest/v1/playlist_tracks?playlist_id=eq.' + encodeURIComponent(plId) + '&select=position&order=position.desc&limit=1');
+    await sb('/rest/v1/playlist_tracks', { method: 'POST', body: { playlist_id: plId, track: cleanTrack(t), position: (last && last[0] ? last[0].position : 0) + 1 } });
+    const p = (m.pls || []).find((x) => x.id === plId); if (p) p.n++;
+    m.pick = null; toast('Adicionada à playlist' + (p ? ' ' + p.name : ''));
+  } catch (e) { m.err = errText(e); }
+  m.busy = false; if (A.modal === m) render();
+}
+function plMove(row, d) {
+  const m = A.modal; if (!m || !m.ptr) return;
+  const i = m.ptr.findIndex((x) => String(x.row) === String(row)), j = i + d;
+  if (i < 0 || j < 0 || j >= m.ptr.length) return;
+  [m.ptr[i], m.ptr[j]] = [m.ptr[j], m.ptr[i]]; musRefresh();
+  rpc('playlist_move', { p_track: Number(row), p_dir: d }).catch((e) => { toast(errText(e)); if (A.modal === m && m.open) openPl(m.open.id); });
+}
+async function plRemove(row) {
+  const m = A.modal; if (!m || !m.ptr) return;
+  m.ptr = m.ptr.filter((x) => String(x.row) !== String(row)); musRefresh();
+  try { await sb('/rest/v1/playlist_tracks?id=eq.' + encodeURIComponent(row), { method: 'DELETE' }); } catch (e) { toast(errText(e)); if (A.modal === m && m.open) openPl(m.open.id); }
+}
+async function plShare() {
+  const m = A.modal; if (!m || !m.open || !m.open.mine) return;
+  if (!curKey()) return toast('Abra uma conversa primeiro para compartilhar.');
+  try { if (!m.open.shared) { await sb('/rest/v1/playlists?id=eq.' + encodeURIComponent(m.open.id), { method: 'PATCH', body: { shared: true } }); m.open.shared = true; } }
+  catch (e) { return toast(errText(e)); }
+  shareTo('🎶 Playlist "' + m.open.name + '" [pl:' + m.open.id + ']');
+}
+async function plCopy() {
+  const m = A.modal; if (!m || !m.open || m.busy) return;
+  m.busy = true;
+  try { await rpc('playlist_copy', { p_id: m.open.id }); toast('Playlist salva na sua conta'); m.busy = false; m.tab = 'pl'; m.open = null; m.ptr = null; render(); loadPls(); }
+  catch (e) { m.busy = false; m.err = errText(e); musRefresh(); }
+}
+function openMusic(tab, plId) {
+  A.menu = false;
+  const m = A.modal = { type: 'music', tab: tab || 'search', q: '', res: null, searching: false, serr: '', pls: null, open: null, ptr: null, pick: null, delq: '', newname: '', err: '', busy: false };
+  render(); focusModal();
+  if (m.tab === 'pl') { if (plId) openPl(plId); else loadPls(); }
+}
+function musSearch() {
+  const m = A.modal; if (!m || m.type !== 'music' || m.tab !== 'search') return;
+  clearTimeout(musT);
+  const q = m.q.trim();
+  if (q.length < 2) { m.res = null; m.searching = false; m.serr = ''; return musRefresh(); }
+  m.searching = true; m.serr = ''; musRefresh();
+  itunes('search?media=music&entity=song&country=BR&limit=25&term=' + encodeURIComponent(q)).then((rs) => {
+    if (A.modal === m && m.q.trim() === q) { m.res = rs.map(cacheT); m.searching = false; musRefresh(); }
+  }).catch((e) => { if (A.modal === m) { m.searching = false; m.res = null; m.serr = errText(e); musRefresh(); } });
+}
+const mIcon = (act, icon, label, attrs, on) => `<button type="button" class="hov sq sm" data-act="${act}" ${attrs || ''} aria-label="${label}" title="${label}">${ic(icon, 16, on ? '#D92D45' : '#33333A', on ? 2 : 1.7)}</button>`;
+function mRow(t, btns) {
+  return `<div class="mrow2"><span class="tc" style="${artStyle(t)}"></span><span class="tx"><b>${esc(t.t)}</b><small>${esc(t.a)}</small></span><span class="macts">${btns}</span></div>`;
+}
+const tActs = (t, extra) => {
+  const a = `data-tid="${esc(t.id)}"`;
+  return mIcon('mus-play', D.play, 'Tocar agora', a) + mIcon('mus-q', D.list, 'Adicionar à fila', a) + mIcon('mus-fav', D.heart, isFav(t.id) ? 'Remover das favoritas' : 'Favoritar', a, isFav(t.id)) + mIcon('mus-pick', D.plus, 'Adicionar a uma playlist', a) + (extra || '') + mIcon('mus-share', D.share, 'Compartilhar na conversa aberta', a);
+};
+function musResHTML(m) {
+  if (m.searching) return '<div class="mempty">Buscando…</div>';
+  if (m.serr) return `<div class="merr" role="alert">${esc(m.serr)}</div>`;
+  if (m.res === null) return '<div class="mempty">Digite o nome de uma música ou artista. Cada música toca uma prévia de 30 segundos.</div>';
+  if (!m.res.length) return '<div class="mempty">Nada encontrado. Tente outro nome.</div>';
+  return `<div class="mus-list">${m.res.map((t) => mRow(t, tActs(t))).join('')}</div>`;
+}
+function musPanelHTML(m) {
+  const err = m.err ? `<div class="merr" role="alert">${esc(m.err)}</div>` : '';
+  if (m.pick) {
+    const t = A.tcache[m.pick];
+    return `${err}<p class="mnote">Adicionar <b>${esc(t ? t.t : 'a música')}</b> a qual playlist?</p>${m.pls == null ? '<div class="mempty">Carregando…</div>' : m.pls.length ? `<div class="mus-list">${m.pls.map((p) => `<button type="button" class="hov plopen" data-act="mus-addpl" data-id="${esc(p.id)}"><b>${esc(p.name)}</b><small>${p.n} ${p.n === 1 ? 'música' : 'músicas'}</small></button>`).join('')}</div>` : '<div class="mempty">Você ainda não tem playlists. Crie uma na aba Playlists.</div>'}<button type="button" class="mbtn ghost sm" data-act="mus-pick-cancel">Cancelar</button>`;
+  }
+  if (m.tab === 'search') return `${err}<div class="mf"><label for="mf-q">Buscar música</label><input id="mf-q" data-mf type="search" data-app-bind="m:q" maxlength="80" value="${esc(m.q)}" placeholder="Música ou artista" autocomplete="off" spellcheck="false"></div><div id="mus-res">${musResHTML(m)}</div>`;
+  if (m.tab === 'fav') return `${err}${A.favs.length ? `<div class="mus-list">${A.favs.map((t) => mRow(t, tActs(t))).join('')}</div>` : '<div class="mempty">Você ainda não favoritou nenhuma música. Toque no coração em qualquer música.</div>'}`;
+  if (m.open) {
+    const o = m.open;
+    if (o.loading) return '<div class="mempty">Carregando playlist…</div>';
+    const rows = (m.ptr || []).map((x) => mRow(x.t, mIcon('mus-play', D.play, 'Tocar agora', `data-tid="${esc(x.t.id)}"`) + mIcon('mus-q', D.list, 'Adicionar à fila', `data-tid="${esc(x.t.id)}"`) + mIcon('mus-fav', D.heart, isFav(x.t.id) ? 'Remover das favoritas' : 'Favoritar', `data-tid="${esc(x.t.id)}"`, isFav(x.t.id)) + (o.mine ? mIcon('mus-pl-mv', D.up, 'Mover para cima', `data-row="${x.row}" data-d="-1"`) + mIcon('mus-pl-mv', D.down, 'Mover para baixo', `data-row="${x.row}" data-d="1"`) + mIcon('mus-pl-rm', D.close, 'Tirar da playlist', `data-row="${x.row}"`) : ''))).join('');
+    return `${err}<div class="plhead"><button type="button" class="mbtn ghost sm" data-act="mus-pl-back">‹ Voltar</button><h3>${esc(o.name)}</h3></div>
+    <div class="plbtns"><button type="button" class="mbtn sm" data-act="mus-pl-playall"${m.ptr && m.ptr.length ? '' : ' disabled'}>▶ Tocar tudo</button><button type="button" class="mbtn ghost sm" data-act="mus-pl-queue"${m.ptr && m.ptr.length ? '' : ' disabled'}>Adicionar à fila</button>${o.mine ? '<button type="button" class="mbtn ghost sm" data-act="mus-pl-share">Compartilhar</button>' : '<button type="button" class="mbtn sm" data-act="mus-pl-copy">Salvar cópia</button>'}</div>
+    ${rows ? `<div class="mus-list">${rows}</div>` : '<div class="mempty">Essa playlist está vazia. Busque músicas e use o botão + para adicionar.</div>'}`;
+  }
+  return `${err}<div class="mf"><label for="mf-new">Nova playlist</label><div class="mnew"><input id="mf-new" data-mf type="text" data-app-bind="m:newname" maxlength="40" value="${esc(m.newname)}" placeholder="Nome da playlist" autocomplete="off"><button type="button" class="mbtn sm" data-act="mus-pl-new"${m.busy ? ' disabled' : ''}>Criar</button></div></div>
+  ${m.pls == null ? '<div class="mempty">Carregando…</div>' : m.pls.length ? `<div class="mus-list">${m.pls.map((p) => `<div class="plrow"><button type="button" class="hov plopen" data-act="mus-pl-open" data-id="${esc(p.id)}"><b>${esc(p.name)}</b><small>${p.n} ${p.n === 1 ? 'música' : 'músicas'}${p.shared ? ' · compartilhada' : ''}</small></button><button type="button" class="hov sq${m.delq === p.id ? ' warn' : ''}" data-act="mus-pl-del" data-id="${esc(p.id)}" aria-label="Excluir playlist ${esc(p.name)}">${m.delq === p.id ? '<small>Excluir?</small>' : ic(D.close, 16, '#55555F', 1.8)}</button></div>`).join('')}</div>` : '<div class="mempty">Você ainda não tem playlists.</div>'}`;
+}
+function musicModalHTML(m) {
+  const tab = (k, l) => `<button type="button" role="tab" class="mtab${m.tab === k ? ' on' : ''}" data-act="mus-tab" data-tab="${k}" aria-selected="${m.tab === k}">${l}</button>`;
+  return `<div class="mtabs" role="tablist">${tab('search', 'Buscar')}${tab('pl', 'Playlists')}${tab('fav', 'Favoritas')}</div><div id="mus-panel">${musPanelHTML(m)}</div>`;
+}
+function musRefresh() {
+  const m = A && A.modal; if (!m || m.type !== 'music') return;
+  if (m.tab === 'search' && !m.pick) { const r = document.getElementById('mus-res'); if (r) { r.innerHTML = musResHTML(m); return; } }
+  const p = document.getElementById('mus-panel'); if (p) p.innerHTML = musPanelHTML(m);
+}
+function musAct(act, el) {
+  const m = A.modal && A.modal.type === 'music' ? A.modal : null, id = el.dataset.tid, t = id ? A.tcache[id] : null;
+  switch (act) {
+    case 'mus-open': openMusic(el.dataset.tab || 'search'); break;
+    case 'mus-tab': if (m) { m.tab = el.dataset.tab; m.err = ''; m.pick = null; m.open = null; m.ptr = null; render(); focusModal(); if (m.tab === 'pl') loadPls(); } break;
+    case 'mus-play': if (t) playNow(t); break;
+    case 'mus-q': if (t) addQueue(t); break;
+    case 'mus-fav': if (t) toggleFav(t); break;
+    case 'mus-pick': if (m && t) { m.pick = t.id; m.err = ''; musRefresh(); if (!m.pls) loadPls(); } break;
+    case 'mus-pick-cancel': if (m) { m.pick = null; musRefresh(); } break;
+    case 'mus-addpl': if (m && m.pick) addToPl(el.dataset.id, A.tcache[m.pick]); break;
+    case 'mus-share': if (t) shareTo('🎵 ' + t.t + ' — ' + t.a + ' [trk:' + t.id + ']'); break;
+    case 'mus-pl-new': createPl(); break;
+    case 'mus-pl-open': openPl(el.dataset.id); break;
+    case 'mus-pl-back': if (m) { m.open = null; m.ptr = null; m.err = ''; render(); focusModal(); loadPls(); } break;
+    case 'mus-pl-del': delPl(el.dataset.id); break;
+    case 'mus-pl-playall': if (m && m.ptr && m.ptr.length) { A.queue = m.ptr.map((x) => x.t).slice(0, 100); playIdx(0); toast('Tocando a playlist'); } break;
+    case 'mus-pl-queue': if (m && m.ptr) { let n = 0; m.ptr.forEach((x) => { if (A.queue.length < 100 && !A.queue.some((q) => q.id === x.t.id)) { A.queue.push(x.t); n++; } }); if (A.qi < 0 && A.queue.length) A.qi = 0; saveQueue(); paintMusic(); toast(n + (n === 1 ? ' música adicionada' : ' músicas adicionadas') + ' à fila'); } break;
+    case 'mus-pl-share': plShare(); break;
+    case 'mus-pl-copy': plCopy(); break;
+    case 'mus-pl-mv': plMove(el.dataset.row, Number(el.dataset.d)); break;
+    case 'mus-pl-rm': plRemove(el.dataset.row); break;
+    case 'mus-qmove': queueMove(Number(el.dataset.i), Number(el.dataset.d)); break;
+    case 'mus-qdel': queueDel(Number(el.dataset.i)); break;
+    case 'mus-shared-trk': sharedTrack(String(el.dataset.tid || '')); break;
+    case 'mus-open-pl': openMusic('pl', el.dataset.id); break;
+    default: break;
+  }
+  return true;
+}
+
 function musicHTML() {
-  const t = TRACKS[A.track], pct = Math.min(100, (A.prog / t.d) * 100);
+  const t = curTrack(), d = AUD.duration || 30, pct = t ? Math.min(100, (A.prog / d) * 100) : 0;
+  const fav = t && isFav(t.id), spin = A.playing && t;
   return `<div class="mtop">
-  <div class="disc${A.playing ? ' spin' : ''}" id="disc" aria-hidden="true"><span class="core"${USE_TEST_PHOTOS && t.img ? ` style="background:${t.g}"` : ''}>${USE_TEST_PHOTOS && t.img ? '' : ic(D.music, 30, '#44444C', 1.5)}</span></div>
+  <div class="disc${spin ? ' spin' : ''}" id="disc" aria-hidden="true"><span class="core"${t && t.art ? ` style="${artStyle(t)};background-size:cover;background-position:center"` : ''}>${t && t.art ? '' : ic(D.music, 30, '#44444C', 1.5)}</span></div>
   <div class="minfo">
-    <h3 id="mt">${esc(t.t)}</h3><small id="ma">${esc(t.a)}</small>
-    <div class="mctl"><button type="button" class="hov mc" data-act="mprev" aria-label="Faixa anterior">${ic(D.prev, 20, '#33333A', 1.7)}</button><button type="button" class="mc play" id="mplay" data-act="mplay" aria-label="${A.playing ? 'Pausar' : 'Tocar'}">${ic(A.playing ? D.pause : D.play, 20, '#FFFFFF', 1.8)}</button><button type="button" class="hov mc" data-act="mnext" aria-label="Próxima faixa">${ic(D.next, 20, '#33333A', 1.7)}</button></div>
-    <div class="mtime"><span id="mcur">${fmt(A.prog)}</span><span>${fmt(t.d)}</span></div>
-    <div class="pbar" data-act="seek" role="progressbar" aria-label="Progresso da música" aria-valuemin="0" aria-valuemax="${t.d}" aria-valuenow="${A.prog}"><i id="mfill" style="width:${pct}%"></i><b id="mknob" style="left:${pct}%"></b></div>
+    <div class="mhd"><div class="mtt"><h3 id="mt">${t ? esc(t.t) : 'Nenhuma música'}</h3><small id="ma">${t ? esc(t.a) : 'Toque na lupa para buscar'}</small></div>
+      <button type="button" class="hov mc sm" data-act="mus-open" data-tab="search" aria-label="Buscar música">${ic(D.search, 18, '#33333A', 1.8)}</button>
+      <button type="button" class="hov mc sm" data-act="mus-open" data-tab="pl" aria-label="Minhas playlists">${ic(D.list, 18, '#33333A', 1.8)}</button></div>
+    <div class="mctl"><button type="button" class="hov mc" data-act="mprev" aria-label="Faixa anterior">${ic(D.prev, 20, '#33333A', 1.7)}</button><button type="button" class="mc play" id="mplay" data-act="mplay" aria-label="${A.playing ? 'Pausar' : 'Tocar'}">${ic(A.playing ? D.pause : D.play, 20, '#FFFFFF', 1.8)}</button><button type="button" class="hov mc" data-act="mnext" aria-label="Próxima faixa">${ic(D.next, 20, '#33333A', 1.7)}</button>${t ? `<button type="button" class="hov mc" data-act="mus-fav" data-tid="${esc(t.id)}" aria-label="${fav ? 'Remover das favoritas' : 'Favoritar'}" aria-pressed="${!!fav}">${ic(D.heart, 19, fav ? '#D92D45' : '#33333A', fav ? 2 : 1.7)}</button><button type="button" class="hov mc" data-act="mus-share" data-tid="${esc(t.id)}" aria-label="Compartilhar na conversa aberta">${ic(D.share, 19, '#33333A', 1.7)}</button>` : ''}</div>
+    <div class="mtime"><span id="mcur">${fmt(A.prog)}</span><span id="mend">${fmt(d)}</span></div>
+    <div class="pbar" data-act="seek" role="progressbar" aria-label="Progresso da música" aria-valuemin="0" aria-valuemax="${Math.round(d)}" aria-valuenow="${Math.round(A.prog)}"><i id="mfill" style="width:${pct}%"></i><b id="mknob" style="left:${pct}%"></b></div>
   </div></div>
-  <div class="tracks">${TRACKS.map((x, i) => `<button type="button" class="trk ${i === A.track ? 'on' : 'hov'}" data-act="mtrack" data-i="${i}" aria-label="Tocar ${esc(x.t)}"><span class="tc" style="background:${x.g}"></span><span class="tx"><b>${esc(x.t)}</b><small>${esc(x.a)}</small></span><em>${fmt(x.d)}</em></button>`).join('')}</div>`;
+  <div class="tracks" aria-label="Lista de reprodução">${A.queue.length ? A.queue.map((x, i) => `<div class="trk ${i === A.qi ? 'on' : 'hov'}"><button type="button" class="tplay" data-act="mtrack" data-i="${i}" aria-label="Tocar ${esc(x.t)}"><span class="tc" style="${artStyle(x)}"></span><span class="tx"><b>${esc(x.t)}</b><small>${esc(x.a)}</small></span></button><span class="tmv"><button type="button" class="hov" data-act="mus-qmove" data-i="${i}" data-d="-1" aria-label="Mover ${esc(x.t)} para cima">${ic(D.up, 15, '#55555F', 1.8)}</button><button type="button" class="hov" data-act="mus-qmove" data-i="${i}" data-d="1" aria-label="Mover ${esc(x.t)} para baixo">${ic(D.down, 15, '#55555F', 1.8)}</button><button type="button" class="hov" data-act="mus-qdel" data-i="${i}" aria-label="Tirar ${esc(x.t)} da fila">${ic(D.close, 14, '#55555F', 1.8)}</button></span></div>`).join('') : '<div class="mempty">Sua lista de reprodução está vazia.<br>Use a lupa para buscar músicas (prévia de 30 s).</div>'}</div>`;
 }
 
 function newsHTML() {
@@ -1350,24 +1619,6 @@ function hubHTML(enter) {
   ${w('w-news', 4, newsHTML())}
   ${userbarHTML()}
 </main>`;
-}
-
-let musicT = null;
-function startMusic() {
-  if (musicT) return;
-  musicT = setInterval(() => {
-    if (S.view !== 'app' || !A || document.hidden || !A.playing) return;
-    const t = TRACKS[A.track];
-    A.prog++;
-    if (A.prog >= t.d) { A.track = (A.track + 1) % TRACKS.length; A.prog = 0; if (A.view === 'hub' && !A.modal) render(); return; }
-    paintProg();
-  }, 1000);
-}
-function paintProg() {
-  if (S.view !== 'app' || !A || A.view !== 'hub') return;
-  const t = TRACKS[A.track], p = Math.min(100, (A.prog / t.d) * 100);
-  const f = document.getElementById('mfill'), k = document.getElementById('mknob'), c = document.getElementById('mcur');
-  if (f) f.style.width = p + '%'; if (k) k.style.left = p + '%'; if (c) c.textContent = fmt(A.prog);
 }
 
 /* ------------------------------------------------------- tela do servidor */
@@ -1593,6 +1844,8 @@ function modalHTML() {
       if (sv && sv.mine && !p.me && sv.byId[p.id]) foot = `<button type="button" class="blink" data-act="mod" data-k="kick" data-id="${p.id}"${dis}>Expulsar</button><button type="button" class="blink" data-act="mod" data-k="ban" data-id="${p.id}"${dis}>Banir</button>` + foot;
       if (rel !== 'me' && rel !== 'blocked') foot = `<button type="button" class="blink" data-act="fr-block" data-id="${p.id}"${dis}>Bloquear</button>` + foot;
     }
+  } else if (m.type === 'music') {
+    title = 'Música'; body = musicModalHTML(m); foot = '<button type="button" class="mbtn ghost" data-act="modal-close">Fechar</button>';
   } else if (m.type === 'mod') {
     title = m.k === 'ban' ? 'Banir do servidor' : 'Expulsar do servidor'; label = m.k === 'ban' ? 'Banir' : 'Expulsar';
     body = `<p class="mnote">${m.k === 'ban' ? 'Banir' : 'Expulsar'} ${esc(m.name)}? ${m.k === 'ban' ? 'A pessoa sai do servidor e não consegue voltar por convite, até você desbanir.' : 'A pessoa sai do servidor, mas pode voltar com um novo convite.'}</p>`;
@@ -1615,10 +1868,10 @@ function modalHTML() {
       + mField('mf-bio', 'Sobre mim', 'bio', m.bio, { max: 190, area: true, ph: 'Conte um pouco sobre você', hint: 'Até 190 caracteres.' })
       + `<div class="mf"><span class="lblx">Cor do perfil</span><div class="swatches">${ACCENTS.map((c) => `<button type="button" class="swatch${m.accent === c ? ' on' : ''}" data-act="m-accent" data-c="${c}" aria-pressed="${m.accent === c}" aria-label="Cor ${c}" style="background:${c}"></button>`).join('')}</div></div>`;
   }
-  const showSubmit = !(m.type === 'invite' || m.type === 'profile' || m.type === 'bans');
-  return `<div class="mback" data-act="modal-bg"><div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+  const showSubmit = !(m.type === 'invite' || m.type === 'profile' || m.type === 'bans' || m.type === 'music');
+  return `<div class="mback" data-act="modal-bg"><div class="modal${m.type === 'music' ? ' wide' : ''}" role="dialog" aria-modal="true" aria-label="${esc(title)}">
     <header class="mhead"><h2>${esc(title)}</h2><button type="button" class="hov sq" data-act="modal-close" aria-label="Fechar">${ic(D.close, 16, '#55555F', 1.8)}</button></header>
-    <div class="mbody">${body}${m.err ? `<div class="merr" role="alert">${esc(m.err)}</div>` : ''}</div>
+    <div class="mbody">${body}${m.err && m.type !== 'music' ? `<div class="merr" role="alert">${esc(m.err)}</div>` : ''}</div>
     <footer class="mfoot">${showSubmit ? `<button type="button" class="mbtn ghost" data-act="modal-close">Cancelar</button><button type="button" class="mbtn${m.type === 'del' || m.type === 'block' || m.type === 'mod' ? ' danger' : ''}" data-act="modal-submit"${m.busy ? ' disabled' : ''}>${m.busy ? 'Aguarde…' : label}</button>` : foot}</footer>
   </div></div>`;
 }
@@ -1678,6 +1931,7 @@ async function openInvite() {
 function modalErr(msg) { A.modal.err = msg; render(); focusModal(); }
 async function modalSubmit() {
   const m = A.modal; if (!m || m.busy) return;
+  if (m.type === 'music') { if (m.tab === 'search') musSearch(); else if (m.tab === 'pl' && !m.open) createPl(); return; }
   m.err = '';
   const run = async (fn) => {
     m.busy = true; render();
@@ -1772,6 +2026,7 @@ function openMsgModal(type, el) {
 }
 /* ações das janelas; devolve true quando tratou */
 function modalAct(act, el, ev) {
+  if (act.indexOf('mus-') === 0) return musAct(act, el);
   switch (act) {
     case 'modal-bg': if (ev && ev.target === el) closeModal(); return true;
     case 'modal-close': closeModal(); return true;
@@ -1880,12 +2135,14 @@ function appAction(act, el, ev) {
       return;
     }
     case 'mplay': {
-      quiet(); A.playing = !A.playing;
-      const d = document.getElementById('disc'); if (d) d.classList.toggle('spin', A.playing);
-      const b = document.getElementById('mplay'); if (b) { b.innerHTML = ic(A.playing ? D.pause : D.play, 20, '#FFFFFF', 1.8); b.setAttribute('aria-label', A.playing ? 'Pausar' : 'Tocar'); }
+      quiet(); const ct = curTrack();
+      if (!ct) { openMusic('search'); return; }
+      if (A.loadedId !== ct.id) playIdx(A.qi);
+      else if (AUD.paused) { A.playing = true; AUD.play().catch(() => { A.playing = false; paintMusic(); }); paintMusic(); }
+      else AUD.pause();
       return;
     }
-    case 'seek': { quiet(); const r = el.getBoundingClientRect(); const f = Math.min(1, Math.max(0, ((ev ? ev.clientX : r.left) - r.left) / (r.width || 1))); A.prog = Math.round(f * TRACKS[A.track].d); paintProg(); return; }
+    case 'seek': { quiet(); if (!curTrack() || A.loadedId !== curTrack().id) return; const r = el.getBoundingClientRect(); const f = Math.min(1, Math.max(0, ((ev ? ev.clientX : r.left) - r.left) / (r.width || 1))); const d = AUD.duration || 30; AUD.currentTime = f * d; A.prog = f * d; paintProg(); return; }
     case 'ntab': {
       quiet(); A.ntab = el.dataset.k;
       ['news', 'free'].forEach((k) => {
@@ -1932,9 +2189,9 @@ function appAction(act, el, ev) {
     case 'friends-open': if (SERVERS.length) { A.view = 'server'; A.showMembers = true; A.panel = null; } break;
     case 'chat-open': { const s = serverOfChan(A.hubKey); if (!s && dmPeer(A.hubKey)) { A.channel = A.hubKey; A.view = 'dm'; A.panel = null; render({ scroll: true }); return; } if (s) { A.server = s.id; A.channel = A.hubKey; A.search = ''; A.view = 'server'; A.panel = null; render({ scroll: true }); } return; }
     case 'hubchat': A.hubKey = el.dataset.key; render({ scroll: true }); return;
-    case 'mprev': A.track = (A.track + TRACKS.length - 1) % TRACKS.length; A.prog = 0; break;
-    case 'mnext': A.track = (A.track + 1) % TRACKS.length; A.prog = 0; break;
-    case 'mtrack': A.track = Number(el.dataset.i) || 0; A.prog = 0; A.playing = true; break;
+    case 'mprev': quiet(); nextTrack(-1); return;
+    case 'mnext': quiet(); nextTrack(1); return;
+    case 'mtrack': quiet(); playIdx(Number(el.dataset.i) || 0); return;
     case 'panel': A.panel = A.panel === el.dataset.k ? null : el.dataset.k; break;
     case 'goto-msg': { const ch = el.dataset.ch, srv = serverOfChan(ch); A.panel = null; if (srv) { A.server = srv.id; A.channel = ch; A.view = 'server'; } else if (A.dmUser[ch]) { A.channel = ch; A.view = 'dm'; } render({ scroll: true }); return true; }
     case 'toast-soon': toast('Isso chega em breve'); return;
@@ -1975,7 +2232,7 @@ $root.addEventListener('input', (e) => {
     if (t.dataset.appBind === 'sq') { A.sq = t.value; clearTimeout(sqTimer); sqTimer = setTimeout(() => { runSearch(); if (A.panel === 'search') render(); }, 350); return; }
     if (t.dataset.appBind === 'search') { A.search = t.value; const l = document.getElementById('mlist'); if (l) l.innerHTML = membersListHTML(); }
     else if (t.dataset.appBind === 'gq') { A.gq = t.value; A.search = t.value; refilter(); }
-    else if (t.dataset.appBind.startsWith('m:')) { if (A.modal) A.modal[t.dataset.appBind.slice(2)] = t.value; }
+    else if (t.dataset.appBind.startsWith('m:')) { if (A.modal) { A.modal[t.dataset.appBind.slice(2)] = t.value; if (A.modal.type === 'music' && t.dataset.appBind === 'm:q') { clearTimeout(musT); musT = setTimeout(musSearch, 450); } } }
     else if (t.dataset.appBind === 'hdraft') { A.hdraft = t.value; const b = document.getElementById('hsend'); if (b) b.hidden = !A.hdraft.trim(); if (t.value) sendTyping(); }
     else { A.draft = t.value; const b = document.getElementById('send-btn'); if (b) b.hidden = !A.draft.trim(); if (t.value) sendTyping(); }
     return;
