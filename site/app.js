@@ -709,7 +709,7 @@ const ERRS = {
   not_authenticated: 'Sua sessão expirou. Entre de novo.', network: 'Sem conexão. Verifique sua internet e tente de novo.',
   invalid_name: 'O nome está fora do tamanho permitido.', too_many_servers: 'Você atingiu o limite de servidores.',
   too_many_channels: 'Esse servidor já tem o máximo de canais.', not_owner: 'Só o dono do servidor pode fazer isso.',
-  not_member: 'Você não faz parte deste servidor.', user_not_found: 'Não encontramos ninguém com esse @usuário.', you_blocked: 'Você bloqueou essa pessoa. Desbloqueie para adicioná-la.', cannot_add_self: 'Você não pode adicionar a si mesmo.',
+  not_member: 'Você não faz parte deste servidor.', user_not_found: 'Não encontramos ninguém com esse @usuário.', voice_full: 'A sala de voz está cheia (máximo de 6 pessoas).', not_member: 'Você não faz parte deste servidor.', you_blocked: 'Você bloqueou essa pessoa. Desbloqueie para adicioná-la.', cannot_add_self: 'Você não pode adicionar a si mesmo.',
   too_many_requests: 'Você já tem pedidos demais esperando resposta.', no_request: 'Esse pedido não existe mais.', not_friends: 'Vocês ainda não são amigos.', invalid_invite: 'Convite inválido ou expirado.',
   'row-level security': 'Você não tem permissão para isso.', 'violates check constraint': 'Algum campo está fora do tamanho permitido.'
 };
@@ -761,7 +761,7 @@ function initApp() {
     owner: uid, world: 'loading', werr: '', me: null, server: null, channel: null, voice: null, muted: false, deafened: false,
     panel: null, showMembers: true, onlineOpen: true, offlineOpen: true, draft: '', search: '', emojiOpen: false, menu: false,
     view: 'hub', hubKey: '', hubKeys: [], hdraft: '', gq: '', searchOpen: false, barOpen: false, playing: true, track: 0, prog: 34, ntab: 'news', entered: false,
-    threads: {}, loaded: {}, loading: {}, more: {}, terr: {}, modal: null, poll: null, beat: null, tt: null, typing: {}, pollN: 0, friends: [], incoming: [], outgoing: [], known: {}, dmByUser: {}, dmUser: {}, blocked: new Set(), unread: {}
+    threads: {}, loaded: {}, loading: {}, more: {}, terr: {}, modal: null, poll: null, beat: null, tt: null, typing: {}, pollN: 0, friends: [], incoming: [], outgoing: [], known: {}, dmByUser: {}, dmUser: {}, blocked: new Set(), unread: {}, vrost: {}
   };
   startLive(); loadWorld(); openJoin();
 }
@@ -776,7 +776,7 @@ function startLive() {
   rtStart();
   beat(true);
 }
-function stopAppTimers() { if (A) { clearInterval(A.poll); clearInterval(A.beat); clearInterval(A.tt); A.poll = A.beat = A.tt = null; } rtStop(false); }
+function stopAppTimers() { voiceLeave(true); if (A) { clearInterval(A.poll); clearInterval(A.beat); clearInterval(A.tt); A.poll = A.beat = A.tt = null; } rtStop(false); }
 
 const curServer = () => SERVERS.find((s) => s.id === A.server) || SERVERS[0] || null;
 const serverOfChan = (cid) => SERVERS.find((s) => s.text.some((c) => c.id === cid)) || null;
@@ -829,6 +829,7 @@ async function loadWorld(paint) {
       } catch (e) { /* sem aviso de não lida */ }
     }));
     w.unread = unread;
+    loadVoice();
     w.friends = fr.filter((f) => f.status === 'accepted').map((f) => known[other(f)]).filter(Boolean).map((p) => Object.assign({}, p, { dm: dmByUser[p.id] || '' })).sort(byName);
     w.incoming = fr.filter((f) => f.status === 'pending' && f.requester !== myId()).map((f) => known[other(f)]).filter(Boolean);
     w.outgoing = fr.filter((f) => f.status === 'pending' && f.requester === myId()).map((f) => known[other(f)]).filter(Boolean);
@@ -947,17 +948,23 @@ async function rtStart() {
   ws.onopen = async () => {
     const t = await freshToken().catch(() => null);
     if (RT.ws !== ws || !t) { try { ws.close(); } catch (e) { /* já fechado */ } return; }
-    rtSend('realtime:sq', 'phx_join', { config: { broadcast: { self: false, ack: false }, presence: { key: '' }, postgres_changes: [{ event: '*', schema: 'public', table: 'messages' }, { event: '*', schema: 'public', table: 'friendships' }], private: false }, access_token: t });
+    rtSend('realtime:sq', 'phx_join', { config: { broadcast: { self: false, ack: false }, presence: { key: '' }, postgres_changes: [{ event: '*', schema: 'public', table: 'messages' }, { event: '*', schema: 'public', table: 'friendships' }, { event: '*', schema: 'public', table: 'voice_members' }], private: false }, access_token: t });
     RT.hb = setInterval(async () => {
       rtSend('phoenix', 'heartbeat', {});
       const n = await freshToken().catch(() => null);
-      if (n && n !== RT.tok) { RT.tok = n; rtSend('realtime:sq', 'access_token', { access_token: n }); }
+      if (n && n !== RT.tok) { RT.tok = n; rtSend('realtime:sq', 'access_token', { access_token: n }); if (VC) rtSend(VTOP(VC.ch), 'access_token', { access_token: n }); }
     }, 25000);
     RT.tok = t;
+    if (VC) voiceRtJoin(t);
   };
   ws.onmessage = (ev) => {
     let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
     if (A !== w) return;
+    if (VC && m.topic === VTOP(VC.ch)) {
+      if (m.event === 'phx_reply') { if (m.payload && m.payload.status === 'ok') voiceHello(); else { toast('Não foi possível entrar na sala de voz.'); voiceLeave(); } }
+      else if (m.event === 'broadcast' && m.payload) voiceSignal(m.payload.event, m.payload.payload || {});
+      return;
+    }
     if (m.event === 'phx_reply' && m.topic === 'realtime:sq') {
       if (m.payload && m.payload.status === 'ok') { RT.ok = true; RT.retry = 0; if (S.view === 'app') pollTick(true); }
       else { RT.ok = false; try { ws.close(); } catch (e) { /* já fechado */ } }
@@ -979,10 +986,117 @@ function rtRetry() {
   RT.retry = Math.min(RT.retry + 1, 6);
   RT.wait = setTimeout(rtStart, Math.min(30000, 1000 * 2 ** RT.retry));
 }
+/* ----------------------------------------------------------- voz (WebRTC) */
+const VTOP = (ch) => 'realtime:voice:' + ch;
+const ICE = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
+let VC = null; // { ch, stream, peers: { uid: { pc, audio, queue } }, ping }
+const vsend = (event, payload) => { if (VC) rtSend(VTOP(VC.ch), 'broadcast', { type: 'broadcast', event, payload: Object.assign({ from: myId() }, payload) }); };
+const voiceRoster = (ch) => ((A && A.vrost[ch]) || []);
+async function loadVoice() {
+  const w = A; if (!w) return;
+  try {
+    const rows = await sb('/rest/v1/voice_members?select=channel_id,user_id,seen_at');
+    if (A !== w) return;
+    const lim = Date.now() - 45000, r = {};
+    rows.forEach((x) => { if (new Date(x.seen_at).getTime() >= lim) (r[x.channel_id] = r[x.channel_id] || []).push(x.user_id); });
+    A.vrost = r;
+    if (S.view === 'app' && A.world === 'ready') render();
+  } catch (e) { /* sem lista de voz */ }
+}
+function voiceApply() {
+  if (!VC) return;
+  const off = A.muted || A.deafened;
+  VC.stream.getAudioTracks().forEach((t) => { t.enabled = !off; });
+  Object.keys(VC.peers).forEach((u) => { if (VC.peers[u].audio) VC.peers[u].audio.muted = !!A.deafened; });
+}
+async function voiceJoin(ch) {
+  if (VC && VC.ch === ch) return;
+  if (VC) voiceLeave(true);
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof RTCPeerConnection === 'undefined') return toast('Este navegador não permite chamadas de voz.');
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
+  catch (e) { return toast('Não consegui usar o microfone. Libere o microfone para este site no navegador e tente de novo.'); }
+  try { await rpc('voice_join', { p_channel: ch }); }
+  catch (e) { stream.getTracks().forEach((t) => t.stop()); return toast(errText(e)); }
+  VC = { ch, stream, peers: {}, ping: setInterval(() => { rpc('voice_ping', { p_channel: ch }).catch(() => {}); }, 15000) };
+  voiceApply();
+  A.voice = ch;
+  const t = await freshToken().catch(() => null);
+  if (t) voiceRtJoin(t);
+  loadVoice(); render();
+}
+function voiceRtJoin(t) {
+  if (!VC) return;
+  rtSend(VTOP(VC.ch), 'phx_join', { config: { broadcast: { self: false, ack: false }, presence: { key: '' }, private: true }, access_token: t });
+}
+function voiceHello() { vsend('hello', {}); }
+function voicePeer(uid) {
+  if (VC.peers[uid]) return VC.peers[uid];
+  const pc = new RTCPeerConnection(ICE), peer = { pc, audio: null, queue: [] };
+  VC.peers[uid] = peer;
+  VC.stream.getTracks().forEach((tr) => pc.addTrack(tr, VC.stream));
+  pc.onicecandidate = (e) => { if (e.candidate) vsend('ice', { to: uid, cand: e.candidate.toJSON ? e.candidate.toJSON() : e.candidate }); };
+  pc.ontrack = (e) => {
+    if (!peer.audio) { const a = document.createElement('audio'); a.autoplay = true; a.setAttribute('playsinline', ''); a.style.display = 'none'; document.body.appendChild(a); peer.audio = a; }
+    peer.audio.srcObject = e.streams[0]; peer.audio.muted = !!(A && A.deafened);
+    const pr = peer.audio.play(); if (pr && pr.catch) pr.catch(() => {});
+  };
+  pc.onconnectionstatechange = () => { if (['failed', 'closed'].includes(pc.connectionState)) voiceDrop(uid); };
+  return peer;
+}
+function voiceDrop(uid) {
+  if (!VC || !VC.peers[uid]) return;
+  const p = VC.peers[uid]; delete VC.peers[uid];
+  try { p.pc.close(); } catch (e) { /* já fechado */ }
+  if (p.audio) { p.audio.srcObject = null; p.audio.remove(); }
+}
+async function voiceOffer(uid) {
+  if (!VC || VC.peers[uid]) return;
+  const peer = voicePeer(uid);
+  try { const o = await peer.pc.createOffer(); await peer.pc.setLocalDescription(o); vsend('offer', { to: uid, sdp: peer.pc.localDescription.sdp }); }
+  catch (e) { voiceDrop(uid); }
+}
+async function voiceSignal(ev, d) {
+  if (!VC || !d.from || d.from === myId() || (d.to && d.to !== myId())) return;
+  const uid = d.from;
+  try {
+    if (ev === 'hello') { vsend('hi', { to: uid }); if (myId() < uid) voiceOffer(uid); }
+    else if (ev === 'hi') { if (myId() < uid) voiceOffer(uid); }
+    else if (ev === 'offer') {
+      voiceDrop(uid);
+      const peer = voicePeer(uid);
+      await peer.pc.setRemoteDescription({ type: 'offer', sdp: d.sdp });
+      const an = await peer.pc.createAnswer(); await peer.pc.setLocalDescription(an);
+      vsend('answer', { to: uid, sdp: peer.pc.localDescription.sdp });
+      peer.queue.splice(0).forEach((c) => peer.pc.addIceCandidate(c).catch(() => {}));
+    } else if (ev === 'answer') {
+      const peer = VC.peers[uid]; if (!peer) return;
+      await peer.pc.setRemoteDescription({ type: 'answer', sdp: d.sdp });
+      peer.queue.splice(0).forEach((c) => peer.pc.addIceCandidate(c).catch(() => {}));
+    } else if (ev === 'ice') {
+      const peer = VC.peers[uid]; if (!peer || !d.cand) return;
+      if (peer.pc.remoteDescription) peer.pc.addIceCandidate(d.cand).catch(() => {}); else peer.queue.push(d.cand);
+    } else if (ev === 'bye') voiceDrop(uid);
+  } catch (e) { voiceDrop(uid); }
+}
+function voiceLeave(quiet) {
+  if (!VC) return;
+  const v = VC; vsend('bye', {});
+  VC = null;
+  clearInterval(v.ping);
+  Object.keys(v.peers).forEach((u) => { const p = v.peers[u]; try { p.pc.close(); } catch (e) { /* já fechado */ } if (p.audio) { p.audio.srcObject = null; p.audio.remove(); } });
+  v.stream.getTracks().forEach((t) => t.stop());
+  rtSend(VTOP(v.ch), 'phx_leave', {});
+  if (A) A.voice = null;
+  rpc('voice_leave', {}).catch(() => {});
+  if (A && A.vrost) { A.vrost[v.ch] = (A.vrost[v.ch] || []).filter((u) => u !== myId()); }
+  if (!quiet && S.view === 'app') render();
+}
 let wrTimer = null;
 function reloadSoon() { clearTimeout(wrTimer); const w = A; wrTimer = setTimeout(() => { if (A === w && S.view === 'app') loadWorld(); }, 400); }
 function rtChange(d) {
   if (!d || !A) return;
+  if (d.table === 'voice_members') { loadVoice(); return; }
   const r = d.record || {}, old = d.old_record || {};
   if (d.table === 'friendships') {
     if (d.type === 'INSERT' && r.requester && r.requester !== myId()) toast('Novo pedido de amizade');
@@ -1307,10 +1421,15 @@ function composerHTML(ok, ph) {
         </div>
       </div>`;
 }
+function voiceBarHTML() {
+  if (!A.voice) return '';
+  const s = SERVERS.find((x) => x.voice.some((g) => g.id === A.voice)), g = s && s.voice.find((x) => x.id === A.voice);
+  return `<div class="vbar" role="status"><span class="vdot"></span><span class="vt"><b>Voz conectada</b><small>${esc(g ? g.name : 'Sala')}${s ? ' · ' + esc(s.name) : ''}</small></span><button type="button" class="mbtn sm danger" data-act="vleave">Sair</button></div>`;
+}
 function sideMeHTML() {
   const mutedEff = A.muted || A.deafened;
   const me = displayName();
-  return `  <div class="me">
+  return `${voiceBarHTML()}  <div class="me">
     ${menuHTML()}
     <div class="who"><button type="button" class="pic" data-act="profile" data-id="${myId()}" aria-label="Meu perfil" style="background:${meBg()}">${esc(meIni(me))}</button><strong title="${esc(S.session && S.session.user ? S.session.user.email : '')}">${esc(me)}</strong></div>
     <div class="tools">
@@ -1386,7 +1505,7 @@ function serverHTML() {
     <div class="div"></div>
     <div class="blk">
       <div class="bh"><span>${ic(D.volume, 19, '#55555F', 1.6)}Canais de voz</span>${plus('Adicionar canal de voz', 'voice')}</div>
-      ${srv.voice.map((g) => `<div class="vg"><div class="vgh"><button type="button" class="hov vjoin" data-act="vjoin" aria-label="Entrar em ${esc(g.name)}" style="color:#33333A"><i style="background:rgba(29,29,34,.22)"></i><span>${esc(g.name)}</span></button></div></div>`).join('')}
+      ${srv.voice.map((g) => { const on = A.voice === g.id; return `<div class="vg"><div class="vgh"><button type="button" class="hov vjoin" data-act="vjoin" data-id="${g.id}" aria-label="${on ? 'Você está em ' : 'Entrar em '}${esc(g.name)}" style="color:#33333A"><i style="background:${on ? '#3BB273' : 'rgba(29,29,34,.22)'}"></i><span>${esc(g.name)}</span></button></div>${voiceRoster(g.id).map((u) => { const p = srv.byId[u]; return p ? `<div class="vu"><span class="pf xs" style="background:${p.g}">${esc(p.ini)}</span><span class="vn">${esc(p.name)}</span></div>` : ''; }).join('')}</div>`; }).join('')}
     </div>
   </div>
   ${sideMeHTML()}
@@ -1432,7 +1551,7 @@ function modalHTML() {
     title = 'Criar canal'; label = 'Criar canal';
     body = tabs([{ act: 'modal-mode', mode: 'text', l: 'Texto', on: m.kind !== 'voice' }, { act: 'modal-mode', mode: 'voice', l: 'Voz', on: m.kind === 'voice' }])
       + mField('mf-name', 'Nome do canal', 'name', m.name, { ph: m.kind === 'voice' ? 'Ex.: Sala de jogos' : 'Ex.: Avisos', max: 30 })
-      + (m.kind === 'voice' ? '<p class="mnote">As chamadas de voz chegam em breve; o canal já fica guardado.</p>' : '');
+      + (m.kind === 'voice' ? '<p class="mnote">Até 6 pessoas por sala. O áudio vai direto entre os participantes.</p>' : '');
   } else if (m.type === 'invite') {
     title = 'Convidar para o servidor';
     body = m.busy ? '<p class="mnote">Gerando convite…</p>' : (m.code
@@ -1725,7 +1844,7 @@ function appView() {
   return `<div class="shell">
 <div class="cloud" aria-hidden="true" style="left:-140px;bottom:-180px;width:600px;height:480px;background:radial-gradient(closest-side,rgba(140,140,158,.34),rgba(140,140,158,0))"></div>
 <div class="cloud c2" aria-hidden="true" style="right:-160px;top:20%;width:520px;height:420px;background:radial-gradient(closest-side,rgba(214,200,240,.4),rgba(214,200,240,0))"></div>
-${topbarHTML()}${panelHTML}${showServer ? serverHTML() : showDm ? dmViewHTML() : hubHTML(enter)}${modalHTML()}</div>`;
+${topbarHTML()}${panelHTML}${showServer ? serverHTML() : showDm ? dmViewHTML() : hubHTML(enter)}${!showServer && !showDm && A.voice ? voiceBarHTML().replace('class="vbar"', 'class="vbar fix"') : ''}${modalHTML()}</div>`;
 }
 
 function appAction(act, el, ev) {
@@ -1773,9 +1892,10 @@ function appAction(act, el, ev) {
   switch (act) {
     case 'srv': { const s = SERVERS.find((x) => x.id === el.dataset.id); if (s) { A.server = s.id; A.channel = s.text[0] ? s.text[0].id : null; A.search = ''; A.draft = ''; } break; }
     case 'chan': A.channel = el.dataset.id; A.draft = ''; break;
-    case 'vjoin': toast('Chamadas de voz chegam em breve'); return;
-    case 'mute': A.muted = !A.muted; break;
-    case 'deaf': A.deafened = !A.deafened; break;
+    case 'vjoin': voiceJoin(el.dataset.id); return;
+    case 'vleave': voiceLeave(); return;
+    case 'mute': A.muted = !A.muted; voiceApply(); break;
+    case 'deaf': A.deafened = !A.deafened; voiceApply(); break;
     case 'menu': A.menu = !A.menu; break;
     case 'settings': toast('Configurações chegam em breve'); break;
     case 'logout': logout(); return;

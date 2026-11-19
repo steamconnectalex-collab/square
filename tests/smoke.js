@@ -21,8 +21,8 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
 
 (async () => {
   await new Promise((r) => server.listen(3100, r));
-  const browser = await chromium.launch();
-  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
+  const browser = await chromium.launch({ args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] });
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1, permissions: ['microphone'] });
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
@@ -33,7 +33,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   let qrPolls = 0;
   const storageCalls = [];
   // ---- banco simulado (servidores, canais, membros, mensagens, perfis) ----
-  const world = { servers: [], channels: [], members: [], messages: [], nextMsg: 1, nextId: 1, friendships: [], dms: [], blocks: [],
+  const world = { servers: [], channels: [], members: [], messages: [], nextMsg: 1, nextId: 1, friendships: [], dms: [], blocks: [], voice: [],
     profiles: [
       { id: 'u1', username: 'tester', display_name: 'Tester Um', bio: '', status_text: '', accent: '#9D8CCF', last_seen: null, created_at: '2026-11-16T10:00:00Z' },
       { id: 'u3', username: 'pedro', display_name: 'Pedro Alves', bio: '', status_text: '', accent: '#6FB3A0', last_seen: null, created_at: '2026-11-12T10:00:00Z' },
@@ -70,6 +70,9 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
       if (fn === 'remove_friend') { world.friendships = world.friendships.filter((x) => x.user_a !== body.p_other && x.user_b !== body.p_other); return send(204, null); }
       if (fn === 'block_user') { world.blocks.push({ blocked: body.p_other }); world.friendships = world.friendships.filter((x) => x.user_a !== body.p_other && x.user_b !== body.p_other); return send(204, null); }
       if (fn === 'unblock_user') { world.blocks = world.blocks.filter((b) => b.blocked !== body.p_other); return send(204, null); }
+      if (fn === 'voice_join') { world.voice = [{ channel_id: body.p_channel, user_id: 'u1', seen_at: new Date().toISOString() }]; return send(204, null); }
+      if (fn === 'voice_ping') return send(204, null);
+      if (fn === 'voice_leave') { world.voice = []; return send(204, null); }
       if (fn === 'open_dm') {
         let d = world.dms.find((x) => x.user === body.p_other);
         if (!d) { d = { id: 'dm' + world.nextId++, user: body.p_other }; world.dms.push(d); }
@@ -83,6 +86,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
     if (path === 'channels') return send(200, q.get('kind') === 'eq.dm' ? world.dms.map((d) => ({ id: d.id })) : world.channels);
     if (path === 'friendships') return send(200, world.friendships);
     if (path === 'blocks') return send(200, world.blocks);
+    if (path === 'voice_members') return send(200, world.voice);
     if (path === 'dm_members') return send(200, world.dms.flatMap((d) => [{ channel_id: d.id, user_id: 'u1' }, { channel_id: d.id, user_id: d.user }]));
     if (path === 'server_members') return send(200, world.members);
     if (path === 'profiles') {
@@ -314,6 +318,26 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await page.waitForSelector('.panel .res', { timeout: 5000 });
   ok('painel de menções lista quem mencionou você', /Marina/.test(await page.textContent('.panel')));
   await page.click('[data-act="close-panel"]');
+  // etapa 7: voz
+  const vch = world.channels.find((c) => c.kind === 'voice').id;
+  await page.click('.vjoin');
+  await page.waitForSelector('.vbar', { timeout: 6000 });
+  await page.waitForSelector('.vu', { timeout: 6000 });
+  ok('entrar na voz: barra "Voz conectada" e a pessoa aparece na sala', /Voz conectada/.test(await page.textContent('.vbar')) && /Tester/.test(await page.textContent('.vg')));
+  ok('sala de voz usa canal privado do Realtime', wsIn.some((j) => j.topic === 'realtime:voice:' + vch && j.event === 'phx_join' && j.payload.config.private === true));
+  wsConn.send(JSON.stringify({ topic: 'realtime:voice:' + vch, event: 'broadcast', payload: { type: 'broadcast', event: 'hello', payload: { from: 'u2' } } }));
+  await page.waitForFunction((v) => true, vch);
+  for (let i = 0; i < 40 && !wsIn.some((j) => j.event === 'broadcast' && j.payload && j.payload.event === 'offer'); i++) await page.waitForTimeout(100);
+  const offer = wsIn.find((j) => j.event === 'broadcast' && j.payload && j.payload.event === 'offer');
+  ok('outra pessoa entra na sala: o site cria a oferta de áudio (WebRTC)', !!offer && offer.payload.payload.to === 'u2' && /m=audio/.test(offer.payload.payload.sdp || ''));
+  ok('respondeu "hi" ao recém-chegado', wsIn.some((j) => j.event === 'broadcast' && j.payload && j.payload.event === 'hi' && j.payload.payload.to === 'u2'));
+  await page.click('[data-act="mute"] >> nth=0');
+  ok('silenciar microfone durante a chamada', (await page.locator('[data-act="mute"]').first().getAttribute('aria-pressed')) === 'true');
+  await page.click('[data-act="mute"] >> nth=0');
+  await page.screenshot({ path: OUT + '/2j-voz.png' });
+  await page.click('[data-act="vleave"]');
+  await page.waitForFunction(() => !document.querySelector('.vbar'), null, { timeout: 4000 });
+  ok('sair da voz: avisa os outros ("bye") e limpa a sala', wsIn.some((j) => j.event === 'broadcast' && j.payload && j.payload.event === 'bye') && world.voice.length === 0);
   // painel inicial agora com dados reais
   await page.click('.tbh');
   await page.waitForSelector('.hub');

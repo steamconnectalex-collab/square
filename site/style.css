@@ -451,3 +451,13 @@ button.pic{cursor:pointer}
 .panel .it.res{display:flex;flex-direction:column;gap:2px;width:100%;text-align:left;border:0;background:transparent;font:inherit;color:inherit;cursor:pointer}
 .panel .it.res small{font-weight:400;color:#77777F;margin-left:4px}
 .panel .it.res span{overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+
+/* ---- etapa 7: voz ---- */
+.vu{display:flex;align-items:center;gap:8px;margin:2px 0 2px 26px;font-size:13px;color:#55555F}
+.pf.xs{width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex:none}
+.vu .vn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vbar{display:flex;align-items:center;gap:10px;margin:0 10px 8px;padding:8px 10px;border-radius:14px;background:rgba(59,178,115,.14)}
+.vbar .vt{display:flex;flex-direction:column;min-width:0;flex:1}
+.vbar small{color:#55555F;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vdot{width:9px;height:9px;border-radius:50%;background:#3BB273;box-shadow:0 0 0 3px rgba(59,178,115,.25);flex:none}
+.vbar.fix{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:60;margin:0;background:#fff;box-shadow:0 10px 30px rgba(40,40,70,.18)}
