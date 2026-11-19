@@ -683,6 +683,7 @@ const PANELS = {
   notif: { title: 'Notificações', items: [] },
   pins: { title: 'Mensagens fixadas', items: [] },
   mentions: { title: 'Menções', items: [] },
+  search: { title: 'Buscar mensagens', items: [] },
   help: { title: 'Central de ajuda', items: [{ t: 'Como criar um servidor', s: 'Clique no “+” da barra de cima e escolha “Criar servidor”.' }, { t: 'Como convidar amigos', s: 'Dentro do servidor, clique em “Convidar” e envie o link.' }, { t: 'Atalhos do teclado', s: 'Enter envia a mensagem que você escreveu.' }] }
 };
 const EMOJIS = [['😀', 'Sorriso'], ['😂', 'Rindo'], ['👍', 'Joia'], ['🔥', 'Fogo'], ['🎮', 'Controle'], ['🎉', 'Festa'], ['❤️', 'Coração'], ['😮', 'Surpresa']];
@@ -722,8 +723,17 @@ function errText(e) {
 let SERVERS = [];
 let A = null;
 const ONLINE_MS = 150000;
-const FIELDS = 'id,author_id,content,created_at,edited_at';
-const mapMsg = (r) => ({ id: r.id, from: r.author_id, text: r.content, at: r.created_at, edited: !!r.edited_at });
+const FIELDS = 'id,author_id,content,created_at,edited_at,attachment_path';
+const mapMsg = (r) => ({ id: r.id, from: r.author_id, text: r.content, at: r.created_at, edited: !!r.edited_at, img: r.attachment_path || '' });
+const attUrl = (path) => C.SUPABASE_URL + '/storage/v1/object/public/attachments/' + path.split('/').map(encodeURIComponent).join('/');
+const mentionsMe = (text) => { const u = A && A.me && A.me.user; return !!u && new RegExp('(^|[^a-z0-9_])@' + u.replace(/[^a-z0-9_.]/gi, '') + '(?![a-z0-9_])', 'i').test(text || ''); };
+function msgBody(m) {
+  const me = A && A.me && A.me.user ? A.me.user.toLowerCase() : '';
+  let t = m.img && m.text === '📷 Imagem' ? '' : esc(m.text);
+  t = t.replace(/(^|[\s(])@([a-zA-Z0-9_]{2,30})/g, (x, a, u) => a + '<span class="mention' + (u.toLowerCase() === me ? ' me' : '') + '">@' + u + '</span>');
+  const img = m.img ? `<a class="att" href="${esc(attUrl(m.img))}" target="_blank" rel="noopener"><img src="${esc(attUrl(m.img))}" alt="Imagem enviada" loading="lazy"></a>` : '';
+  return t + img;
+}
 const msgTime = (iso) => {
   const d = new Date(iso), t = new Date(), p2 = (n) => String(n).padStart(2, '0');
   const hm = p2(d.getHours()) + ':' + p2(d.getMinutes());
@@ -983,6 +993,7 @@ function rtChange(d) {
     const ch = r.channel_id, th = A.threads[ch];
     if (r.author_id !== myId() && !serverOfChan(ch) && !A.dmUser[ch]) { reloadSoon(); return; }
     if (r.author_id !== myId() && A.dmUser[ch] && !A.blocked.has(r.author_id) && (curKey() !== ch || document.hidden)) { const f = dmPeer(ch); toast('Nova mensagem de ' + (f ? f.name : 'um amigo')); A.unread[ch] = 1; if (!th) reloadSoon(); else render(); }
+    if (r.author_id !== myId() && serverOfChan(ch) && mentionsMe(r.content) && !A.blocked.has(r.author_id)) { const f = findPerson(r.author_id); toast((f ? f.name : 'Alguém') + ' mencionou você'); }
     if (!th || th.some((x) => x.id === r.id)) return;
     th.push(mapMsg(r));
     if (A.typing) delete A.typing[ch + '|' + r.author_id];
@@ -1013,14 +1024,45 @@ function updateTyping() {
   const names = Object.keys(A.typing).filter((k) => k.startsWith(key + '|') && now - A.typing[k].t < 5000).map((k) => A.typing[k].name);
   el.textContent = !names.length ? '' : names.length === 1 ? names[0] + ' está digitando…' : names.length === 2 ? names[0] + ' e ' + names[1] + ' estão digitando…' : 'Várias pessoas estão digitando…';
 }
-async function sendTo(key, text) {
-  const rows = await sb('/rest/v1/messages?select=' + FIELDS, { method: 'POST', body: { channel_id: key, content: text }, prefer: 'return=representation' });
+async function sendTo(key, text, img) {
+  const body = { channel_id: key, content: text };
+  if (img) body.attachment_path = img;
+  const rows = await sb('/rest/v1/messages?select=' + FIELDS, { method: 'POST', body, prefer: 'return=representation' });
   const m = mapMsg(rows[0]), th = A.threads[key];
   if (th && !th.some((x) => x.id === m.id)) th.push(m);
 }
 function syncSend() {
   const b = document.getElementById('send-btn'); if (b) b.hidden = !A.draft.trim();
   const h = document.getElementById('hsend'); if (h) h.hidden = !A.hdraft.trim();
+}
+async function shrinkMax(file, max) {
+  const bmp = await createImageBitmap(file);
+  const k = Math.min(1, max / Math.max(bmp.width, bmp.height)), c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(bmp.width * k)); c.height = Math.max(1, Math.round(bmp.height * k));
+  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+  return new Promise((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error('img'))), 'image/jpeg', 0.82));
+}
+function pickImage(hub) {
+  const f = document.createElement('input'); f.type = 'file'; f.accept = 'image/jpeg,image/png,image/webp';
+  f.addEventListener('change', () => { if (f.files && f.files[0]) sendImage(f.files[0], hub); });
+  f.click();
+}
+async function sendImage(file, hub) {
+  const key = hub ? A.hubKey : A.channel;
+  if (!key || A.sending) return;
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type)) return toast('Use uma imagem JPG, PNG ou WebP.');
+  if (file.size > 15 * 1024 * 1024) return toast('A imagem é muito grande (máximo 15 MB).');
+  A.sending = true; toast('Enviando imagem…');
+  const caption = (hub ? A.hdraft : A.draft).trim();
+  try {
+    const blob = await shrinkMax(file, 1280);
+    const path = myId() + '/' + (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '' + Math.random().toString(16).slice(2)) + '.jpg';
+    await storageCall('POST', path, blob, 'image/jpeg', 'attachments');
+    await sendTo(key, caption || '📷 Imagem', path);
+    if (caption) { if (hub) A.hdraft = ''; else A.draft = ''; const i = document.getElementById(hub ? 'hmsg' : 'msg'); if (i) i.value = ''; syncSend(); }
+  } catch (e) { toast(e && e.message === 'upload_failed' ? 'Não foi possível enviar a imagem. Tente outra.' : errText(e)); }
+  A.sending = false;
+  if (curKey() === key) paintMsgs(true);
 }
 async function doSend(hub) {
   const key = hub ? A.hubKey : A.channel;
@@ -1096,9 +1138,9 @@ function hubMsgsHTML() {
   const th = (A.threads[key] || []).filter((m) => !A.blocked.has(m.from)).slice(srv ? -3 : -30);
   if (!th.length) return '<div class="hempty">Nenhuma mensagem ainda. Escreva a primeira!</div>';
   return th.map((m) => {
-    if (m.from === me) return `<div class="mout"><div class="bub"><span class="sr">Você: </span>${esc(m.text)}</div></div>`;
+    if (m.from === me) return `<div class="mout"><div class="bub"><span class="sr">Você: </span>${msgBody(m)}</div></div>`;
     const p = srv ? srv.byId[m.from] : peer;
-    return `<div class="min"><button type="button" class="av40" data-act="profile" data-id="${m.from}" aria-label="Ver perfil de ${esc(p ? p.name : 'ex-membro')}" style="background:${p ? p.g : G.slate}">${esc(p ? p.ini : '')}</button><div class="bub"><span class="sr">${esc(p ? p.name : '')}: </span>${esc(m.text)}</div></div>`;
+    return `<div class="min"><button type="button" class="av40" data-act="profile" data-id="${m.from}" aria-label="Ver perfil de ${esc(p ? p.name : 'ex-membro')}" style="background:${p ? p.g : G.slate}">${esc(p ? p.ini : '')}</button><div class="bub"><span class="sr">${esc(p ? p.name : '')}: </span>${msgBody(m)}</div></div>`;
   }).join('');
 }
 function hubChatHTML() {
@@ -1118,7 +1160,7 @@ function hubChatHTML() {
   <div class="hmsgs" id="hmsgs" role="log" aria-label="Mensagens recentes" aria-live="polite">${hubMsgsHTML()}</div>
   <div class="typing" id="typing" aria-live="polite"></div>
   <div class="cbar hbar">
-    <button type="button" class="hov ib" data-act="toast-attach" aria-label="Anexar arquivo">${ic(D.clip, 18)}</button>
+    <button type="button" class="hov ib" data-act="attach" data-hub="1" aria-label="Anexar imagem">${ic(D.clip, 18)}</button>
     <input id="hmsg" type="text" placeholder="Escreva algo..." maxlength="2000" value="${esc(A.hdraft)}" data-app-bind="hdraft" autocomplete="off" aria-label="Escreva uma mensagem">
     <button type="button" class="go" id="hsend" data-act="hsend" aria-label="Enviar mensagem"${A.hdraft.trim() ? '' : ' hidden'}>${ic(D.send, 17, '#FFFFFF', 1.8)}</button>
   </div>
@@ -1244,10 +1286,10 @@ function serverMsgsHTML() {
     + (th.length ? '' : '<div class="empty">Nenhuma mensagem ainda. Seja o primeiro a escrever.</div>')
     + th.map((m) => {
       const ed = m.edited ? ' <small class="ed">(editada)</small>' : '';
-      if (m.from === me) return `<div class="mout">${acts(m)}<div class="bub"><span class="sr">Você: </span>${esc(m.text)}${ed}</div></div>`;
+      if (m.from === me) return `<div class="mout">${acts(m)}<div class="bub"><span class="sr">Você: </span>${msgBody(m)}${ed}</div></div>`;
       const p = srv ? srv.byId[m.from] : dmPeer(key), nm = p ? p.name : 'Ex-membro';
       return `<div class="min"><div class="col"><button type="button" class="av40" data-act="profile" data-id="${m.from}" aria-label="Ver perfil de ${esc(nm)}" style="background:${p ? p.g : G.slate}">${esc(p ? p.ini : '')}</button><small>${esc(msgTime(m.at))}</small></div>
-        <div class="bub"><button type="button" class="an" data-act="profile" data-id="${m.from}">${esc(nm)}</button>${esc(m.text)}${ed}</div>${acts(m)}</div>`;
+        <div class="bub"><button type="button" class="an" data-act="profile" data-id="${m.from}">${esc(nm)}</button>${msgBody(m)}${ed}</div>${acts(m)}</div>`;
     }).join('');
 }
 
@@ -1256,7 +1298,7 @@ function composerHTML(ok, ph) {
         ${A.emojiOpen ? `<div class="emoji" role="group" aria-label="Escolher emoji">${EMOJIS.map((e) => `<button type="button" class="hov" data-act="emoji" data-ch="${e[0]}" aria-label="Inserir emoji ${e[1]}">${e[0]}</button>`).join('')}</div>` : ''}
         <div class="typing" id="typing" aria-live="polite"></div>
         <div class="cbar">
-          <button type="button" class="hov plus" data-act="toast-attach" aria-label="Anexar arquivo">${ic(D.plus, 19)}</button>
+          <button type="button" class="hov plus" data-act="attach" aria-label="Anexar imagem">${ic(D.plus, 19)}</button>
           <input id="msg" type="text" placeholder="${ph}" maxlength="2000" value="${esc(A.draft)}" data-app-bind="draft" autocomplete="off" aria-label="Escreva uma mensagem"${ok ? '' : ' disabled'}>
           <button type="button" class="hov ib" data-act="toast-gift" aria-label="Enviar presente">${ic(D.gift, 19, '#55555F', 1.6)}</button>
           <button type="button" class="hov ib" data-act="toast-gif" aria-label="Escolher GIF"><span class="gif">GIF</span></button>
@@ -1298,6 +1340,7 @@ function dmViewHTML() {
   <header class="top">
     <div class="t">${ic(D.bubble, 24, '#55555F', 1.6)}<div style="min-width:0"><h1>${esc(peer.name)}</h1><small>${peer.user ? '@' + esc(peer.user) : ''}${peer.status ? ' · ' + esc(peer.status) : ''}</small></div></div>
     <nav class="nav" aria-label="Ferramentas da conversa">
+      <button type="button" class="nbtn ${A.panel === 'search' ? 'sel' : 'hov'}" data-act="nav" data-k="search">${ic(D.search, 18, '#55555F', 1.6)}Buscar</button>
       <button type="button" class="nbtn hov" data-act="profile" data-id="${peer.id}">${ic(D.users, 18, '#55555F', 1.6)}Perfil</button>
       <button type="button" class="nbtn hov" data-act="hub">${ic(D.bubble, 18, '#55555F', 1.6)}Voltar ao painel</button>
     </nav>
@@ -1353,7 +1396,7 @@ function serverHTML() {
   <header class="top">
     <div class="t">${ic(D.gamepad, 24, '#55555F', 1.6)}<div style="min-width:0"><h1>${esc(srv.name)}</h1><small>${nMem}</small></div></div>
     <nav class="nav" aria-label="Ferramentas do servidor">
-      ${nav('invite', D.userPlus, 'Convidar', false)}${nav('notif', D.bell, 'Notificações', A.panel === 'notif')}${nav('pins', D.pin, 'Mensagens fixadas', A.panel === 'pins')}${nav('members', D.users, 'Lista de membros', A.showMembers)}${nav('mentions', D.at, 'Menções', A.panel === 'mentions')}${nav('help', D.help, 'Central de ajuda', A.panel === 'help')}
+      ${nav('invite', D.userPlus, 'Convidar', false)}${nav('notif', D.bell, 'Notificações', A.panel === 'notif')}${nav('pins', D.pin, 'Mensagens fixadas', A.panel === 'pins')}${nav('members', D.users, 'Lista de membros', A.showMembers)}${nav('search', D.search, 'Buscar mensagens', A.panel === 'search')}${nav('mentions', D.at, 'Menções', A.panel === 'mentions')}${nav('help', D.help, 'Central de ajuda', A.panel === 'help')}
     </nav>
   </header>
   <div class="body">
@@ -1456,11 +1499,11 @@ async function shrinkImage(file) {
   c.getContext('2d').drawImage(bmp, (bmp.width - side) / 2, (bmp.height - side) / 2, side, side, 0, 0, n, n);
   return new Promise((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error('img'))), 'image/jpeg', 0.85));
 }
-async function storageCall(method, path, body, type) {
+async function storageCall(method, path, body, type, bucket) {
   const t = await freshToken(); if (!t) throw { message: 'not_authenticated', status: 401 };
   const h = { apikey: C.SUPABASE_KEY, authorization: 'Bearer ' + t };
   if (type) h['content-type'] = type;
-  let r; try { r = await fetch(C.SUPABASE_URL + '/storage/v1/object/avatars/' + path, { method, headers: h, body }); } catch (e) { throw { message: 'network', status: 0 }; }
+  let r; try { r = await fetch(C.SUPABASE_URL + '/storage/v1/object/' + (bucket || 'avatars') + '/' + path, { method, headers: h, body }); } catch (e) { throw { message: 'network', status: 0 }; }
   if (!r.ok) throw { message: 'upload_failed', status: r.status };
 }
 async function setAvatar(file) {
@@ -1639,12 +1682,43 @@ function modalAct(act, el, ev) {
   }
 }
 
+const esq = (t) => encodeURIComponent('*' + t.replace(/[*%,()\\]/g, ' ').trim() + '*');
+function resRow(r) {
+  const f = findPerson(r.author_id), srv = serverOfChan(r.channel_id);
+  const ch = srv ? (srv.text.find((c) => c.id === r.channel_id) || {}).name : '';
+  return `<button type="button" class="it res" data-act="goto-msg" data-ch="${r.channel_id}"><b>${esc(f ? f.name : 'Alguém')}${ch ? ' · #' + esc(ch) : ''} <small>${esc(msgTime(r.created_at))}</small></b><span>${esc(r.attachment_path && r.content === '📷 Imagem' ? '📷 Imagem' : r.content)}</span></button>`;
+}
+function searchPanelHTML() {
+  const q = (A.sq || '').trim(), rs = A.sres;
+  return `<div class="it"><input id="sq" class="sqin" type="text" placeholder="Buscar neste canal" maxlength="80" value="${esc(A.sq || '')}" data-app-bind="sq" autocomplete="off" aria-label="Buscar mensagens neste canal"></div>`
+    + (q.length < 2 ? '<div class="it"><span>Digite pelo menos 2 letras.</span></div>' : rs == null ? '<div class="it"><span>Buscando…</span></div>' : rs.length ? rs.map(resRow).join('') : '<div class="it"><span>Nenhuma mensagem encontrada.</span></div>');
+}
+function mentionsPanelHTML() {
+  const rs = A.mres;
+  return rs == null ? '<div class="it"><span>Carregando…</span></div>' : rs.length ? rs.map(resRow).join('') : '<div class="it"><span>Ninguém mencionou você ainda.</span></div>';
+}
+let sqTimer = null;
+function runSearch() {
+  const q = (A.sq || '').trim(), key = curKey(), w = A;
+  if (q.length < 2 || !key) { A.sres = null; return; }
+  A.sres = null;
+  sb('/rest/v1/messages?select=id,channel_id,author_id,content,created_at,attachment_path&channel_id=eq.' + key + '&content=ilike.' + esq(q) + '&order=id.desc&limit=30')
+    .then((rows) => { if (A === w && A.sq.trim() === q) { A.sres = rows; if (A.panel === 'search') render(); } })
+    .catch((e) => { if (A === w) { A.sres = []; toast(errText(e)); if (A.panel === 'search') render(); } });
+}
+function loadMentions() {
+  const u = A.me && A.me.user, w = A; A.mres = null;
+  if (!u) { A.mres = []; return; }
+  sb('/rest/v1/messages?select=id,channel_id,author_id,content,created_at,attachment_path&content=ilike.' + esq('@' + u) + '&author_id=neq.' + myId() + '&order=id.desc&limit=20')
+    .then((rows) => { if (A === w) { A.mres = rows.filter((r) => serverOfChan(r.channel_id) && mentionsMe(r.content) && !A.blocked.has(r.author_id)); if (A.panel === 'mentions') render(); } })
+    .catch(() => { if (A === w) { A.mres = []; if (A.panel === 'mentions') render(); } });
+}
 function appView() {
   const enter = !A.entered; A.entered = true;
   const panel = A.panel ? PANELS[A.panel] : null;
   const reqRow = (p) => `<div class="it req"><button type="button" class="pf" data-act="profile" data-id="${p.id}" aria-label="Ver perfil de ${esc(p.name)}" style="background:${p.g}">${esc(p.ini)}</button><span class="tx"><b>${esc(p.name)}</b><span>Quer ser seu amigo${p.user ? ' · @' + esc(p.user) : ''}</span></span><button type="button" class="mbtn sm ghost" data-act="fr-decline" data-id="${p.id}">Recusar</button><button type="button" class="mbtn sm" data-act="fr-accept" data-id="${p.id}">Aceitar</button></div>`;
   const panelHTML = panel ? `<div class="panel" role="dialog" aria-label="${panel.title}"><div class="ph"><span>${panel.title}</span><button type="button" class="hov sq" data-act="close-panel" aria-label="Fechar painel">${ic(D.close, 16, '#55555F', 1.8)}</button></div>
-    ${A.panel === 'notif' ? (A.incoming.length ? A.incoming.map(reqRow).join('') : '<div class="it"><span>Nada por aqui ainda.</span></div>') : panel.items.length ? panel.items.map((it) => `<div class="it"><b>${esc(it.t)}</b><span>${esc(it.s)}</span></div>`).join('') : '<div class="it"><span>Nada por aqui ainda.</span></div>'}</div>` : '';
+    ${A.panel === 'search' ? searchPanelHTML() : A.panel === 'mentions' ? mentionsPanelHTML() : A.panel === 'notif' ? (A.incoming.length ? A.incoming.map(reqRow).join('') : '<div class="it"><span>Nada por aqui ainda.</span></div>') : panel.items.length ? panel.items.map((it) => `<div class="it"><b>${esc(it.t)}</b><span>${esc(it.s)}</span></div>`).join('') : '<div class="it"><span>Nada por aqui ainda.</span></div>'}</div>` : '';
   markCur();
   const showServer = A.view === 'server' && SERVERS.length && A.world === 'ready';
   const showDm = A.view === 'dm' && A.world === 'ready';
@@ -1705,7 +1779,7 @@ function appAction(act, el, ev) {
     case 'menu': A.menu = !A.menu; break;
     case 'settings': toast('Configurações chegam em breve'); break;
     case 'logout': logout(); return;
-    case 'nav': { const k = el.dataset.k; if (k === 'invite') { openInvite(); return; } if (k === 'members') A.showMembers = !A.showMembers; else A.panel = A.panel === k ? null : k; break; }
+    case 'nav': { const k = el.dataset.k; if (k === 'invite') { openInvite(); return; } if (k === 'members') A.showMembers = !A.showMembers; else { A.panel = A.panel === k ? null : k; if (A.panel === 'mentions') loadMentions(); if (A.panel === 'search') { A.sres = null; runSearch(); } } break; }
     case 'close-panel': A.panel = null; break;
     case 'otoggle': A.onlineOpen = !A.onlineOpen; break;
     case 'ftoggle': A.offlineOpen = !A.offlineOpen; break;
@@ -1722,9 +1796,10 @@ function appAction(act, el, ev) {
     case 'mnext': A.track = (A.track + 1) % TRACKS.length; A.prog = 0; break;
     case 'mtrack': A.track = Number(el.dataset.i) || 0; A.prog = 0; A.playing = true; break;
     case 'panel': A.panel = A.panel === el.dataset.k ? null : el.dataset.k; break;
+    case 'goto-msg': { const ch = el.dataset.ch, srv = serverOfChan(ch); A.panel = null; if (srv) { A.server = srv.id; A.channel = ch; A.view = 'server'; } else if (A.dmUser[ch]) { A.channel = ch; A.view = 'dm'; } render({ scroll: true }); return true; }
     case 'toast-soon': toast('Isso chega em breve'); return;
     case 'toast-pin': toast('Fixar festas chega em breve'); return;
-    case 'toast-attach': toast('Anexos chegam em breve'); return;
+    case 'attach': pickImage(el.dataset.hub === '1'); return;
     case 'toast-gift': toast('Presentes chegam em breve'); return;
     case 'toast-gif': toast('GIFs chegam em breve'); return;
     default: return;
@@ -1757,6 +1832,7 @@ function onBound(path, el) {
 $root.addEventListener('input', (e) => {
   const t = e.target;
   if (t.dataset.appBind) {
+    if (t.dataset.appBind === 'sq') { A.sq = t.value; clearTimeout(sqTimer); sqTimer = setTimeout(() => { runSearch(); if (A.panel === 'search') render(); }, 350); return; }
     if (t.dataset.appBind === 'search') { A.search = t.value; const l = document.getElementById('mlist'); if (l) l.innerHTML = membersListHTML(); }
     else if (t.dataset.appBind === 'gq') { A.gq = t.value; A.search = t.value; refilter(); }
     else if (t.dataset.appBind.startsWith('m:')) { if (A.modal) A.modal[t.dataset.appBind.slice(2)] = t.value; }

@@ -91,9 +91,11 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
     }
     if (path === 'messages') {
       const ch = (q.get('channel_id') || '').replace('eq.', '');
-      if (m === 'POST') { const row = { id: world.nextMsg++, channel_id: body.channel_id, author_id: 'u1', content: body.content, created_at: new Date().toISOString(), edited_at: null }; world.messages.push(row); return send(201, [row]); }
+      if (m === 'POST') { const row = { id: world.nextMsg++, channel_id: body.channel_id, author_id: 'u1', content: body.content, created_at: new Date().toISOString(), edited_at: null, attachment_path: body.attachment_path || null }; world.messages.push(row); return send(201, [row]); }
       if (m === 'GET') {
-        let rows = world.messages.filter((r) => r.channel_id === ch);
+        let rows = world.messages.filter((r) => !ch || r.channel_id === ch);
+        const ilk = q.get('content'); if (ilk && /^ilike\./.test(ilk)) { const needle = ilk.slice(6).replace(/\*/g, '').toLowerCase(); rows = rows.filter((r) => (r.content || '').toLowerCase().includes(needle)); }
+        const neq = (q.get('author_id') || '').match(/^neq\.(.+)/); if (neq) rows = rows.filter((r) => r.author_id !== neq[1]);
         const gt = (q.get('id') || '').match(/^gt\.(-?\d+)/); if (gt) rows = rows.filter((r) => r.id > +gt[1]);
         const lt = (q.get('id') || '').match(/^lt\.(-?\d+)/); if (lt) rows = rows.filter((r) => r.id < +lt[1]);
         rows = rows.slice().sort((a, b) => (q.get('order') === 'id.desc' ? b.id - a.id : a.id - b.id));
@@ -133,7 +135,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
       case '/qr/info': return send(200, { ok: true, device: 'Chrome no Windows' });
       case '/qr/approve': return send(200, { ok: true, status: 'approved' });
       default:
-        if (url.pathname.startsWith('/storage/v1/object/avatars/')) { storageCalls.push([req.method(), url.pathname]); return send(200, { Key: 'ok' }); }
+        if (/^\/storage\/v1\/object\/(avatars|attachments)\//.test(url.pathname)) { storageCalls.push([req.method(), url.pathname]); return send(200, { Key: 'ok' }); }
         if (url.pathname.startsWith('/rest/v1/')) return rest(req, url, body, send);
         if (url.pathname.startsWith('/auth/v1/logout')) return send(204, {});
         return send(404, {});
@@ -292,6 +294,26 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await page.click('[data-act="modal-submit"]');
   await page.waitForFunction(() => !document.querySelector('.modal'));
   ok('editar perfil grava a bio no banco', world.profiles[0].bio === 'Minha bio de teste');
+  // etapa 6: menção, imagem, busca, menções recebidas
+  const c1 = world.channels[0].id;
+  await page.fill('#msg', 'oi @tester tudo bem por aí?');
+  await page.press('#msg', 'Enter');
+  await page.waitForSelector('.mention.me', { timeout: 5000 });
+  ok('menção ao próprio @usuário aparece destacada', true);
+  const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.click('[data-act="attach"]')]);
+  await fc.setFiles({ name: 'foto.png', mimeType: 'image/png', buffer: png });
+  await page.waitForSelector('.att img', { timeout: 6000 });
+  ok('imagem enviada ao Storage e aparece na mensagem', storageCalls.some((c) => c[0] === 'POST' && /\/attachments\/u1\/[0-9a-f-]+\.jpg$/.test(c[1])) && world.messages.some((x) => /^u1\//.test(x.attachment_path || '')));
+  await page.click('.nav [data-act="nav"][data-k="search"]');
+  await page.fill('#sq', 'tudo bem');
+  await page.waitForSelector('.panel .res', { timeout: 5000 });
+  ok('busca de mensagens acha a mensagem no canal', (await page.locator('.panel .res').count()) >= 1);
+  await page.click('[data-act="close-panel"]');
+  world.messages.push({ id: world.nextMsg++, channel_id: c1, author_id: 'u2', content: 'Oi @tester, vem jogar!', created_at: new Date().toISOString(), edited_at: null, attachment_path: null });
+  await page.click('.nav [data-act="nav"][data-k="mentions"]');
+  await page.waitForSelector('.panel .res', { timeout: 5000 });
+  ok('painel de menções lista quem mencionou você', /Marina/.test(await page.textContent('.panel')));
+  await page.click('[data-act="close-panel"]');
   // painel inicial agora com dados reais
   await page.click('.tbh');
   await page.waitForSelector('.hub');
