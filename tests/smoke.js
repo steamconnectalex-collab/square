@@ -33,7 +33,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   let qrPolls = 0;
   const storageCalls = [];
   // ---- banco simulado (servidores, canais, membros, mensagens, perfis) ----
-  const world = { servers: [], channels: [], members: [], messages: [], nextMsg: 1, nextId: 1, friendships: [], dms: [],
+  const world = { servers: [], channels: [], members: [], messages: [], nextMsg: 1, nextId: 1, friendships: [], dms: [], blocks: [],
     profiles: [
       { id: 'u1', username: 'tester', display_name: 'Tester Um', bio: '', status_text: '', accent: '#9D8CCF', last_seen: null, created_at: '2026-11-16T10:00:00Z' },
       { id: 'u3', username: 'pedro', display_name: 'Pedro Alves', bio: '', status_text: '', accent: '#6FB3A0', last_seen: null, created_at: '2026-11-12T10:00:00Z' },
@@ -68,6 +68,8 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
         return send(204, null);
       }
       if (fn === 'remove_friend') { world.friendships = world.friendships.filter((x) => x.user_a !== body.p_other && x.user_b !== body.p_other); return send(204, null); }
+      if (fn === 'block_user') { world.blocks.push({ blocked: body.p_other }); world.friendships = world.friendships.filter((x) => x.user_a !== body.p_other && x.user_b !== body.p_other); return send(204, null); }
+      if (fn === 'unblock_user') { world.blocks = world.blocks.filter((b) => b.blocked !== body.p_other); return send(204, null); }
       if (fn === 'open_dm') {
         let d = world.dms.find((x) => x.user === body.p_other);
         if (!d) { d = { id: 'dm' + world.nextId++, user: body.p_other }; world.dms.push(d); }
@@ -80,6 +82,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
     if (path === 'servers') return send(200, world.servers);
     if (path === 'channels') return send(200, q.get('kind') === 'eq.dm' ? world.dms.map((d) => ({ id: d.id })) : world.channels);
     if (path === 'friendships') return send(200, world.friendships);
+    if (path === 'blocks') return send(200, world.blocks);
     if (path === 'dm_members') return send(200, world.dms.flatMap((d) => [{ channel_id: d.id, user_id: 'u1' }, { channel_id: d.id, user_id: d.user }]));
     if (path === 'server_members') return send(200, world.members);
     if (path === 'profiles') {
@@ -359,6 +362,34 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await page.click('.panel [data-act="fr-accept"]');
   await page.waitForFunction(() => document.querySelectorAll('#flist .frow').length === 2, null, { timeout: 5000 });
   ok('aceitar o pedido adiciona o novo amigo', world.friendships.every((f) => f.status === 'accepted'));
+  // etapa 5 parte 2: conversa em tela cheia, não lidas, bloquear
+  await page.click('.hchat [data-act="chat-open"]');
+  await page.waitForSelector('.dmrow', { timeout: 5000 });
+  await page.waitForFunction(() => /Tudo ótimo/.test(document.getElementById('msgs').textContent), null, { timeout: 5000 });
+  ok('conversa privada abre em tela cheia com a lista de amigos', (await page.locator('.dmrow').count()) === 2);
+  await page.fill('#msg', 'Mensagem na tela cheia');
+  await page.press('#msg', 'Enter');
+  await page.waitForFunction(() => /Mensagem na tela cheia/.test(document.getElementById('msgs').textContent));
+  ok('tela cheia: mensagem enviada ao canal da conversa', world.messages.some((x) => x.channel_id === world.dms[0].id && x.content === 'Mensagem na tela cheia'));
+  await page.screenshot({ path: OUT + '/2h-dm-cheia.png' });
+  world.dms.push({ id: 'dm9', user: 'u3' });
+  const rowp = { id: world.nextMsg++, channel_id: 'dm9', author_id: 'u3', content: 'E aí, Tester?', created_at: new Date().toISOString(), edited_at: null };
+  world.messages.push(rowp);
+  wsConn.send(JSON.stringify({ topic: 'realtime:sq', event: 'postgres_changes', payload: { data: { type: 'INSERT', table: 'messages', record: rowp } } }));
+  await page.waitForSelector('.dmrow .udot', { timeout: 6000 });
+  ok('bolinha de não lida aparece na conversa que chegou', (await page.locator('.dmrow .udot').count()) === 1 && (await page.locator('.tbh .udot').count()) === 1);
+  await page.click('.dmrow:has(.udot)');
+  await page.waitForFunction(() => /E aí, Tester/.test((document.getElementById('msgs') || {}).textContent || ''), null, { timeout: 5000 });
+  await page.waitForFunction(() => !document.querySelector('.udot'), null, { timeout: 5000 });
+  ok('abrir a conversa apaga a bolinha', true);
+  await page.click('.top [data-act="profile"]');
+  await page.waitForSelector('.blink');
+  await page.click('.blink');
+  await page.waitForSelector('.modal:has-text("Bloquear pessoa")');
+  await page.click('[data-act="modal-submit"]');
+  await page.waitForSelector('.hub', { timeout: 6000 });
+  ok('bloquear remove a amizade e volta ao painel', world.blocks.length === 1 && world.blocks[0].blocked === 'u3' && world.friendships.every((x) => x.user_a !== 'u3' && x.user_b !== 'u3'));
+  await page.screenshot({ path: OUT + '/2i-bloqueado.png' });
   await page.setViewportSize({ width: 390, height: 800 });
   await page.waitForTimeout(300);
   ok('painel no celular sem rolagem lateral', await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));

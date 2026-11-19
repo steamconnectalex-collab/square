@@ -708,7 +708,7 @@ const ERRS = {
   not_authenticated: 'Sua sessão expirou. Entre de novo.', network: 'Sem conexão. Verifique sua internet e tente de novo.',
   invalid_name: 'O nome está fora do tamanho permitido.', too_many_servers: 'Você atingiu o limite de servidores.',
   too_many_channels: 'Esse servidor já tem o máximo de canais.', not_owner: 'Só o dono do servidor pode fazer isso.',
-  not_member: 'Você não faz parte deste servidor.', user_not_found: 'Não encontramos ninguém com esse @usuário.', cannot_add_self: 'Você não pode adicionar a si mesmo.',
+  not_member: 'Você não faz parte deste servidor.', user_not_found: 'Não encontramos ninguém com esse @usuário.', you_blocked: 'Você bloqueou essa pessoa. Desbloqueie para adicioná-la.', cannot_add_self: 'Você não pode adicionar a si mesmo.',
   too_many_requests: 'Você já tem pedidos demais esperando resposta.', no_request: 'Esse pedido não existe mais.', not_friends: 'Vocês ainda não são amigos.', invalid_invite: 'Convite inválido ou expirado.',
   'row-level security': 'Você não tem permissão para isso.', 'violates check constraint': 'Algum campo está fora do tamanho permitido.'
 };
@@ -751,7 +751,7 @@ function initApp() {
     owner: uid, world: 'loading', werr: '', me: null, server: null, channel: null, voice: null, muted: false, deafened: false,
     panel: null, showMembers: true, onlineOpen: true, offlineOpen: true, draft: '', search: '', emojiOpen: false, menu: false,
     view: 'hub', hubKey: '', hubKeys: [], hdraft: '', gq: '', searchOpen: false, barOpen: false, playing: true, track: 0, prog: 34, ntab: 'news', entered: false,
-    threads: {}, loaded: {}, loading: {}, more: {}, terr: {}, modal: null, poll: null, beat: null, tt: null, typing: {}, pollN: 0, friends: [], incoming: [], outgoing: [], known: {}, dmByUser: {}, dmUser: {}
+    threads: {}, loaded: {}, loading: {}, more: {}, terr: {}, modal: null, poll: null, beat: null, tt: null, typing: {}, pollN: 0, friends: [], incoming: [], outgoing: [], known: {}, dmByUser: {}, dmUser: {}, blocked: new Set(), unread: {}
   };
   startLive(); loadWorld(); openJoin();
 }
@@ -772,22 +772,33 @@ const curServer = () => SERVERS.find((s) => s.id === A.server) || SERVERS[0] || 
 const serverOfChan = (cid) => SERVERS.find((s) => s.text.some((c) => c.id === cid)) || null;
 const curKey = () => (A.view === 'hub' ? A.hubKey : (A.channel || ''));
 const findPerson = (id) => { if (A.me && id === A.me.id) return A.me; for (const s of SERVERS) if (s.byId[id]) return s.byId[id]; return (A.known && A.known[id]) || null; };
-const relOf = (id) => (A.friends.some((f) => f.id === id) ? 'friend' : A.incoming.some((f) => f.id === id) ? 'incoming' : A.outgoing.some((f) => f.id === id) ? 'outgoing' : 'none');
+const relOf = (id) => (A.blocked.has(id) ? 'blocked' : A.friends.some((f) => f.id === id) ? 'friend' : A.incoming.some((f) => f.id === id) ? 'incoming' : A.outgoing.some((f) => f.id === id) ? 'outgoing' : 'none');
+const rk = (ch) => 'sq.read.' + myId() + '.' + ch;
+const anyUnread = () => Object.keys(A.unread).some((k) => A.unread[k]);
+const udot = (ch) => (A.unread[ch] ? '<i class="udot" title="Mensagens não lidas"></i>' : '');
+function markCur() {
+  const k = curKey();
+  if (!A || !A.dmUser[k] || !A.threads[k] || !A.threads[k].length || document.hidden) return;
+  const last = A.threads[k][A.threads[k].length - 1];
+  if (typeof last.id === 'number' || /^\d+$/.test(String(last.id))) store.set(rk(k), Number(last.id));
+  if (A.unread[k]) delete A.unread[k];
+}
 const dmPeer = (key) => A.friends.find((f) => f.dm === key) || (A.dmUser[key] && A.known[A.dmUser[key]]) || null;
 
 async function loadWorld(paint) {
   const w = A;
   try {
-    const [srv, chs, mem, fr, dmc, dmm] = await Promise.all([
+    const [srv, chs, mem, fr, dmc, dmm, blk] = await Promise.all([
       sb('/rest/v1/servers?select=id,name,owner_id,created_at&order=created_at.asc'),
       sb('/rest/v1/channels?select=id,server_id,name,kind,position&server_id=not.is.null&order=position.asc'),
       sb('/rest/v1/server_members?select=server_id,user_id,role'),
       sb('/rest/v1/friendships?select=user_a,user_b,requester,status'),
       sb('/rest/v1/channels?select=id&kind=eq.dm'),
-      sb('/rest/v1/dm_members?select=channel_id,user_id')
+      sb('/rest/v1/dm_members?select=channel_id,user_id'),
+      sb('/rest/v1/blocks?select=blocked')
     ]);
     const other = (f) => (f.user_a === myId() ? f.user_b : f.user_a);
-    const ids = Array.from(new Set(mem.map((m) => m.user_id).concat(fr.map(other), [myId()])));
+    const ids = Array.from(new Set(mem.map((m) => m.user_id).concat(fr.map(other), blk.map((b) => b.blocked), [myId()])));
     const profs = await sb('/rest/v1/profiles?select=id,username,display_name,bio,status_text,avatar_path,accent,last_seen,created_at&id=in.(' + ids.join(',') + ')');
     if (A !== w) return;
     const P = {}; profs.forEach((p) => { P[p.id] = p; });
@@ -797,7 +808,17 @@ async function loadWorld(paint) {
     const known = {};
     ids.forEach((id) => { if (id !== myId() && P[id]) known[id] = person(P[id], id, ''); });
     const byName = (a, b) => (a.on === b.on ? a.name.localeCompare(b.name) : (a.on ? -1 : 1));
-    w.known = known; w.dmByUser = dmByUser; w.dmUser = dmUser;
+    w.known = known; w.dmByUser = dmByUser; w.dmUser = dmUser; w.blocked = new Set(blk.map((b) => b.blocked));
+    const unread = {};
+    await Promise.all(dmc.map(async (c) => {
+      try {
+        const last = (await sb('/rest/v1/messages?select=id,author_id&channel_id=eq.' + c.id + '&order=id.desc&limit=1'))[0];
+        if (!last) return;
+        const mark = Number(store.get(rk(c.id)) || 0);
+        if (last.author_id !== myId() && last.id > mark && !(w.view === 'dm' && w.channel === c.id) && !(w.view === 'hub' && w.hubKey === c.id)) unread[c.id] = 1;
+      } catch (e) { /* sem aviso de não lida */ }
+    }));
+    w.unread = unread;
     w.friends = fr.filter((f) => f.status === 'accepted').map((f) => known[other(f)]).filter(Boolean).map((p) => Object.assign({}, p, { dm: dmByUser[p.id] || '' })).sort(byName);
     w.incoming = fr.filter((f) => f.status === 'pending' && f.requester !== myId()).map((f) => known[other(f)]).filter(Boolean);
     w.outgoing = fr.filter((f) => f.status === 'pending' && f.requester === myId()).map((f) => known[other(f)]).filter(Boolean);
@@ -826,8 +847,11 @@ function fixSelection() {
   const dms = A.friends.filter((f) => f.dm).map((f) => f.dm);
   const dmKeys = dms.slice(0, 4);
   if (A.hubKey && dms.includes(A.hubKey) && !dmKeys.includes(A.hubKey)) dmKeys[3] = A.hubKey;
+  if (A.view === 'dm' && !A.friends.some((f) => f.dm && f.dm === A.channel)) { A.view = 'hub'; A.channel = null; }
   if (!SERVERS.length) {
-    A.server = null; A.channel = null; A.view = 'hub';
+    A.server = null; if (A.view !== 'dm') { A.channel = null; A.view = 'hub'; }
+  } else if (A.view === 'dm') {
+    if (!SERVERS.some((x) => x.id === A.server)) A.server = SERVERS[0].id;
   } else {
     let s = SERVERS.find((x) => x.id === A.server);
     if (!s) { s = SERVERS[0]; A.server = s.id; A.channel = null; }
@@ -861,7 +885,7 @@ async function ensureThread(key) {
     w.loaded[key] = 1;
   } catch (e) { if (A === w) w.terr[key] = 1; }
   finally { if (A === w) w.loading[key] = 0; }
-  if (A === w && S.view === 'app' && curKey() === key) paintMsgs(true);
+  if (A === w && S.view === 'app' && curKey() === key) { const had = A.unread[key]; paintMsgs(true); markCur(); if (had && !A.unread[key]) render(); }
 }
 function paintMsgs(stick) {
   const hub = A.view === 'hub';
@@ -958,11 +982,11 @@ function rtChange(d) {
   if (d.type === 'INSERT') {
     const ch = r.channel_id, th = A.threads[ch];
     if (r.author_id !== myId() && !serverOfChan(ch) && !A.dmUser[ch]) { reloadSoon(); return; }
-    if (r.author_id !== myId() && A.dmUser[ch] && curKey() !== ch) { const f = dmPeer(ch); toast('Nova mensagem de ' + (f ? f.name : 'um amigo')); if (!th) reloadSoon(); }
+    if (r.author_id !== myId() && A.dmUser[ch] && !A.blocked.has(r.author_id) && (curKey() !== ch || document.hidden)) { const f = dmPeer(ch); toast('Nova mensagem de ' + (f ? f.name : 'um amigo')); A.unread[ch] = 1; if (!th) reloadSoon(); else render(); }
     if (!th || th.some((x) => x.id === r.id)) return;
     th.push(mapMsg(r));
     if (A.typing) delete A.typing[ch + '|' + r.author_id];
-    if (curKey() === ch) { paintMsgs(false); updateTyping(); }
+    if (curKey() === ch) { paintMsgs(false); updateTyping(); markCur(); }
   } else if (d.type === 'UPDATE') {
     const th = A.threads[r.channel_id], x = th && th.find((y) => y.id === r.id);
     if (x) { x.text = r.content; x.edited = !!r.edited_at; if (curKey() === r.channel_id) paintMsgs('keep'); }
@@ -974,6 +998,7 @@ function rtChange(d) {
 }
 function rtTyping(p) {
   if (!p || !A || p.uid === myId() || !p.ch) return;
+  if (A.blocked.has(p.uid)) return;
   A.typing[p.ch + '|' + p.uid] = { name: String(p.name || 'Alguém').slice(0, 40), t: Date.now() };
   updateTyping();
 }
@@ -1047,7 +1072,7 @@ function friendsHTML() {
   if (!all.length) return `<div class="hempty">Você ainda não tem amigos.<div class="hcta"><button type="button" class="mbtn sm" data-act="toast-friend">Adicionar amigo</button></div></div>`;
   const list = all.filter((p) => !q || p.name.toLowerCase().indexOf(q) !== -1);
   if (!list.length) return '<div class="hempty">Nenhum amigo encontrado.</div>';
-  return list.map((p) => `<button type="button" class="frow hov${p.on ? '' : ' off'}" data-act="profile" data-id="${p.id}" aria-label="Ver perfil de ${esc(p.name)}"><span class="pf" style="background:${p.g}" aria-hidden="true">${esc(p.ini)}${p.on ? '<i></i>' : ''}</span><span class="tx"><b>${esc(p.name)}</b><small>${esc(p.st)}</small></span></button>`).join('');
+  return list.map((p) => `<button type="button" class="frow hov${p.on ? '' : ' off'}" data-act="profile" data-id="${p.id}" aria-label="Ver perfil de ${esc(p.name)}"><span class="pf" style="background:${p.g}" aria-hidden="true">${esc(p.ini)}${p.on ? '<i></i>' : ''}</span><span class="tx"><b>${esc(p.name)}</b><small>${esc(p.st)}</small></span>${p.dm ? udot(p.dm) : ''}</button>`).join('');
 }
 function refilter() {
   const f = document.getElementById('flist'); if (f) f.innerHTML = friendsHTML();
@@ -1057,7 +1082,7 @@ function refilter() {
 function topbarHTML() {
   const hub = A.view === 'hub';
   return `<header class="tbar">
-  <button type="button" class="tbh ${hub ? 'sel' : 'hov'}" data-act="hub" aria-label="Início" aria-pressed="${hub}">${ic(D.bubble, 22, '#33333A', 1.6)}</button>
+  <button type="button" class="tbh ${hub ? 'sel' : 'hov'}" data-act="hub" aria-label="Início" aria-pressed="${hub}">${ic(D.bubble, 22, '#33333A', 1.6)}${anyUnread() ? '<i class="udot"></i>' : ''}</button>
   <i class="tsep" aria-hidden="true"></i>
   <nav class="tsrv" aria-label="Seus servidores">${SERVERS.map((s) => { const on = !hub && A.server === s.id; return `<button type="button" class="stile${on ? ' on' : ''}" data-act="srv-open" data-id="${s.id}" aria-label="${esc(s.name)}" aria-pressed="${on}" title="${esc(s.name)}" style="background:${s.tile}">${esc(s.ini)}</button>`; }).join('')}<button type="button" class="stile add" data-act="modal-open" data-k="srv" data-mode="create" aria-label="Criar ou entrar em um servidor" title="Criar ou entrar em um servidor">${ic(D.plus, 20, '#33333A', 1.8)}</button></nav>
   <span class="tsp"></span><i class="tsep" aria-hidden="true"></i>
@@ -1068,7 +1093,7 @@ function topbarHTML() {
 function hubMsgsHTML() {
   const key = A.hubKey, srv = serverOfChan(key), me = myId(), peer = srv ? null : dmPeer(key);
   if (!A.loaded[key]) return `<div class="hempty">${A.terr[key] ? 'Não foi possível carregar. <button type="button" class="lnk" data-act="retry-thread">Tentar de novo</button>' : 'Carregando…'}</div>`;
-  const th = (A.threads[key] || []).slice(srv ? -3 : -30);
+  const th = (A.threads[key] || []).filter((m) => !A.blocked.has(m.from)).slice(srv ? -3 : -30);
   if (!th.length) return '<div class="hempty">Nenhuma mensagem ainda. Escreva a primeira!</div>';
   return th.map((m) => {
     if (m.from === me) return `<div class="mout"><div class="bub"><span class="sr">Você: </span>${esc(m.text)}</div></div>`;
@@ -1086,10 +1111,10 @@ function hubChatHTML() {
     const s = serverOfChan(k), on = k === A.hubKey;
     if (s) return `<button type="button" class="ctab${on ? ' on' : ''}" data-act="hubchat" data-key="${k}" aria-pressed="${on}" aria-label="${esc(s.name)}" title="${esc(s.name)}" style="background:${s.tile}">${esc(s.ini)}</button>`;
     const f = dmPeer(k); if (!f) return '';
-    return `<button type="button" class="ctab dmtab${on ? ' on' : ''}" data-act="hubchat" data-key="${k}" aria-pressed="${on}" aria-label="Conversa com ${esc(f.name)}" title="${esc(f.name)}" style="background:${f.g}">${esc(f.ini)}</button>`;
+    return `<button type="button" class="ctab dmtab${on ? ' on' : ''}" data-act="hubchat" data-key="${k}" aria-pressed="${on}" aria-label="Conversa com ${esc(f.name)}" title="${esc(f.name)}" style="background:${f.g}">${esc(f.ini)}${udot(k)}</button>`;
   }).join('');
   return `<div class="hchat">
-  <div class="hch">${tabs}<span class="tsp"></span>${serverOfChan(A.hubKey) ? `<button type="button" class="hov wext" data-act="chat-open" aria-label="Abrir a conversa completa">${ic(D.ext, 17)}</button>` : `<b class="dmname">${esc((dmPeer(A.hubKey) || {}).name || '')}</b>`}</div>
+  <div class="hch">${tabs}<span class="tsp"></span>${serverOfChan(A.hubKey) ? `<button type="button" class="hov wext" data-act="chat-open" aria-label="Abrir a conversa completa">${ic(D.ext, 17)}</button>` : `<b class="dmname">${esc((dmPeer(A.hubKey) || {}).name || '')}</b><button type="button" class="hov wext" data-act="chat-open" aria-label="Abrir a conversa em tela cheia">${ic(D.ext, 17)}</button>`}</div>
   <div class="hmsgs" id="hmsgs" role="log" aria-label="Mensagens recentes" aria-live="polite">${hubMsgsHTML()}</div>
   <div class="typing" id="typing" aria-live="polite"></div>
   <div class="cbar hbar">
@@ -1205,13 +1230,13 @@ function membersListHTML() {
 }
 
 function serverMsgsHTML() {
-  const srv = curServer(), key = A.channel, me = myId();
-  if (!srv || !key) return '<div class="fill"></div><div class="empty">Este servidor ainda não tem canais de texto.</div>';
+  const dm = A.view === 'dm', srv = dm ? null : curServer(), key = A.channel, me = myId();
+  if ((!srv && !dm) || !key) return '<div class="fill"></div><div class="empty">Este servidor ainda não tem canais de texto.</div>';
   if (!A.loaded[key]) return `<div class="fill"></div><div class="empty">${A.terr[key] ? 'Não foi possível carregar as mensagens. <button type="button" class="lnk" data-act="retry-thread">Tentar de novo</button>' : 'Carregando mensagens…'}</div>`;
-  const th = A.threads[key] || [];
+  const th = (A.threads[key] || []).filter((m) => !A.blocked.has(m.from));
   const acts = (m) => {
     const mine = m.from === me;
-    if (!mine && srv.owner !== me) return '';
+    if (!mine && !(srv && srv.owner === me)) return '';
     return `<span class="mact">${mine ? `<button type="button" class="hov" data-act="msg-edit" data-id="${m.id}" aria-label="Editar mensagem">${ic(D.edit, 14, '#55555F', 1.8)}</button>` : ''}<button type="button" class="hov" data-act="msg-del" data-id="${m.id}" aria-label="Apagar mensagem">${ic(D.close, 14, '#55555F', 1.8)}</button></span>`;
   };
   return '<div class="fill"></div>'
@@ -1220,12 +1245,73 @@ function serverMsgsHTML() {
     + th.map((m) => {
       const ed = m.edited ? ' <small class="ed">(editada)</small>' : '';
       if (m.from === me) return `<div class="mout">${acts(m)}<div class="bub"><span class="sr">Você: </span>${esc(m.text)}${ed}</div></div>`;
-      const p = srv.byId[m.from], nm = p ? p.name : 'Ex-membro';
+      const p = srv ? srv.byId[m.from] : dmPeer(key), nm = p ? p.name : 'Ex-membro';
       return `<div class="min"><div class="col"><button type="button" class="av40" data-act="profile" data-id="${m.from}" aria-label="Ver perfil de ${esc(nm)}" style="background:${p ? p.g : G.slate}">${esc(p ? p.ini : '')}</button><small>${esc(msgTime(m.at))}</small></div>
         <div class="bub"><button type="button" class="an" data-act="profile" data-id="${m.from}">${esc(nm)}</button>${esc(m.text)}${ed}</div>${acts(m)}</div>`;
     }).join('');
 }
 
+function composerHTML(ok, ph) {
+  return `      <div class="comp">
+        ${A.emojiOpen ? `<div class="emoji" role="group" aria-label="Escolher emoji">${EMOJIS.map((e) => `<button type="button" class="hov" data-act="emoji" data-ch="${e[0]}" aria-label="Inserir emoji ${e[1]}">${e[0]}</button>`).join('')}</div>` : ''}
+        <div class="typing" id="typing" aria-live="polite"></div>
+        <div class="cbar">
+          <button type="button" class="hov plus" data-act="toast-attach" aria-label="Anexar arquivo">${ic(D.plus, 19)}</button>
+          <input id="msg" type="text" placeholder="${ph}" maxlength="2000" value="${esc(A.draft)}" data-app-bind="draft" autocomplete="off" aria-label="Escreva uma mensagem"${ok ? '' : ' disabled'}>
+          <button type="button" class="hov ib" data-act="toast-gift" aria-label="Enviar presente">${ic(D.gift, 19, '#55555F', 1.6)}</button>
+          <button type="button" class="hov ib" data-act="toast-gif" aria-label="Escolher GIF"><span class="gif">GIF</span></button>
+          <button type="button" class="hov ib" data-act="emoji-toggle" aria-label="Escolher emoji" aria-expanded="${A.emojiOpen}">${ic(D.smile, 19, '#55555F', 1.6)}</button>
+          <button type="button" class="go" id="send-btn" data-act="send" aria-label="Enviar mensagem"${A.draft.trim() ? '' : ' hidden'}>${ic(D.send, 18, '#FFFFFF', 1.8)}</button>
+        </div>
+      </div>`;
+}
+function sideMeHTML() {
+  const mutedEff = A.muted || A.deafened;
+  const me = displayName();
+  return `  <div class="me">
+    ${menuHTML()}
+    <div class="who"><button type="button" class="pic" data-act="profile" data-id="${myId()}" aria-label="Meu perfil" style="background:${meBg()}">${esc(meIni(me))}</button><strong title="${esc(S.session && S.session.user ? S.session.user.email : '')}">${esc(me)}</strong></div>
+    <div class="tools">
+      <button type="button" class="hov tb" data-act="mute" aria-label="${mutedEff ? 'Ativar microfone' : 'Silenciar microfone'}" aria-pressed="${mutedEff}">${mutedEff ? ic(D.micOff, 18, '#D92D45', 1.8) : ic(D.mic)}</button>
+      <button type="button" class="hov tb" data-act="deaf" aria-label="${A.deafened ? 'Ativar áudio' : 'Desativar áudio'}" aria-pressed="${A.deafened}">${A.deafened ? ic(D.head + '<path d="M4 4l16 16"/>', 18, '#D92D45', 1.8) : ic(D.head)}</button>
+      <button type="button" class="hov tb" data-act="menu" aria-label="Menu da conta" aria-haspopup="true" aria-expanded="${A.menu}">${ic(D.sliders)}</button>
+    </div>
+  </div>`;
+}
+function dmViewHTML() {
+  const peer = dmPeer(A.channel) || { name: 'Conversa', ini: '?', g: G.lilac };
+  const fr = friendsList().slice().sort((x, y) => (y.on ? 1 : 0) - (x.on ? 1 : 0) || x.name.localeCompare(y.name));
+  const row = (f) => `<button type="button" class="dmrow ${f.dm && f.dm === A.channel ? 'sel' : 'hov'}" data-act="dm-open" data-id="${f.id}" aria-current="${!!(f.dm && f.dm === A.channel)}"><span class="pf sm" style="background:${f.g}">${esc(f.ini)}</span><span class="tx"><b>${esc(f.name)}</b><small>${f.on ? 'Online' : 'Offline'}</small></span>${f.dm ? udot(f.dm) : ''}</button>`;
+  return `<div class="ap">
+<div class="cloud" aria-hidden="true" style="left:-120px;bottom:-160px;width:560px;height:460px;background:radial-gradient(closest-side,rgba(140,140,158,.42),rgba(140,140,158,0))"></div>
+<aside class="side" aria-label="Mensagens diretas">
+  <div class="sbrand">${logo(14)}${BRAND}</div>
+  <div class="sscroll" id="sscroll">
+    <div class="blk">
+      <div class="bh"><span>${ic(D.bubble, 19, '#55555F', 1.6)}Mensagens diretas</span><button type="button" class="hov sq" data-act="toast-friend" aria-label="Adicionar amigo">${ic(D.userPlus, 18)}</button></div>
+      ${fr.length ? fr.map(row).join('') : '<p class="mnote">Você ainda não tem amigos. Use o botão acima para adicionar.</p>'}
+    </div>
+  </div>
+  ${sideMeHTML()}
+</aside>
+<div class="main">
+  <header class="top">
+    <div class="t">${ic(D.bubble, 24, '#55555F', 1.6)}<div style="min-width:0"><h1>${esc(peer.name)}</h1><small>${peer.user ? '@' + esc(peer.user) : ''}${peer.status ? ' · ' + esc(peer.status) : ''}</small></div></div>
+    <nav class="nav" aria-label="Ferramentas da conversa">
+      <button type="button" class="nbtn hov" data-act="profile" data-id="${peer.id}">${ic(D.users, 18, '#55555F', 1.6)}Perfil</button>
+      <button type="button" class="nbtn hov" data-act="hub">${ic(D.bubble, 18, '#55555F', 1.6)}Voltar ao painel</button>
+    </nav>
+  </header>
+  <div class="body">
+    <section class="chat" aria-label="Conversa privada">
+      <div class="ch">${ic(D.at, 19, '#55555F', 1.6)}<h2>${esc(peer.name)}</h2></div>
+      <div class="msgs" id="msgs" role="log" aria-label="Mensagens" aria-live="polite">${serverMsgsHTML()}</div>
+      ${composerHTML(true, 'Escreva para ' + peer.name + '...')}
+    </section>
+  </div>
+</div>
+</div>`;
+}
 function serverHTML() {
   const srv = curServer();
   const mutedEff = A.muted || A.deafened;
@@ -1260,15 +1346,7 @@ function serverHTML() {
       ${srv.voice.map((g) => `<div class="vg"><div class="vgh"><button type="button" class="hov vjoin" data-act="vjoin" aria-label="Entrar em ${esc(g.name)}" style="color:#33333A"><i style="background:rgba(29,29,34,.22)"></i><span>${esc(g.name)}</span></button></div></div>`).join('')}
     </div>
   </div>
-  <div class="me">
-    ${menuHTML()}
-    <div class="who"><button type="button" class="pic" data-act="profile" data-id="${myId()}" aria-label="Meu perfil" style="background:${meBg()}">${esc(meIni(me))}</button><strong title="${esc(S.session && S.session.user ? S.session.user.email : '')}">${esc(me)}</strong></div>
-    <div class="tools">
-      <button type="button" class="hov tb" data-act="mute" aria-label="${mutedEff ? 'Ativar microfone' : 'Silenciar microfone'}" aria-pressed="${mutedEff}">${mutedEff ? ic(D.micOff, 18, '#D92D45', 1.8) : ic(D.mic)}</button>
-      <button type="button" class="hov tb" data-act="deaf" aria-label="${A.deafened ? 'Ativar áudio' : 'Desativar áudio'}" aria-pressed="${A.deafened}">${A.deafened ? ic(D.head + '<path d="M4 4l16 16"/>', 18, '#D92D45', 1.8) : ic(D.head)}</button>
-      <button type="button" class="hov tb" data-act="menu" aria-label="Menu da conta" aria-haspopup="true" aria-expanded="${A.menu}">${ic(D.sliders)}</button>
-    </div>
-  </div>
+  ${sideMeHTML()}
 </aside>
 
 <div class="main">
@@ -1283,18 +1361,7 @@ function serverHTML() {
     <section class="chat" aria-label="Conversa">
       <div class="ch">${ic(D.hash, 19, '#55555F', 1.6)}<h2>${esc(chObj ? chObj.name : 'Sem canal')}</h2></div>
       <div class="msgs" id="msgs" role="log" aria-label="Mensagens" aria-live="polite">${serverMsgsHTML()}</div>
-      <div class="comp">
-        ${A.emojiOpen ? `<div class="emoji" role="group" aria-label="Escolher emoji">${EMOJIS.map((e) => `<button type="button" class="hov" data-act="emoji" data-ch="${e[0]}" aria-label="Inserir emoji ${e[1]}">${e[0]}</button>`).join('')}</div>` : ''}
-        <div class="typing" id="typing" aria-live="polite"></div>
-        <div class="cbar">
-          <button type="button" class="hov plus" data-act="toast-attach" aria-label="Anexar arquivo">${ic(D.plus, 19)}</button>
-          <input id="msg" type="text" placeholder="${chObj ? 'Escreva algo...' : 'Crie um canal de texto para conversar'}" maxlength="2000" value="${esc(A.draft)}" data-app-bind="draft" autocomplete="off" aria-label="Escreva uma mensagem"${chObj ? '' : ' disabled'}>
-          <button type="button" class="hov ib" data-act="toast-gift" aria-label="Enviar presente">${ic(D.gift, 19, '#55555F', 1.6)}</button>
-          <button type="button" class="hov ib" data-act="toast-gif" aria-label="Escolher GIF"><span class="gif">GIF</span></button>
-          <button type="button" class="hov ib" data-act="emoji-toggle" aria-label="Escolher emoji" aria-expanded="${A.emojiOpen}">${ic(D.smile, 19, '#55555F', 1.6)}</button>
-          <button type="button" class="go" id="send-btn" data-act="send" aria-label="Enviar mensagem"${A.draft.trim() ? '' : ' hidden'}>${ic(D.send, 18, '#FFFFFF', 1.8)}</button>
-        </div>
-      </div>
+      ${composerHTML(!!chObj, chObj ? 'Escreva algo...' : 'Crie um canal de texto para conversar')}
     </section>
   </div>
 </div>
@@ -1353,9 +1420,14 @@ function modalHTML() {
       foot = rel === 'me' ? '<button type="button" class="mbtn" data-act="edit-profile">Editar perfil</button>'
         : rel === 'friend' ? `<button type="button" class="mbtn ghost" data-act="fr-remove" data-id="${p.id}"${dis}>Remover amigo</button><button type="button" class="mbtn" data-act="dm" data-id="${p.id}"${dis}>Enviar mensagem</button>`
         : rel === 'incoming' ? `<button type="button" class="mbtn ghost" data-act="fr-decline" data-id="${p.id}"${dis}>Recusar</button><button type="button" class="mbtn" data-act="fr-accept" data-id="${p.id}"${dis}>Aceitar pedido</button>`
+        : rel === 'blocked' ? `<button type="button" class="mbtn" data-act="fr-unblock" data-id="${p.id}"${dis}>Desbloquear</button>`
         : rel === 'outgoing' ? `<button type="button" class="mbtn ghost" data-act="fr-remove" data-id="${p.id}"${dis}>Cancelar pedido</button>`
         : `<button type="button" class="mbtn" data-act="fr-add" data-user="${esc(p.user)}"${dis}>Adicionar amigo</button>`;
+      if (rel !== 'me' && rel !== 'blocked') foot = `<button type="button" class="blink" data-act="fr-block" data-id="${p.id}"${dis}>Bloquear</button>` + foot;
     }
+  } else if (m.type === 'block') {
+    title = 'Bloquear pessoa'; label = 'Bloquear';
+    body = `<p class="mnote">Bloquear ${esc(m.name)}? Vocês deixam de ser amigos e você não verá as mensagens dela nos servidores. Você pode desbloquear depois, no perfil dela.</p>`;
   } else if (m.type === 'addfriend') {
     title = 'Adicionar amigo'; label = 'Enviar pedido';
     body = mField('mf-user', '@usuário do seu amigo', 'user', m.user, { ph: 'Ex.: marina', max: 30, hint: 'A pessoa recebe o pedido na central de notificações.' });
@@ -1372,7 +1444,7 @@ function modalHTML() {
   return `<div class="mback" data-act="modal-bg"><div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}">
     <header class="mhead"><h2>${esc(title)}</h2><button type="button" class="hov sq" data-act="modal-close" aria-label="Fechar">${ic(D.close, 16, '#55555F', 1.8)}</button></header>
     <div class="mbody">${body}${m.err ? `<div class="merr" role="alert">${esc(m.err)}</div>` : ''}</div>
-    <footer class="mfoot">${showSubmit ? `<button type="button" class="mbtn ghost" data-act="modal-close">Cancelar</button><button type="button" class="mbtn${m.type === 'del' ? ' danger' : ''}" data-act="modal-submit"${m.busy ? ' disabled' : ''}>${m.busy ? 'Aguarde…' : label}</button>` : foot}</footer>
+    <footer class="mfoot">${showSubmit ? `<button type="button" class="mbtn ghost" data-act="modal-close">Cancelar</button><button type="button" class="mbtn${m.type === 'del' || m.type === 'block' ? ' danger' : ''}" data-act="modal-submit"${m.busy ? ' disabled' : ''}>${m.busy ? 'Aguarde…' : label}</button>` : foot}</footer>
   </div></div>`;
 }
 function focusModal() { setTimeout(() => { const f = document.querySelector('.modal [data-mf]'); if (f) f.focus(); }, 0); }
@@ -1468,6 +1540,9 @@ async function modalSubmit() {
       A.modal = null; render();
     });
   }
+  if (m.type === 'block') {
+    return run(async () => { await rpc('block_user', { p_other: m.id }); await loadWorld(() => {}); A.modal = null; render(); toast('Pessoa bloqueada'); });
+  }
   if (m.type === 'addfriend') {
     const u = m.user.trim().replace(/^@/, '');
     if (!u) return modalErr('Digite o @usuário da pessoa.');
@@ -1484,7 +1559,7 @@ async function modalSubmit() {
 }
 /* ---- amigos e conversas privadas ---- */
 const FR_MSG = { pending: 'Pedido de amizade enviado', accepted: 'Agora vocês são amigos!', friends: 'Vocês já são amigos' };
-async function friendAct(kind, id, user) {
+async function friendAct(kind, id, user, full) {
   const m = A.modal; if (m && m.busy) return;
   if (m) { m.busy = true; m.err = ''; render(); }
   const w = A;
@@ -1493,12 +1568,14 @@ async function friendAct(kind, id, user) {
     if (kind === 'add') msg = FR_MSG[await rpc('send_friend_request', { p_username: user })] || 'Pronto';
     else if (kind === 'accept') { await rpc('respond_friend_request', { p_other: id, p_accept: true }); msg = 'Agora vocês são amigos!'; }
     else if (kind === 'decline') { await rpc('respond_friend_request', { p_other: id, p_accept: false }); msg = 'Pedido recusado'; }
+    else if (kind === 'unblock') { await rpc('unblock_user', { p_other: id }); msg = 'Pessoa desbloqueada'; }
     else if (kind === 'remove') { await rpc('remove_friend', { p_other: id }); msg = 'Pronto'; }
     else if (kind === 'dm') {
       const ch = await rpc('open_dm', { p_other: id });
       await loadWorld(() => {});
       if (A !== w) return;
-      A.hubKey = ch; A.view = 'hub'; A.panel = null; A.modal = null; A.menu = false;
+      if (full) { A.channel = ch; A.view = 'dm'; } else { A.hubKey = ch; A.view = 'hub'; }
+      A.panel = null; A.modal = null; A.menu = false;
       render({ scroll: true }); return;
     }
     await loadWorld(() => {});
@@ -1552,6 +1629,10 @@ function modalAct(act, el, ev) {
     case 'fr-decline': friendAct('decline', el.dataset.id); return true;
     case 'fr-remove': friendAct('remove', el.dataset.id); return true;
     case 'dm': A.menu = false; friendAct('dm', el.dataset.id); return true;
+    case 'dm-open': friendAct('dm', el.dataset.id, '', true); return true;
+    case 'dm-sel': A.channel = el.dataset.ch; A.panel = null; render({ scroll: true }); return true;
+    case 'fr-unblock': friendAct('unblock', el.dataset.id); return true;
+    case 'fr-block': { const p = findPerson(el.dataset.id); if (p) { A.modal = { type: 'block', id: p.id, name: p.name, err: '', busy: false }; render(); focusModal(); } return true; }
     case 'msg-edit': openMsgModal('edit', el); return true;
     case 'msg-del': openMsgModal('del', el); return true;
     default: return false;
@@ -1564,11 +1645,13 @@ function appView() {
   const reqRow = (p) => `<div class="it req"><button type="button" class="pf" data-act="profile" data-id="${p.id}" aria-label="Ver perfil de ${esc(p.name)}" style="background:${p.g}">${esc(p.ini)}</button><span class="tx"><b>${esc(p.name)}</b><span>Quer ser seu amigo${p.user ? ' · @' + esc(p.user) : ''}</span></span><button type="button" class="mbtn sm ghost" data-act="fr-decline" data-id="${p.id}">Recusar</button><button type="button" class="mbtn sm" data-act="fr-accept" data-id="${p.id}">Aceitar</button></div>`;
   const panelHTML = panel ? `<div class="panel" role="dialog" aria-label="${panel.title}"><div class="ph"><span>${panel.title}</span><button type="button" class="hov sq" data-act="close-panel" aria-label="Fechar painel">${ic(D.close, 16, '#55555F', 1.8)}</button></div>
     ${A.panel === 'notif' ? (A.incoming.length ? A.incoming.map(reqRow).join('') : '<div class="it"><span>Nada por aqui ainda.</span></div>') : panel.items.length ? panel.items.map((it) => `<div class="it"><b>${esc(it.t)}</b><span>${esc(it.s)}</span></div>`).join('') : '<div class="it"><span>Nada por aqui ainda.</span></div>'}</div>` : '';
+  markCur();
   const showServer = A.view === 'server' && SERVERS.length && A.world === 'ready';
+  const showDm = A.view === 'dm' && A.world === 'ready';
   return `<div class="shell">
 <div class="cloud" aria-hidden="true" style="left:-140px;bottom:-180px;width:600px;height:480px;background:radial-gradient(closest-side,rgba(140,140,158,.34),rgba(140,140,158,0))"></div>
 <div class="cloud c2" aria-hidden="true" style="right:-160px;top:20%;width:520px;height:420px;background:radial-gradient(closest-side,rgba(214,200,240,.4),rgba(214,200,240,0))"></div>
-${topbarHTML()}${panelHTML}${showServer ? serverHTML() : hubHTML(enter)}${modalHTML()}</div>`;
+${topbarHTML()}${panelHTML}${showServer ? serverHTML() : showDm ? dmViewHTML() : hubHTML(enter)}${modalHTML()}</div>`;
 }
 
 function appAction(act, el, ev) {
@@ -1633,7 +1716,7 @@ function appAction(act, el, ev) {
     case 'hub': A.view = 'hub'; A.panel = null; break;
     case 'srv-open': { selectServer(el.dataset.id); render({ scroll: true }); return; }
     case 'friends-open': if (SERVERS.length) { A.view = 'server'; A.showMembers = true; A.panel = null; } break;
-    case 'chat-open': { const s = serverOfChan(A.hubKey); if (s) { A.server = s.id; A.channel = A.hubKey; A.search = ''; A.view = 'server'; A.panel = null; render({ scroll: true }); } return; }
+    case 'chat-open': { const s = serverOfChan(A.hubKey); if (!s && dmPeer(A.hubKey)) { A.channel = A.hubKey; A.view = 'dm'; A.panel = null; render({ scroll: true }); return; } if (s) { A.server = s.id; A.channel = A.hubKey; A.search = ''; A.view = 'server'; A.panel = null; render({ scroll: true }); } return; }
     case 'hubchat': A.hubKey = el.dataset.key; render({ scroll: true }); return;
     case 'mprev': A.track = (A.track + TRACKS.length - 1) % TRACKS.length; A.prog = 0; break;
     case 'mnext': A.track = (A.track + 1) % TRACKS.length; A.prog = 0; break;
