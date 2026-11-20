@@ -63,6 +63,7 @@ const D = {
   check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
   gamepad: '<rect x="2.5" y="7" width="19" height="11" rx="5.5"/><path d="M7 10.5v4M5 12.5h4M15.5 11.5h.01M18 13.5h.01"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
+  grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
   heart: '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/>',
   share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/>',
   list: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
@@ -713,6 +714,7 @@ async function sb(path, o = {}) {
 }
 const rpc = (name, args) => sb('/rest/v1/rpc/' + name, { method: 'POST', body: args || {} });
 const ERRS = {
+  too_many_pins: 'Plano grátis: até 4 servidores fixados. Desafixe um para fixar outro.',
   music_limit: 'Limite atingido (500 favoritas, 30 playlists, 200 músicas por playlist).', music_unavailable: 'A busca de músicas está indisponível agora. Tente de novo.',
   not_authenticated: 'Sua sessão expirou. Entre de novo.', network: 'Sem conexão. Verifique sua internet e tente de novo.',
   invalid_name: 'O nome está fora do tamanho permitido.', too_many_servers: 'Você atingiu o limite de servidores.',
@@ -769,7 +771,7 @@ function initApp() {
   A = {
     owner: uid, world: 'loading', werr: '', me: null, server: null, channel: null, voice: null, muted: false, deafened: false,
     panel: null, showMembers: true, onlineOpen: true, offlineOpen: true, draft: '', search: '', emojiOpen: false, menu: false,
-    view: 'hub', hubKey: '', hubKeys: [], hdraft: '', gq: '', searchOpen: false, barOpen: false, playing: false, prog: 0, queue: [], qi: -1, tcache: {}, favs: [], loadedId: '', ntab: 'news', entered: false,
+    view: 'hub', hubSrv: true, pins: [], hubKey: '', hubKeys: [], hdraft: '', gq: '', searchOpen: false, barOpen: false, playing: false, prog: 0, queue: [], qi: -1, tcache: {}, favs: [], loadedId: '', ntab: 'news', entered: false,
     threads: {}, loaded: {}, loading: {}, more: {}, terr: {}, modal: null, poll: null, beat: null, tt: null, typing: {}, pollN: 0, friends: [], incoming: [], outgoing: [], known: {}, dmByUser: {}, dmUser: {}, blocked: new Set(), unread: {}, vrost: {}
   };
   restoreQueue(); startLive(); loadWorld(); openJoin(); loadFavs();
@@ -807,14 +809,15 @@ const dmPeer = (key) => A.friends.find((f) => f.dm === key) || (A.dmUser[key] &&
 async function loadWorld(paint) {
   const w = A;
   try {
-    const [srv, chs, mem, fr, dmc, dmm, blk] = await Promise.all([
-      sb('/rest/v1/servers?select=id,name,owner_id,created_at&order=created_at.asc'),
+    const [srv, chs, mem, fr, dmc, dmm, blk, pins] = await Promise.all([
+      sb('/rest/v1/servers?select=id,name,owner_id,created_at,is_public&order=created_at.asc'),
       sb('/rest/v1/channels?select=id,server_id,name,kind,position&server_id=not.is.null&order=position.asc'),
       sb('/rest/v1/server_members?select=server_id,user_id,role'),
       sb('/rest/v1/friendships?select=user_a,user_b,requester,status'),
       sb('/rest/v1/channels?select=id&kind=eq.dm'),
       sb('/rest/v1/dm_members?select=channel_id,user_id'),
-      sb('/rest/v1/blocks?select=blocked')
+      sb('/rest/v1/blocks?select=blocked'),
+      sb('/rest/v1/server_pins?select=server_id&order=created_at.asc').catch(() => [])
     ]);
     const other = (f) => (f.user_a === myId() ? f.user_b : f.user_a);
     const ids = Array.from(new Set(mem.map((m) => m.user_id).concat(fr.map(other), blk.map((b) => b.blocked), [myId()])));
@@ -848,10 +851,11 @@ async function loadWorld(paint) {
       const by = (a, b) => a.name.localeCompare(b.name);
       const chan = (k) => chs.filter((c) => c.server_id === s.id && c.kind === k).map((c) => ({ id: c.id, name: c.name }));
       return {
-        id: s.id, name: s.name, owner: s.owner_id, mine: s.owner_id === myId(), users: people.length, ini: s.name.charAt(0).toUpperCase(), tile: tileFor(s.id),
+        id: s.id, name: s.name, owner: s.owner_id, pub: !!s.is_public, mine: s.owner_id === myId(), users: people.length, ini: s.name.charAt(0).toUpperCase(), tile: tileFor(s.id),
         text: chan('text'), voice: chan('voice'), byId, online: people.filter((p) => p.on).sort(by), offline: people.filter((p) => !p.on).sort(by)
       };
     });
+    w.pins = (pins || []).map((x) => x.server_id).filter((id) => srv.some((x) => x.id === id));
     w.world = 'ready'; w.werr = '';
     S.profile = Object.assign({}, S.profile, { display_name: w.me.name, username: w.me.user || (S.profile && S.profile.username) });
     store.set('sq.profile', S.profile);
@@ -1260,20 +1264,57 @@ function hubMsgsHTML() {
     return `<div class="min"><button type="button" class="av40" data-act="profile" data-id="${m.from}" aria-label="Ver perfil de ${esc(p ? p.name : 'ex-membro')}" style="background:${p ? p.g : G.slate}">${esc(p ? p.ini : '')}</button><div class="bub"><span class="sr">${esc(p ? p.name : '')}: </span>${msgBody(m)}</div></div>`;
   }).join('');
 }
+/* ---- cartão de servidores: carrossel, fixados e explorar ---- */
+function srvCardHTML(s) {
+  const pinned = A.pins.includes(s.id);
+  return `<div class="scard" role="listitem"><button type="button" class="sopen" data-act="srv-open" data-id="${s.id}" aria-label="Abrir ${esc(s.name)}"><span class="stl" style="background:${s.tile}">${esc(s.ini)}</span><b>${esc(s.name)}</b><small>${s.users} ${s.users === 1 ? 'membro' : 'membros'}${s.mine ? ' · seu' : ''}</small></button><button type="button" class="hov spin2" data-act="${pinned ? 'unpin' : 'pin'}" data-id="${s.id}" aria-pressed="${pinned}" aria-label="${pinned ? 'Desafixar' : 'Fixar'} ${esc(s.name)}" title="${pinned ? 'Desafixar' : 'Fixar'}">${ic(D.pin, 15, pinned ? '#D92D45' : '#55555F', pinned ? 2 : 1.7)}</button></div>`;
+}
+function carouselHTML() {
+  if (!SERVERS.length) return '';
+  return `<div class="scar-w"><div class="scar" id="scar" role="list" aria-label="Seus servidores">${SERVERS.slice(0, 50).map(srvCardHTML).join('')}</div>${SERVERS.length > 50 ? `<small class="scmore">Mostrando 50 de ${SERVERS.length}. Os demais estão na barra de cima.</small>` : ''}</div>`;
+}
+const pinCount = () => A.pins.filter((id) => SERVERS.some((x) => x.id === id)).length;
+function keepCarousel(fn) {
+  const c = document.getElementById('scar'), sl = c ? c.scrollLeft : 0;
+  fn();
+  const n = document.getElementById('scar'); if (n) n.scrollLeft = sl;
+}
+async function pinAct(id, on) {
+  if (on && pinCount() >= 4) return toast(ERRS.too_many_pins);
+  const before = A.pins.slice();
+  A.pins = on ? before.concat(id) : before.filter((x) => x !== id);
+  keepCarousel(() => render());
+  try { await rpc('pin_server', { p_server: id, p_pin: on }); }
+  catch (e) { A.pins = before; keepCarousel(() => render()); toast(errText(e)); }
+}
+function loadExplore() {
+  const m = A.modal; if (!m || m.type !== 'srv') return;
+  m.list = null;
+  rpc('list_public_servers').then((rows) => { if (A.modal === m) { m.list = rows || []; render(); } })
+    .catch((e) => { if (A.modal === m) { m.list = []; m.err = errText(e); render(); } });
+}
+function afterJoin(id, msg) {
+  A.modal = null; A.hubSrv = true;
+  if (A.view !== 'hub') selectServer(id);
+  render({ scroll: A.view !== 'hub' }); toast(msg);
+}
+
 function hubChatHTML() {
   if (A.world === 'loading') return '<div class="hchat"><div class="hmsgs"><div class="hempty">Carregando…</div></div></div>';
   if (A.world === 'error') return `<div class="hchat"><div class="hmsgs"><div class="hempty">${esc(A.werr)}</div><div class="hcta"><button type="button" class="mbtn" data-act="reload-world">Tentar de novo</button></div></div></div>`;
-  if (!SERVERS.length && !A.hubKeys.length) return `<div class="hchat"><div class="hmsgs"><div class="hempty">Você ainda não está em nenhum servidor e não tem conversas.</div>
-    <div class="hcta"><button type="button" class="mbtn" data-act="modal-open" data-k="srv" data-mode="create">Criar servidor</button><button type="button" class="mbtn ghost" data-act="modal-open" data-k="srv" data-mode="join">Entrar com convite</button><button type="button" class="mbtn ghost" data-act="toast-friend">Adicionar amigo</button></div></div></div>`;
-  if (!A.hubKey) return '<div class="hchat"><div class="hmsgs"><div class="hempty">Seus servidores ainda não têm canais de texto.</div></div></div>';
+  const showSrv = A.hubSrv || !A.hubKey;
+  const srvTab = `<button type="button" class="ctab srvtab${showSrv ? ' on' : ''}" data-act="hubsrv" aria-pressed="${showSrv}" aria-label="Servidores" title="Servidores">${ic(D.grid, 17, '#33333A', 1.8)}</button>`;
   const tabs = A.hubKeys.map((k) => {
-    const s = serverOfChan(k), on = k === A.hubKey;
+    const s = serverOfChan(k), on = !showSrv && k === A.hubKey;
     if (s) return `<button type="button" class="ctab${on ? ' on' : ''}" data-act="hubchat" data-key="${k}" aria-pressed="${on}" aria-label="${esc(s.name)}" title="${esc(s.name)}" style="background:${s.tile}">${esc(s.ini)}</button>`;
     const f = dmPeer(k); if (!f) return '';
     return `<button type="button" class="ctab dmtab${on ? ' on' : ''}" data-act="hubchat" data-key="${k}" aria-pressed="${on}" aria-label="Conversa com ${esc(f.name)}" title="${esc(f.name)}" style="background:${f.g}">${esc(f.ini)}${udot(k)}</button>`;
   }).join('');
+  if (showSrv) return `<div class="hchat"><div class="hch">${srvTab}${tabs}<span class="tsp"></span></div>
+  <div class="hsrv">${carouselHTML()}${SERVERS.length ? '' : '<div class="hempty">Você ainda não está em nenhum servidor.</div>'}
+    <div class="hcta"><button type="button" class="mbtn" data-act="modal-open" data-k="srv" data-mode="create">Criar servidor</button><button type="button" class="mbtn ghost" data-act="modal-open" data-k="srv" data-mode="explore">Explorar</button><button type="button" class="mbtn ghost" data-act="toast-friend">Adicionar amigo</button></div></div></div>`;
   return `<div class="hchat">
-  <div class="hch">${tabs}<span class="tsp"></span>${serverOfChan(A.hubKey) ? `<button type="button" class="hov wext" data-act="chat-open" aria-label="Abrir a conversa completa">${ic(D.ext, 17)}</button>` : `<b class="dmname">${esc((dmPeer(A.hubKey) || {}).name || '')}</b><button type="button" class="hov wext" data-act="chat-open" aria-label="Abrir a conversa em tela cheia">${ic(D.ext, 17)}</button>`}</div>
+  <div class="hch">${srvTab}${tabs}<span class="tsp"></span>${serverOfChan(A.hubKey) ? `<button type="button" class="hov wext" data-act="chat-open" aria-label="Abrir a conversa completa">${ic(D.ext, 17)}</button>` : `<b class="dmname">${esc((dmPeer(A.hubKey) || {}).name || '')}</b><button type="button" class="hov wext" data-act="chat-open" aria-label="Abrir a conversa em tela cheia">${ic(D.ext, 17)}</button>`}</div>
   <div class="hmsgs" id="hmsgs" role="log" aria-label="Mensagens recentes" aria-live="polite">${hubMsgsHTML()}</div>
   <div class="typing" id="typing" aria-live="polite"></div>
   <div class="cbar hbar">
@@ -1285,15 +1326,10 @@ function hubChatHTML() {
 }
 
 function pinnedHTML() {
-  const s = SERVERS[0];
-  const slot = () => `<button type="button" class="pslot" data-act="toast-pin" aria-label="Fixar uma festa">${ic(D.plus, 20, '#62626D', 1.6)}</button>`;
-  if (!s) return `<div class="pp"><h2>Festas fixadas</h2><div class="pgrid">${[0, 1, 2, 3].map(slot).join('')}</div></div>`;
-  const ppl = Object.keys(s.byId).map((k) => s.byId[k]).slice(0, 3);
-  const av = ppl.map((p, i) => `<span class="pav" style="background:${p.g};margin-left:${i ? -10 : 0}px"></span>`).join('');
-  return `<div class="pp"><h2>Festas fixadas</h2><div class="pgrid">
-    <button type="button" class="pslot has" data-act="srv-open" data-id="${s.id}" aria-label="Abrir ${esc(s.name)}"><span class="pavs">${av}</span><small>${esc(s.name)}</small></button>
-    ${[0, 1, 2].map(slot).join('')}
-  </div></div>`;
+  const pins = A.pins.map((id) => SERVERS.find((x) => x.id === id)).filter(Boolean).slice(0, 4);
+  const slot = () => `<button type="button" class="pslot" data-act="pin-add" aria-label="Fixar um servidor">${ic(D.plus, 20, '#62626D', 1.6)}</button>`;
+  const has = (x) => `<div class="pslot has"><button type="button" class="pgo" data-act="srv-open" data-id="${x.id}" aria-label="Abrir ${esc(x.name)}"><span class="stl sm" style="background:${x.tile}">${esc(x.ini)}</span><small>${esc(x.name)}</small></button><button type="button" class="hov pun" data-act="unpin" data-id="${x.id}" aria-label="Desafixar ${esc(x.name)}">${ic(D.close, 13, '#55555F', 1.8)}</button></div>`;
+  return `<div class="pp"><h2>Servidores fixados</h2><div class="pgrid">${pins.map(has).join('')}${Array(4 - pins.length).fill(0).map(slot).join('')}</div><small class="pnote">Plano grátis: até 4 servidores fixados.</small></div>`;
 }
 
 function mostHTML() {
@@ -1797,11 +1833,22 @@ function modalHTML() {
   let title = '', body = '', foot = '', label = 'Salvar';
   const tabs = (items) => `<div class="mtabs" role="tablist">${items.map((t) => `<button type="button" role="tab" class="mtab${t.on ? ' on' : ''}" data-act="${t.act}" data-mode="${t.mode}" aria-selected="${t.on}">${t.l}</button>`).join('')}</div>`;
   if (m.type === 'srv') {
-    title = m.mode === 'join' ? 'Entrar em um servidor' : 'Criar um servidor';
-    label = m.mode === 'join' ? 'Entrar' : 'Criar servidor';
-    body = tabs([{ act: 'modal-mode', mode: 'create', l: 'Criar servidor', on: m.mode !== 'join' }, { act: 'modal-mode', mode: 'join', l: 'Entrar com convite', on: m.mode === 'join' }])
-      + (m.mode === 'join' ? mField('mf-code', 'Código ou link do convite', 'code', m.code, { ph: 'Cole aqui o código', max: 200 })
-        : mField('mf-name', 'Nome do servidor', 'name', m.name, { ph: 'Ex.: Meus amigos', max: 40, hint: 'Você será o dono. Já vem com os canais Geral e Sala principal.' }));
+    const md = m.mode === 'join' ? 'join' : m.mode === 'explore' ? 'explore' : 'create';
+    title = md === 'join' ? 'Entrar com convite' : md === 'explore' ? 'Explorar servidores' : 'Criar um servidor';
+    label = md === 'join' ? 'Entrar' : 'Criar servidor';
+    const head = tabs([{ act: 'modal-mode', mode: 'create', l: 'Criar', on: md === 'create' }, { act: 'modal-mode', mode: 'explore', l: 'Explorar', on: md === 'explore' }, { act: 'modal-mode', mode: 'join', l: 'Convite', on: md === 'join' }]);
+    if (md === 'join') body = head + mField('mf-code', 'Código ou link do convite', 'code', m.code, { ph: 'Cole aqui o código', max: 200 });
+    else if (md === 'explore') {
+      body = head + (m.list == null ? '<p class="mnote">Carregando…</p>' : m.list.length ? `<div class="mus-list">${m.list.map((x) => `<div class="exrow"><span class="stl sm" style="background:${tileFor(x.id)}">${esc(String(x.name).charAt(0).toUpperCase())}</span><span class="tx"><b>${esc(x.name)}</b><small>${x.members} ${x.members === 1 ? 'membro' : 'membros'}</small></span>${x.joined ? '<small class="exin">Você já está</small>' : `<button type="button" class="mbtn sm" data-act="explore-join" data-id="${esc(x.id)}"${m.busy ? ' disabled' : ''}>Entrar</button>`}</div>`).join('')}</div>` : '<p class="mnote">Ainda não há servidores públicos. Crie o primeiro: marque "Servidor público" ao criar.</p>');
+    } else {
+      body = head + mField('mf-name', 'Nome do servidor', 'name', m.name, { ph: 'Ex.: Meus amigos', max: 40, hint: 'Você será o dono. Já vem com os canais Geral e Sala principal.' })
+        + `<div class="mf"><button type="button" class="mtog${m.pub ? ' on' : ''}" data-act="m-pub" aria-pressed="${!!m.pub}"><i></i><span>Servidor público (aparece em Explorar)</span></button><small>Qualquer pessoa logada poderá entrar. Por enquanto só dá para escolher isso ao criar.</small></div>`;
+    }
+  } else if (m.type === 'pinpick') {
+    title = 'Fixar servidor';
+    const free = SERVERS.filter((x) => !A.pins.includes(x.id));
+    body = free.length ? `<div class="mus-list">${free.map((x) => `<button type="button" class="hov plopen pk" data-act="pin" data-id="${x.id}" data-close="1"><span class="stl sm" style="background:${x.tile}">${esc(x.ini)}</span><b>${esc(x.name)}</b></button>`).join('')}</div>` : '<p class="mnote">Você ainda não está em nenhum servidor para fixar.</p>';
+    foot = '<button type="button" class="mbtn ghost" data-act="modal-close">Fechar</button>';
   } else if (m.type === 'chan') {
     title = 'Criar canal'; label = 'Criar canal';
     body = tabs([{ act: 'modal-mode', mode: 'text', l: 'Texto', on: m.kind !== 'voice' }, { act: 'modal-mode', mode: 'voice', l: 'Voz', on: m.kind === 'voice' }])
@@ -1868,7 +1915,7 @@ function modalHTML() {
       + mField('mf-bio', 'Sobre mim', 'bio', m.bio, { max: 190, area: true, ph: 'Conte um pouco sobre você', hint: 'Até 190 caracteres.' })
       + `<div class="mf"><span class="lblx">Cor do perfil</span><div class="swatches">${ACCENTS.map((c) => `<button type="button" class="swatch${m.accent === c ? ' on' : ''}" data-act="m-accent" data-c="${c}" aria-pressed="${m.accent === c}" aria-label="Cor ${c}" style="background:${c}"></button>`).join('')}</div></div>`;
   }
-  const showSubmit = !(m.type === 'invite' || m.type === 'profile' || m.type === 'bans' || m.type === 'music');
+  const showSubmit = !(m.type === 'invite' || m.type === 'profile' || m.type === 'bans' || m.type === 'music' || m.type === 'pinpick' || (m.type === 'srv' && m.mode === 'explore'));
   return `<div class="mback" data-act="modal-bg"><div class="modal${m.type === 'music' ? ' wide' : ''}" role="dialog" aria-modal="true" aria-label="${esc(title)}">
     <header class="mhead"><h2>${esc(title)}</h2><button type="button" class="hov sq" data-act="modal-close" aria-label="Fechar">${ic(D.close, 16, '#55555F', 1.8)}</button></header>
     <div class="mbody">${body}${m.err && m.type !== 'music' ? `<div class="merr" role="alert">${esc(m.err)}</div>` : ''}</div>
@@ -1938,15 +1985,20 @@ async function modalSubmit() {
     try { await fn(); }
     catch (e) { if (A.modal === m) { m.busy = false; m.err = errText(e); render(); } }
   };
+  if (m.type === 'srv' && m.mode === 'explore') return;
   if (m.type === 'srv' && m.mode !== 'join') {
     const name = m.name.trim();
     if (name.length < 2) return modalErr('O nome precisa ter de 2 a 40 caracteres.');
-    return run(async () => { const id = await rpc('create_server', { p_name: name }); await loadWorld(() => {}); selectServer(id); A.modal = null; render({ scroll: true }); toast('Servidor criado'); });
+    return run(async () => {
+      const id = await rpc('create_server', { p_name: name }); let msg = 'Servidor criado';
+      if (m.pub) { try { await rpc('set_server_public', { p_server: id, p_public: true }); } catch (e) { msg = 'Servidor criado, mas não foi possível torná-lo público.'; } }
+      await loadWorld(() => {}); afterJoin(id, msg);
+    });
   }
   if (m.type === 'srv') {
     const code = inviteCode(m.code);
     if (code.length < 4) return modalErr('Cole o código ou o link do convite.');
-    return run(async () => { const id = await rpc('join_server', { p_code: code }); await loadWorld(() => {}); selectServer(id); A.modal = null; render({ scroll: true }); toast('Você entrou no servidor'); });
+    return run(async () => { const id = await rpc('join_server', { p_code: code }); await loadWorld(() => {}); afterJoin(id, 'Você entrou no servidor'); });
   }
   if (m.type === 'chan') {
     const name = m.name.trim(), s = curServer();
@@ -2031,7 +2083,7 @@ function modalAct(act, el, ev) {
     case 'modal-bg': if (ev && ev.target === el) closeModal(); return true;
     case 'modal-close': closeModal(); return true;
     case 'modal-submit': modalSubmit(); return true;
-    case 'modal-mode': if (A.modal) { if (A.modal.type === 'chan') A.modal.kind = el.dataset.mode; else A.modal.mode = el.dataset.mode; A.modal.err = ''; render(); focusModal(); } return true;
+    case 'modal-mode': if (A.modal) { if (A.modal.type === 'chan') A.modal.kind = el.dataset.mode; else A.modal.mode = el.dataset.mode; A.modal.err = ''; render(); focusModal(); if (A.modal.type === 'srv' && A.modal.mode === 'explore') loadExplore(); } return true;
     case 'modal-open': {
       A.menu = false;
       const k = el.dataset.k;
@@ -2039,8 +2091,8 @@ function modalAct(act, el, ev) {
         const s = curServer(); if (!s) return true;
         if (!s.mine) { toast('Só o dono do servidor cria canais.'); return true; }
         A.modal = { type: 'chan', kind: el.dataset.kind === 'voice' ? 'voice' : 'text', name: '', err: '', busy: false };
-      } else A.modal = { type: 'srv', mode: el.dataset.mode === 'join' ? 'join' : 'create', name: '', code: '', err: '', busy: false };
-      render(); focusModal(); return true;
+      } else A.modal = { type: 'srv', mode: el.dataset.mode === 'join' ? 'join' : el.dataset.mode === 'explore' ? 'explore' : 'create', name: '', code: '', pub: false, list: null, err: '', busy: false };
+      render(); focusModal(); if (A.modal.type === 'srv' && A.modal.mode === 'explore') loadExplore(); return true;
     }
     case 'modal-copy': {
       const link = inviteLink(A.modal ? A.modal.code : '');
@@ -2048,6 +2100,8 @@ function modalAct(act, el, ev) {
       try { navigator.clipboard.writeText(link).then(() => toast('Link copiado'), fallback); } catch (e) { fallback(); }
       return true;
     }
+    case 'm-pub': if (A.modal) { A.modal.pub = !A.modal.pub; render(); focusModal(); } return true;
+    case 'explore-join': { const m = A.modal; if (!m || m.busy) return true; m.busy = true; m.err = ''; render(); const id = el.dataset.id; rpc('join_public_server', { p_server: id }).then(async () => { await loadWorld(() => {}); afterJoin(id, 'Você entrou no servidor'); }).catch((e) => { m.busy = false; m.err = errText(e); if (A.modal === m) render(); }); return true; }
     case 'm-accent': if (A.modal) { A.modal.accent = el.dataset.c; render(); } return true;
     case 'profile': A.menu = false; A.modal = { type: 'profile', id: el.dataset.id }; render(); return true;
     case 'avatar-pick': { const f = document.getElementById('mf-avatar'); if (f) f.click(); return true; }
@@ -2188,14 +2242,17 @@ function appAction(act, el, ev) {
     case 'srv-open': { selectServer(el.dataset.id); render({ scroll: true }); return; }
     case 'friends-open': if (SERVERS.length) { A.view = 'server'; A.showMembers = true; A.panel = null; } break;
     case 'chat-open': { const s = serverOfChan(A.hubKey); if (!s && dmPeer(A.hubKey)) { A.channel = A.hubKey; A.view = 'dm'; A.panel = null; render({ scroll: true }); return; } if (s) { A.server = s.id; A.channel = A.hubKey; A.search = ''; A.view = 'server'; A.panel = null; render({ scroll: true }); } return; }
-    case 'hubchat': A.hubKey = el.dataset.key; render({ scroll: true }); return;
+    case 'hubchat': A.hubKey = el.dataset.key; A.hubSrv = false; render({ scroll: true }); return;
+    case 'hubsrv': A.hubSrv = true; render(); return;
+    case 'pin': { const id = el.dataset.id; if (el.dataset.close) A.modal = null; pinAct(id, true); return; }
+    case 'unpin': pinAct(el.dataset.id, false); return;
+    case 'pin-add': if (!SERVERS.length) return toast('Entre em um servidor primeiro.'); if (pinCount() >= 4) return toast(ERRS.too_many_pins); A.modal = { type: 'pinpick', err: '', busy: false }; render(); return;
     case 'mprev': quiet(); nextTrack(-1); return;
     case 'mnext': quiet(); nextTrack(1); return;
     case 'mtrack': quiet(); playIdx(Number(el.dataset.i) || 0); return;
     case 'panel': A.panel = A.panel === el.dataset.k ? null : el.dataset.k; break;
     case 'goto-msg': { const ch = el.dataset.ch, srv = serverOfChan(ch); A.panel = null; if (srv) { A.server = srv.id; A.channel = ch; A.view = 'server'; } else if (A.dmUser[ch]) { A.channel = ch; A.view = 'dm'; } render({ scroll: true }); return true; }
     case 'toast-soon': toast('Isso chega em breve'); return;
-    case 'toast-pin': toast('Fixar festas chega em breve'); return;
     case 'attach': pickImage(el.dataset.hub === '1'); return;
     case 'toast-gift': toast('Presentes chegam em breve'); return;
     case 'toast-gif': toast('GIFs chegam em breve'); return;
@@ -2241,6 +2298,13 @@ $root.addEventListener('input', (e) => {
   if (!b || t.type === 'checkbox' || t.tagName === 'SELECT') return;
   setPath(b, t.value); onBound(b, t);
 });
+$root.addEventListener('wheel', (e) => {
+  const c = e.target && e.target.closest ? e.target.closest('#scar') : null;
+  if (!c || e.ctrlKey || c.scrollWidth <= c.clientWidth) return;
+  const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY, max = c.scrollWidth - c.clientWidth;
+  if ((d < 0 && c.scrollLeft <= 0) || (d > 0 && c.scrollLeft >= max - 1)) return;
+  e.preventDefault(); c.scrollLeft += d;
+}, { passive: false });
 $root.addEventListener('change', (e) => {
   if (e.target.id === 'mf-avatar') { const f = e.target.files && e.target.files[0]; if (f && A) setAvatar(f); return; }
   const t = e.target, b = t.dataset.bind;

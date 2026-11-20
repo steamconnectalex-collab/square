@@ -33,7 +33,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   let qrPolls = 0;
   const storageCalls = [];
   // ---- banco simulado (servidores, canais, membros, mensagens, perfis) ----
-  const world = { servers: [], channels: [], members: [], messages: [], nextMsg: 1, nextId: 1, friendships: [], dms: [], blocks: [], voice: [], bans: [], favs: [], pls: [], ptracks: [], nextPl: 1, nextPt: 1, moves: [],
+  const world = { servers: [], channels: [], members: [], messages: [], nextMsg: 1, nextId: 1, friendships: [], dms: [], blocks: [], voice: [], bans: [], favs: [], pins: [], publicCalls: [], pls: [], ptracks: [], nextPl: 1, nextPt: 1, moves: [],
     profiles: [
       { id: 'u1', username: 'tester', display_name: 'Tester Um', bio: '', status_text: '', accent: '#9D8CCF', last_seen: null, created_at: '2026-11-16T10:00:00Z' },
       { id: 'u3', username: 'pedro', display_name: 'Pedro Alves', bio: '', status_text: '', accent: '#6FB3A0', last_seen: null, created_at: '2026-11-12T10:00:00Z' },
@@ -49,6 +49,22 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
         world.members.push({ server_id: id, user_id: 'u1', role: 'owner' }, { server_id: id, user_id: 'u2', role: 'member' });
         world.channels.push({ id: id + 'c1', server_id: id, name: 'Geral', kind: 'text', position: 0 }, { id: id + 'c2', server_id: id, name: 'Sala principal', kind: 'voice', position: 1 });
         return send(200, id);
+      }
+      if (fn === 'set_server_public') { world.publicCalls.push(body); const sv = world.servers.find((x) => x.id === body.p_server); if (sv) sv.is_public = body.p_public; return send(204, null); }
+      if (fn === 'pin_server') {
+        if (!body.p_pin) { world.pins = world.pins.filter((x) => x !== body.p_server); return send(204, null); }
+        if (world.pins.length >= 4 && !world.pins.includes(body.p_server)) return send(400, { message: 'too_many_pins' });
+        if (!world.pins.includes(body.p_server)) world.pins.push(body.p_server);
+        return send(204, null);
+      }
+      if (fn === 'list_public_servers') return send(200, [{ id: 'pub1', name: 'Servidor Aberto', members: 7, joined: world.servers.some((x) => x.id === 'pub1') }]);
+      if (fn === 'join_public_server') {
+        if (!world.servers.some((x) => x.id === 'pub1')) {
+          world.servers.push({ id: 'pub1', name: 'Servidor Aberto', owner_id: 'u2', created_at: new Date().toISOString(), is_public: true });
+          world.members.push({ server_id: 'pub1', user_id: 'u1', role: 'member' }, { server_id: 'pub1', user_id: 'u2', role: 'owner' });
+          world.channels.push({ id: 'pub1c1', server_id: 'pub1', name: 'Geral', kind: 'text', position: 0 });
+        }
+        return send(200, 'pub1');
       }
       if (fn === 'create_channel') {
         const id = 'ch' + world.nextId++;
@@ -106,6 +122,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
       if ((q.get('select') || '').startsWith('position')) return send(200, rows.length ? [{ position: Math.max(...rows.map((r) => r.position)) }] : []);
       return send(200, rows.map((r) => ({ id: r.id, track: r.track })));
     }
+    if (path === 'server_pins') return send(200, world.pins.map((x) => ({ server_id: x })));
     if (path === 'servers') return send(200, world.servers);
     if (path === 'channels') return send(200, q.get('kind') === 'eq.dm' ? world.dms.map((d) => ({ id: d.id })) : world.channels);
     if (path === 'friendships') return send(200, world.friendships);
@@ -304,13 +321,55 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await page.screenshot({ path: OUT + '/2d-vazio.png' });
   // 55 mensagens antigas já guardadas no futuro canal Geral (para testar o histórico)
   for (let i = 0; i < 55; i++) world.messages.push({ id: i - 54, channel_id: 'srv1c1', author_id: 'u2', content: 'antiga ' + i, created_at: '2026-11-17T10:00:00Z', edited_at: null });
-  // criar servidor pela janela
-  await page.click('.hchat .hcta .mbtn:not(.ghost)');
+  // card de servidores: Criar servidor + Explorar (sem "Entrar com convite")
+  const cardTxt = await page.textContent('.hsrv .hcta');
+  ok('card tem Criar servidor e Explorar, sem "Entrar com convite"', /Criar servidor/.test(cardTxt) && /Explorar/.test(cardTxt) && !/Entrar com convite/.test(cardTxt));
+  // explorar: lista pública e entrar
+  await page.click('.hsrv .hcta [data-mode="explore"]');
+  await page.waitForSelector('.exrow');
+  ok('Explorar lista servidores públicos', /Servidor Aberto/.test(await page.textContent('.exrow')));
+  await page.click('[data-act="explore-join"]');
+  await page.waitForSelector('.scard', { timeout: 5000 });
+  ok('entrar por Explorar fica no painel e aparece no carrossel', (await page.locator('.scard').count()) === 1 && /Servidor Aberto/.test(await page.textContent('.scar')));
+  // criar servidor pela janela (público)
+  await page.click('.hsrv .hcta .mbtn:not(.ghost)');
   await page.waitForSelector('.modal');
+  await page.click('[data-act="m-pub"]');
   await page.fill('#mf-name', 'Clube do Teste');
   await page.click('[data-act="modal-submit"]');
-  await page.waitForSelector('.ap .chat', { timeout: 6000 }).catch(async () => { console.log('DEBUG modal:', await page.textContent('.mbody').catch(() => 'sem modal'), '| erros:', errors.join(' | '), '| chamadas:', JSON.stringify(calls.slice(-6))); });
-  ok('criar servidor abre o servidor novo', /Clube do Teste/.test(await page.textContent('.top h1')));
+  await page.waitForFunction(() => document.querySelectorAll('.scard').length === 2, null, { timeout: 6000 }).catch(async () => { console.log('DEBUG modal:', await page.textContent('.mbody').catch(() => 'sem modal'), '| erros:', errors.join(' | ')); });
+  ok('criar servidor mantém o painel e o servidor aparece no carrossel', (await page.locator('.scard').count()) === 2 && (await page.locator('.hub').count()) === 1);
+  ok('servidor criado como público chama set_server_public', world.publicCalls.length === 1 && world.publicCalls[0].p_public === true);
+  // fixar / desafixar / limite de 4 / carrossel com a roda do mouse
+  for (let i = 0; i < 10; i++) { const id = 'ex' + i; world.servers.push({ id, name: 'Extra ' + i, owner_id: 'u2', created_at: new Date().toISOString() }); world.members.push({ server_id: id, user_id: 'u1', role: 'member' }); world.channels.push({ id: id + 'c1', server_id: id, name: 'Geral', kind: 'text', position: 0 }); }
+  await page.reload(); await page.waitForSelector('.scard');
+  ok('carrossel mostra todos os servidores (12)', (await page.locator('.scard').count()) === 12);
+  ok('painel diz Servidores fixados (não Festas)', /Servidores fixados/.test(await page.textContent('.pp h2')) && !/Festas/.test(await page.textContent('.w-chat')));
+  for (let i = 0; i < 4; i++) { await page.locator('.scard .spin2').nth(i).click(); await page.waitForTimeout(120); }
+  ok('4 servidores fixados aparecem em Servidores fixados', (await page.locator('.pp .pslot.has').count()) === 4 && world.pins.length === 4);
+  await page.locator('.scard .spin2').nth(4).click();
+  await page.waitForSelector('#toast .toast');
+  ok('o 5º fixado é barrado (plano grátis, até 4)', /até 4 servidores fixados/.test(await page.textContent('#toast')) && world.pins.length === 4);
+  await page.locator('.pp .pun').first().click(); await page.waitForTimeout(150);
+  ok('desafixar libera um espaço', (await page.locator('.pp .pslot.has').count()) === 3 && world.pins.length === 3);
+  await page.click('.pp .pslot:not(.has)'); await page.waitForSelector('.modal .pk');
+  ok('botão + abre a lista de servidores para fixar', (await page.locator('.modal .pk').count()) === 9);
+  await page.click('.modal .pk >> nth=0'); await page.waitForTimeout(200);
+  ok('fixar pela lista', world.pins.length === 4 && (await page.locator('.modal').count()) === 0);
+  const sl0 = await page.evaluate(() => document.getElementById('scar').scrollLeft);
+  const bb = await page.locator('#scar').boundingBox();
+  await page.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2); await page.mouse.wheel(0, 300); await page.waitForTimeout(250);
+  const sl1 = await page.evaluate(() => document.getElementById('scar').scrollLeft);
+  ok('roda do mouse gira o carrossel para a esquerda', sl1 > sl0);
+  await page.mouse.wheel(0, -600); await page.waitForTimeout(250);
+  ok('roda para cima volta ao início', (await page.evaluate(() => document.getElementById('scar').scrollLeft)) < sl1);
+  // volta ao mundo de antes (tira os extras e os fixados)
+  world.servers = world.servers.filter((x) => !x.id.startsWith('ex')); world.members = world.members.filter((x) => !x.server_id.startsWith('ex')); world.channels = world.channels.filter((x) => !x.server_id.startsWith('ex')); world.pins = [];
+  await page.reload(); await page.waitForSelector('.scard');
+  // abre o servidor criado
+  await page.locator('.scard .sopen', { hasText: 'Clube do Teste' }).click();
+  await page.waitForSelector('.ap .chat', { timeout: 6000 });
+  ok('clicar no servidor do carrossel abre o servidor', /Clube do Teste/.test(await page.textContent('.top h1')));
   ok('servidor novo tem os canais Geral e Sala principal', /Geral/.test(await page.textContent('body')) && /Sala principal/.test(await page.textContent('body')));
   ok('RPC create_server chamada com o nome', calls.some((c) => c[1] === '/rest/v1/rpc/create_server' && c[2].p_name === 'Clube do Teste'));
   // mandar mensagem de verdade
@@ -424,7 +483,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await page.waitForFunction(() => !document.querySelector('.vbar'), null, { timeout: 4000 });
   ok('sair da voz: avisa os outros ("bye") e limpa a sala', wsIn.some((j) => j.event === 'broadcast' && j.payload && j.payload.event === 'bye') && world.voice.length === 0);
   // etapa 8: banir e desbanir (só o dono do servidor)
-  const srvId = world.servers[0].id;
+  const srvId = (world.servers.find((x) => x.owner_id === 'u1') || world.servers[0]).id;
   if (!(await page.locator('.banlnk').count())) await page.click('.nav [data-act="nav"][data-k="members"]');
   await page.waitForSelector('.banlnk');
   if (!(await page.locator('.mlist .pf[data-id="u2"]').count())) { for (const b of await page.locator('.mlist .mg[aria-expanded="false"]').all()) await b.click(); }
@@ -449,6 +508,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await page.waitForSelector('.hub');
   ok('ícone de conversa volta ao painel', true);
   ok('sem amigos: o painel convida a adicionar', /ainda não tem amigos/.test(await page.textContent('#flist')));
+  if (await page.locator('.hch .ctab:not(.srvtab)').count()) await page.click('.hch .ctab:not(.srvtab) >> nth=0');
   await page.fill('#hmsg', 'Oi pessoal');
   await page.press('#hmsg', 'Enter');
   await page.waitForFunction(() => /Oi pessoal/.test(document.getElementById('hmsgs').textContent));
@@ -467,7 +527,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   ok('@usuário que não existe mostra erro em português', /Não encontramos/.test(await page.textContent('.merr')));
   await page.click('[data-act="modal-close"]');
   // o cartão de quem recebeu o pedido mostra "Cancelar pedido"
-  await page.click('[data-act="srv-open"] >> nth=0');
+  await page.click(`[data-act="srv-open"][data-id="${srvId}"] >> nth=0`);
   await page.waitForSelector('.ap .chat');
   await page.click('#msgs [data-act="profile"][data-id="u2"]');
   await page.waitForSelector('.pcard');
