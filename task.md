@@ -88,16 +88,15 @@ Fluxo de acesso: Home → "Entrar" → login (com painel de QR Code) → "Regist
 
 - Nada em andamento; a pessoa testa o site no ar (etapas 6, 7 e 8 publicadas).
 
-## Como publicar o site (enquanto a Vercel não estiver ligada ao GitHub)
+## Como publicar o site
 
-1. Mude os arquivos em `site/`, rode `node tests/smoke.js`, faça commit e `git push` para a `main`.
-2. Chame `create_deployment` da Vercel (projeto `square-chat`, `target: production`) com os arquivos `fetch.sh` (conteúdo de `deploy/fetch.sh`) e `vercel.json` (o de `site/vercel.json`), e `projectSettings`: `buildCommand = "sh fetch.sh <commit novo>"`, `outputDirectory = "out"`, `framework`, `installCommand`, `rootDirectory` = null.
-3. Confira os arquivos no ar (por exemplo, o `sha1` de `home.js` e `app.js`) e registre aqui.
-- Por quê assim: enviar direto do GitHub (`gitSource`) foi recusado pelo limite de consultas do GitHub (erro 429); colar arquivos grandes à mão é frágil. Se o envio direto voltar a funcionar, prefira-o.
+**Desde 2026-11-19 a Vercel está ligada ao GitHub:** cada `git push` na `main` publica sozinho. Configuração do projeto `square-chat` (Vercel): Root Directory = `site`, sem Build Command e sem Output Directory. O `vercel.json` usado é o de `site/vercel.json`.
+1. Mude os arquivos em `site/`, rode `node tests/smoke.js`, faça commit e `git push origin main`.
+2. Espere ~1 min e confira no ar (`https://square-chat-silk.vercel.app/`), por exemplo se o `app.js` novo está lá. Se precisar forçar: `create_deployment` com `gitSource` (`type: github`, org `steamconnectalex-collab`, repo `square`, ref `main`, sha do commit) e `target: production`.
+- `deploy/fetch.sh` ficou sem uso (era o método antigo, sem a ligação com o GitHub). **Não** coloque `buildCommand = sh fetch.sh …` de novo: com a ligação ativa, isso gera 404 (aconteceu em 2026-11-19, ver "Registro de sessões").
 
 ## O que ainda falta fazer
 
-- [ ] Ligar a Vercel ao repositório do GitHub, para o site publicar sozinho a cada envio (hoje a publicação é feita por `deploy/fetch.sh`, passo a passo acima). Precisa de um passo da pessoa no painel da Vercel: projeto `square-chat` → Settings → Git → Connect Git Repository → GitHub → `steamconnectalex-collab/square`. Depois: Root Directory = `site`, e apagar o Build Command e o Output Directory (hoje `sh fetch.sh …` e `out`).
 - [ ] Botões ainda "em breve": presentes, GIFs, configurações. Painel inicial: "festas fixadas", "mais jogados" e notícias ainda são demonstração (a música agora é real).
 - [ ] Contato oficial (e-mail) nas páginas `termos.html` e `privacidade.html` e revisão por um advogado antes do lançamento.
 - [ ] Voz: testar com duas pessoas reais; se alguém não ouvir, adicionar servidor TURN (serviço pago/externo).
@@ -107,7 +106,7 @@ Fluxo de acesso: Home → "Entrar" → login (com painel de QR Code) → "Regist
 
 ## Erros a corrigir
 
-- Nenhum erro conhecido no momento. (Aviso: se o repositório ficar privado de novo, a publicação por `fetch.sh` dá 404; nesse caso ligar a Vercel ao GitHub.)
+- Nenhum erro conhecido no momento. 
 
 ## Próximo passo
 
@@ -131,3 +130,4 @@ Pessoa conferir o app de música no ar (buscar, tocar, favoritar, criar playlist
 - **2026-11-19:** etapas 6, 7 e 8 feitas (migrações 0007, 0008, 0009, `aceite_dos_termos`; função `auth` v5). Testes 93 OK. Sem erros pendentes. Próximo passo: ver acima.
 - **Resolvido:** repositório voltou a ser público e a etapa 5 foi publicada (`dpl_2y69UbKFG1yaoR533Lt6iMc5mAQm`).
 - **2026-11-19 (tarde):** app de música (migrações 0010 registro, 0011 registro, 0012 aplicada). A pasta de trabalho tinha sido reiniciada: o repositório foi clonado de novo do GitHub. Testes 107 OK.
+- **2026-11-19 (noite):** a pessoa abriu o site e deu 404. Causa: ela tinha ligado a Vercel ao GitHub; a publicação automática usou as configurações antigas do projeto (`sh fetch.sh …`, pasta `out`), que não existem na raiz do repositório, e o site ficou sem arquivos. Correção: Root Directory = `site`, comandos de build apagados, nova publicação (`dpl_DBdm7AFBXtkKS9xu81qbg5h8ACAe`, commit `d44b852`); a raiz voltou a responder 200 com os cabeçalhos de segurança novos.
