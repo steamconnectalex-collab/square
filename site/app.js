@@ -714,6 +714,7 @@ async function sb(path, o = {}) {
 }
 const rpc = (name, args) => sb('/rest/v1/rpc/' + name, { method: 'POST', body: args || {} });
 const ERRS = {
+  plan_widget: 'Remover ou trocar o card Servidores destaque exige um plano pago (ainda vamos definir qual).',
   too_many_pins: 'Plano grátis: até 4 servidores fixados. Desafixe um para fixar outro.',
   music_limit: 'Limite atingido (500 favoritas, 30 playlists, 200 músicas por playlist).', music_unavailable: 'A busca de músicas está indisponível agora. Tente de novo.',
   not_authenticated: 'Sua sessão expirou. Entre de novo.', network: 'Sem conexão. Verifique sua internet e tente de novo.',
@@ -771,10 +772,10 @@ function initApp() {
   A = {
     owner: uid, world: 'loading', werr: '', me: null, server: null, channel: null, voice: null, muted: false, deafened: false,
     panel: null, showMembers: true, onlineOpen: true, offlineOpen: true, draft: '', search: '', emojiOpen: false, menu: false,
-    view: 'hub', hubSrv: true, pins: [], hubKey: '', hubKeys: [], hdraft: '', gq: '', searchOpen: false, barOpen: false, playing: false, prog: 0, queue: [], qi: -1, tcache: {}, favs: [], loadedId: '', ntab: 'news', entered: false,
+    view: 'hub', hubSrv: true, pins: [], feat: null, plan: 'free', pubAll: null, hubKey: '', hubKeys: [], hdraft: '', gq: '', searchOpen: false, barOpen: false, playing: false, prog: 0, queue: [], qi: -1, tcache: {}, favs: [], loadedId: '', ntab: 'news', entered: false,
     threads: {}, loaded: {}, loading: {}, more: {}, terr: {}, modal: null, poll: null, beat: null, tt: null, typing: {}, pollN: 0, friends: [], incoming: [], outgoing: [], known: {}, dmByUser: {}, dmUser: {}, blocked: new Set(), unread: {}, vrost: {}
   };
-  restoreQueue(); startLive(); loadWorld(); openJoin(); loadFavs();
+  restoreQueue(); startLive(); loadWorld(); openJoin(); loadFavs(); loadFeatured();
 }
 function openJoin() {
   if (S.joinCode && A) { A.modal = { type: 'srv', mode: 'join', name: '', code: S.joinCode, err: '', busy: false }; S.joinCode = null; }
@@ -1332,8 +1333,34 @@ function pinnedHTML() {
   return `<div class="pp"><h2>Servidores fixados</h2><div class="pgrid">${pins.map(has).join('')}${Array(4 - pins.length).fill(0).map(slot).join('')}</div><small class="pnote">Plano grátis: até 4 servidores fixados.</small></div>`;
 }
 
+/* ---- card "Servidores destaque" (no lugar de "Mais jogados") ---- */
+const STREAMS = { youtube: { n: 'YouTube', re: /you\s?tube|\byt\b/i }, prime: { n: 'Prime Video', re: /prime|amazon/i }, netflix: { n: 'Netflix', re: /netflix/i }, disney: { n: 'Disney+', re: /disney/i } };
+const planPaid = () => !!A && A.plan && A.plan !== 'free';
+const wMode = () => { const m = planPaid() ? store.get('sq.wd.' + myId()) : 'featured'; return m === 'featured' || STREAMS[m] ? m : 'featured'; };
+function loadFeatured() {
+  const w = A;
+  rpc('my_plan').then((p) => { if (A === w) { w.plan = String(p || 'free'); render(); } }).catch(() => {});
+  rpc('featured_servers').then((rows) => { if (A === w) { w.feat = rows || []; render(); } }).catch(() => { if (A === w) { w.feat = []; render(); } });
+}
+function loadPubAll() {
+  const w = A; if (w.pubAll) return;
+  rpc('list_public_servers').then((rows) => { if (A === w) { w.pubAll = rows || []; render(); } }).catch(() => { if (A === w) { w.pubAll = []; render(); } });
+}
+function featRow(x) {
+  const mine = x.joined || SERVERS.some((v) => v.id === x.id);
+  const sub = (x.level ? 'Nível ' + x.level + ' · ' : '') + x.members + ' ' + (x.members === 1 ? 'membro' : 'membros');
+  return `<div class="frow"><span class="stl sm" style="background:${tileFor(x.id)}">${esc(String(x.name).charAt(0).toUpperCase())}</span><span class="tx"><b>${esc(x.name)}</b><small>${esc(sub)}</small></span>${mine ? `<button type="button" class="mbtn sm ghost" data-act="srv-open" data-id="${esc(x.id)}">Abrir</button>` : `<button type="button" class="mbtn sm" data-act="feat-join" data-id="${esc(x.id)}">Entrar</button>`}</div>`;
+}
 function mostHTML() {
-  return `<div class="ggrid">${GAMES.map((g) => `<button type="button" class="gtile" data-act="toast-soon" aria-label="${esc(g.n)}, ${esc(g.h)} jogadas"><span class="gart" style="background:${g.g}">${g.i}</span><b>${esc(g.n)}</b><small>${esc(g.h)}</small></button>`).join('')}</div>`;
+  const mode = wMode(), st = STREAMS[mode];
+  const title = st ? 'Servidores de ' + st.n : 'Servidores destaque';
+  let body;
+  if (st) {
+    if (A.pubAll == null) { loadPubAll(); body = '<p class="mnote">Carregando…</p>'; }
+    else { const l = A.pubAll.filter((x) => st.re.test(x.name)).slice(0, 4); body = l.length ? `<div class="flist2">${l.map(featRow).join('')}</div>` : `<p class="mnote">Ainda não há servidores públicos de ${esc(st.n)}.</p>`; }
+  } else if (A.feat == null) body = '<p class="mnote">Carregando…</p>';
+  else body = A.feat.length ? `<div class="flist2">${A.feat.map(featRow).join('')}</div><small class="pnote">4 servidores em destaque, trocados automaticamente a cada 48 horas.</small>` : '<p class="mnote">Nenhum servidor em destaque agora. Servidores públicos de nível 3 ou mais aparecem aqui.</p>';
+  return `<div class="wh"><h2>${esc(title)}</h2><button type="button" class="hov wext" data-act="wd-opts" aria-label="Personalizar este card">${ic(D.dots, 17)}</button></div>${body}`;
 }
 
 /* ---- música: busca no iTunes (prévia de 30 s), fila, favoritas e playlists ---- */
@@ -1650,7 +1677,7 @@ function hubHTML(enter) {
   return `<main class="hub${enter ? ' enter' : ''}" aria-label="Painel inicial">
   ${w('w-fr', 0, `<div class="wh"><h2>Amigos</h2><button type="button" class="hov wext" data-act="friends-open" aria-label="Abrir lista de membros">${ic(D.ext, 17)}</button></div><div class="flist" id="flist">${friendsHTML()}</div>`)}
   ${w('w-chat', 1, `${hubChatHTML()}${pinnedHTML()}`)}
-  ${w('w-most', 2, `<div class="wh"><h2>Mais jogados</h2></div>${mostHTML()}`)}
+  ${w('w-most', 2, mostHTML())}
   ${w('w-mus', 3, musicHTML())}
   ${w('w-news', 4, newsHTML())}
   ${userbarHTML()}
@@ -1849,6 +1876,12 @@ function modalHTML() {
     const free = SERVERS.filter((x) => !A.pins.includes(x.id));
     body = free.length ? `<div class="mus-list">${free.map((x) => `<button type="button" class="hov plopen pk" data-act="pin" data-id="${x.id}" data-close="1"><span class="stl sm" style="background:${x.tile}">${esc(x.ini)}</span><b>${esc(x.name)}</b></button>`).join('')}</div>` : '<p class="mnote">Você ainda não está em nenhum servidor para fixar.</p>';
     foot = '<button type="button" class="mbtn ghost" data-act="modal-close">Fechar</button>';
+  } else if (m.type === 'widget') {
+    title = 'Personalizar card';
+    const cur = wMode();
+    const opt = (k, l) => `<button type="button" class="hov plopen pk${cur === k ? ' on' : ''}" data-act="wd-set" data-k="${k}" aria-pressed="${cur === k}"><b>${esc(l)}</b>${cur === k ? '<small>Em uso</small>' : ''}</button>`;
+    body = '<div class="mus-list">' + opt('featured', 'Servidores destaque') + Object.keys(STREAMS).map((k) => opt(k, 'Servidores de ' + STREAMS[k].n)).join('') + '</div><p class="mnote">Plano pago: em vez de remover o card, você escolhe qual anúncio de servidores aparece nele.</p>';
+    foot = '<button type="button" class="mbtn ghost" data-act="modal-close">Fechar</button>';
   } else if (m.type === 'chan') {
     title = 'Criar canal'; label = 'Criar canal';
     body = tabs([{ act: 'modal-mode', mode: 'text', l: 'Texto', on: m.kind !== 'voice' }, { act: 'modal-mode', mode: 'voice', l: 'Voz', on: m.kind === 'voice' }])
@@ -1915,7 +1948,7 @@ function modalHTML() {
       + mField('mf-bio', 'Sobre mim', 'bio', m.bio, { max: 190, area: true, ph: 'Conte um pouco sobre você', hint: 'Até 190 caracteres.' })
       + `<div class="mf"><span class="lblx">Cor do perfil</span><div class="swatches">${ACCENTS.map((c) => `<button type="button" class="swatch${m.accent === c ? ' on' : ''}" data-act="m-accent" data-c="${c}" aria-pressed="${m.accent === c}" aria-label="Cor ${c}" style="background:${c}"></button>`).join('')}</div></div>`;
   }
-  const showSubmit = !(m.type === 'invite' || m.type === 'profile' || m.type === 'bans' || m.type === 'music' || m.type === 'pinpick' || (m.type === 'srv' && m.mode === 'explore'));
+  const showSubmit = !(m.type === 'invite' || m.type === 'profile' || m.type === 'bans' || m.type === 'music' || m.type === 'pinpick' || m.type === 'widget' || (m.type === 'srv' && m.mode === 'explore'));
   return `<div class="mback" data-act="modal-bg"><div class="modal${m.type === 'music' ? ' wide' : ''}" role="dialog" aria-modal="true" aria-label="${esc(title)}">
     <header class="mhead"><h2>${esc(title)}</h2><button type="button" class="hov sq" data-act="modal-close" aria-label="Fechar">${ic(D.close, 16, '#55555F', 1.8)}</button></header>
     <div class="mbody">${body}${m.err && m.type !== 'music' ? `<div class="merr" role="alert">${esc(m.err)}</div>` : ''}</div>
@@ -2252,6 +2285,9 @@ function appAction(act, el, ev) {
     case 'mtrack': quiet(); playIdx(Number(el.dataset.i) || 0); return;
     case 'panel': A.panel = A.panel === el.dataset.k ? null : el.dataset.k; break;
     case 'goto-msg': { const ch = el.dataset.ch, srv = serverOfChan(ch); A.panel = null; if (srv) { A.server = srv.id; A.channel = ch; A.view = 'server'; } else if (A.dmUser[ch]) { A.channel = ch; A.view = 'dm'; } render({ scroll: true }); return true; }
+    case 'wd-opts': if (!planPaid()) return toast(ERRS.plan_widget); A.modal = { type: 'widget', err: '', busy: false }; render(); return;
+    case 'wd-set': if (planPaid() && (el.dataset.k === 'featured' || STREAMS[el.dataset.k])) { store.set('sq.wd.' + myId(), el.dataset.k); A.modal = null; render(); } return;
+    case 'feat-join': { const id = el.dataset.id; rpc('join_public_server', { p_server: id }).then(async () => { await loadWorld(() => {}); A.hubSrv = true; render(); toast('Você entrou no servidor'); }).catch((e) => toast(errText(e))); return; }
     case 'toast-soon': toast('Isso chega em breve'); return;
     case 'attach': pickImage(el.dataset.hub === '1'); return;
     case 'toast-gift': toast('Presentes chegam em breve'); return;

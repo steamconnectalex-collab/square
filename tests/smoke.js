@@ -33,7 +33,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   let qrPolls = 0;
   const storageCalls = [];
   // ---- banco simulado (servidores, canais, membros, mensagens, perfis) ----
-  const world = { servers: [], channels: [], members: [], messages: [], nextMsg: 1, nextId: 1, friendships: [], dms: [], blocks: [], voice: [], bans: [], favs: [], pins: [], publicCalls: [], pls: [], ptracks: [], nextPl: 1, nextPt: 1, moves: [],
+  const world = { servers: [], channels: [], members: [], messages: [], nextMsg: 1, nextId: 1, friendships: [], dms: [], blocks: [], voice: [], bans: [], favs: [], pins: [], plan: 'free', publicCalls: [], pls: [], ptracks: [], nextPl: 1, nextPt: 1, moves: [],
     profiles: [
       { id: 'u1', username: 'tester', display_name: 'Tester Um', bio: '', status_text: '', accent: '#9D8CCF', last_seen: null, created_at: '2026-11-16T10:00:00Z' },
       { id: 'u3', username: 'pedro', display_name: 'Pedro Alves', bio: '', status_text: '', accent: '#6FB3A0', last_seen: null, created_at: '2026-11-12T10:00:00Z' },
@@ -57,6 +57,8 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
         if (!world.pins.includes(body.p_server)) world.pins.push(body.p_server);
         return send(204, null);
       }
+      if (fn === 'my_plan') return send(200, world.plan);
+      if (fn === 'featured_servers') return send(200, [{ id: 'ft1', name: 'Destaque Um', level: 3, members: 12, joined: false }, { id: 'ft2', name: 'Destaque Dois', level: 4, members: 1, joined: false }]);
       if (fn === 'list_public_servers') return send(200, [{ id: 'pub1', name: 'Servidor Aberto', members: 7, joined: world.servers.some((x) => x.id === 'pub1') }]);
       if (fn === 'join_public_server') {
         if (!world.servers.some((x) => x.id === 'pub1')) {
@@ -345,6 +347,20 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await page.reload(); await page.waitForSelector('.scard');
   ok('carrossel mostra no máximo 10 dos 12 servidores e avisa do resto', (await page.locator('.scard').count()) === 10 && /Mostrando 10 de 12/.test(await page.textContent('.scmore')));
   ok('painel diz Servidores fixados (não Festas)', /Servidores fixados/.test(await page.textContent('.pp h2')) && !/Festas/.test(await page.textContent('.w-chat')));
+  await page.waitForSelector('.w-most .frow');
+  ok('card Servidores destaque substitui Mais jogados', /Servidores destaque/.test(await page.textContent('.w-most h2')) && !/Mais jogados/.test(await page.textContent('.w-most')) && (await page.locator('.w-most .frow').count()) === 2);
+  ok('destaque mostra nível e membros', /Nível 3 · 12 membros/.test(await page.textContent('.w-most')) && /Nível 4 · 1 membro/.test(await page.textContent('.w-most')));
+  await page.click('.w-most [data-act="wd-opts"]');
+  await page.waitForSelector('#toast .toast');
+  ok('plano grátis não consegue trocar/remover o card', /plano pago/.test(await page.textContent('#toast')) && (await page.locator('.modal, .mbody').count()) === 0);
+  world.plan = 'pro'; await page.reload(); await page.waitForSelector('.w-most .frow');
+  await page.click('.w-most [data-act="wd-opts"]'); await page.waitForSelector('[data-act="wd-set"]');
+  await page.click('[data-act="wd-set"][data-k="netflix"]');
+  await page.waitForFunction(() => /Servidores de Netflix/.test(document.querySelector('.w-most h2').textContent));
+  await page.waitForFunction(() => /Ainda não há/.test(document.querySelector('.w-most').textContent));
+  ok('plano pago troca o card por servidores de Netflix', /Ainda não há servidores públicos de Netflix/.test(await page.textContent('.w-most')));
+  await page.click('.w-most [data-act="wd-opts"]'); await page.click('[data-act="wd-set"][data-k="featured"]');
+  await page.waitForSelector('.w-most .frow');
   for (let i = 0; i < 4; i++) { await page.locator('.scard .spin2').nth(i).click(); await page.waitForTimeout(120); }
   ok('4 servidores fixados aparecem em Servidores fixados', (await page.locator('.pp .pslot.has').count()) === 4 && world.pins.length === 4);
   await page.locator('.scard .spin2').nth(4).click();

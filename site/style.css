@@ -260,6 +260,11 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .gtile:hover{transform:translateY(-4px)}
 .gart{display:flex;align-items:center;justify-content:center;aspect-ratio:1/1;border-radius:18px;font-weight:800;font-size:28px;color:var(--ink);box-shadow:0 10px 22px rgba(29,29,34,.16);transition:box-shadow .25s}
 .gtile:hover .gart{box-shadow:0 16px 30px rgba(29,29,34,.22)}
+.flist2{display:flex;flex-direction:column;gap:10px}
+.frow{display:flex;align-items:center;gap:10px;min-width:0}
+.frow .tx{display:flex;flex-direction:column;min-width:0;flex:1}
+.frow b{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.frow small{font-size:11px;color:var(--soft)}
 .gtile b{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gtile small{font-size:10.5px;color:var(--soft)}
 
