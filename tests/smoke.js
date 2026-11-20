@@ -343,7 +343,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   // fixar / desafixar / limite de 4 / carrossel com a roda do mouse
   for (let i = 0; i < 10; i++) { const id = 'ex' + i; world.servers.push({ id, name: 'Extra ' + i, owner_id: 'u2', created_at: new Date().toISOString() }); world.members.push({ server_id: id, user_id: 'u1', role: 'member' }); world.channels.push({ id: id + 'c1', server_id: id, name: 'Geral', kind: 'text', position: 0 }); }
   await page.reload(); await page.waitForSelector('.scard');
-  ok('carrossel mostra todos os servidores (12)', (await page.locator('.scard').count()) === 12);
+  ok('carrossel mostra no máximo 10 dos 12 servidores e avisa do resto', (await page.locator('.scard').count()) === 10 && /Mostrando 10 de 12/.test(await page.textContent('.scmore')));
   ok('painel diz Servidores fixados (não Festas)', /Servidores fixados/.test(await page.textContent('.pp h2')) && !/Festas/.test(await page.textContent('.w-chat')));
   for (let i = 0; i < 4; i++) { await page.locator('.scard .spin2').nth(i).click(); await page.waitForTimeout(120); }
   ok('4 servidores fixados aparecem em Servidores fixados', (await page.locator('.pp .pslot.has').count()) === 4 && world.pins.length === 4);
