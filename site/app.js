@@ -1271,7 +1271,7 @@ function srvCardHTML(s) {
 }
 function carouselHTML() {
   if (!SERVERS.length) return '';
-  return `<div class="scar-w"><div class="scar" id="scar" role="list" aria-label="Seus servidores">${SERVERS.slice(0, 50).map(srvCardHTML).join('')}</div>${SERVERS.length > 50 ? `<small class="scmore">Mostrando 50 de ${SERVERS.length}. Os demais estão na barra de cima.</small>` : ''}</div>`;
+  return `<div class="scar-w"><div class="scar" id="scar" role="list" aria-label="Seus servidores">${SERVERS.slice(0, 10).map(srvCardHTML).join('')}</div>${SERVERS.length > 10 ? `<small class="scmore">Mostrando 10 de ${SERVERS.length}. Os demais estão na barra de cima.</small>` : ''}</div>`;
 }
 const pinCount = () => A.pins.filter((id) => SERVERS.some((x) => x.id === id)).length;
 function keepCarousel(fn) {
