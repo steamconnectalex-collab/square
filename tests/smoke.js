@@ -33,7 +33,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   let qrPolls = 0;
   const storageCalls = [];
   // ---- banco simulado (servidores, canais, membros, mensagens, perfis) ----
-  const world = { servers: [], channels: [], members: [], messages: [], nextMsg: 1, nextId: 1, friendships: [], dms: [], blocks: [], voice: [], bans: [], favs: [], pins: [], plan: 'free', publicCalls: [], pls: [], ptracks: [], nextPl: 1, nextPt: 1, moves: [],
+  const world = { settings: {}, saved: [], usernameCalls: [], servers: [], channels: [], members: [], messages: [], nextMsg: 1, nextId: 1, friendships: [], dms: [], blocks: [], voice: [], bans: [], favs: [], pins: [], plan: 'free', publicCalls: [], pls: [], ptracks: [], nextPl: 1, nextPt: 1, moves: [],
     profiles: [
       { id: 'u1', username: 'tester', display_name: 'Tester Um', bio: '', status_text: '', accent: '#9D8CCF', last_seen: null, created_at: '2026-11-16T10:00:00Z' },
       { id: 'u3', username: 'pedro', display_name: 'Pedro Alves', bio: '', status_text: '', accent: '#6FB3A0', last_seen: null, created_at: '2026-11-12T10:00:00Z' },
@@ -58,6 +58,10 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
         return send(204, null);
       }
       if (fn === 'my_plan') return send(200, world.plan);
+      if (fn === 'get_my_settings') return send(200, world.settings);
+      if (fn === 'save_my_settings') { world.settings = body.p; world.saved.push(body.p); return send(204, null); }
+      if (fn === 'my_age_group') return send(200, 'unknown');
+      if (fn === 'change_username') { world.usernameCalls.push(body.p_username); return send(200, body.p_username); }
       if (fn === 'featured_servers') return send(200, [{ id: 'ft1', name: 'Destaque Um', level: 3, members: 12, joined: false }, { id: 'ft2', name: 'Destaque Dois', level: 4, members: 1, joined: false }]);
       if (fn === 'list_public_servers') return send(200, [{ id: 'pub1', name: 'Servidor Aberto', members: 7, joined: world.servers.some((x) => x.id === 'pub1') }]);
       if (fn === 'join_public_server') {
@@ -629,6 +633,40 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await page.reload();
   await page.waitForSelector('.hub', { timeout: 5000 });
   ok('recarregar mantém a sessão', true);
+
+  // 4b. configurações
+  await page.click('[data-act="menu"]'); await page.click('[data-act="settings"]');
+  await page.waitForSelector('#setroot .set');
+  ok('Configurações abrem pelo menu da conta', (await page.locator('#setroot .snavb').count()) >= 16 && /Informações da conta/.test(await page.textContent('#setroot .scontent')));
+  const navText = await page.textContent('#setroot .snavl');
+  ok('menu lateral tem Conta, Dados, Mensagens, Notificações, Plus, Voz, Aparência, Apps, Desenvolvedor e Sair', ['Conta', 'Dados e privacidade', 'Permissões de mensagens', 'Notificações', 'Square Plus', 'Impulso de servidor', 'Voz e vídeo', 'Aparência', 'Acessibilidade', 'Sistema', 'Idioma e Horário', 'Apps conectados', 'Desenvolvedor', 'Sair'].every((t) => new RegExp(t).test(navText)));
+  ok('e-mail aparece escondido até clicar em Mostrar', /\*+@/.test(await page.textContent('#setroot .semail')));
+  await page.click('#setroot [data-sa="show-email"]');
+  ok('Mostrar revela o e-mail', !/\*{3}/.test(await page.textContent('#setroot .semail')));
+  await page.fill('#sset-q', 'senha');
+  ok('busca filtra o menu', (await page.locator('#setroot .snavb:not(.out)').count()) <= 3 && /Conta/.test(await page.textContent('#setroot .snavl')));
+  await page.fill('#sset-q', '');
+  await page.click('#setroot [data-sa="page"][data-id="access"]');
+  await page.click('#setroot [data-k="chat_display"][data-v="compact"]');
+  ok('Acessibilidade: modo compacto muda a tela na hora', await page.evaluate(() => document.documentElement.classList.contains('pf-compact')));
+  await page.click('#setroot [data-k="reduce_motion"]');
+  ok('movimento reduzido liga a classe', await page.evaluate(() => document.documentElement.classList.contains('pf-reduce')));
+  await page.waitForFunction(() => true); await page.waitForTimeout(1200);
+  ok('preferências são salvas na conta', world.saved.length >= 1 && world.settings.chat_display === 'compact' && world.settings.reduce_motion === true);
+  ok('preferências ficam no navegador', await page.evaluate(() => /compact/.test(Object.keys(localStorage).filter((k) => k.indexOf('sq.prefs.') === 0).map((k) => localStorage.getItem(k)).join(''))));
+  await page.click('#setroot [data-sa="page"][data-id="voice"]');
+  await page.click('#setroot [data-k="input_profile"][data-v="studio"]');
+  ok('perfil Estúdio desliga eco, ruído e ganho no microfone', await page.evaluate(() => { const c = window.SQ_SET.audioConstraints(); return c.echoCancellation === false && c.noiseSuppression === false && c.autoGainControl === false; }));
+  await page.click('#setroot [data-sa="page"][data-id="account"]');
+  await page.click('#setroot [data-sa="ed-user"]'); await page.waitForSelector('#setroot .smodal #u-in');
+  await page.fill('#u-in', 'novo.nome'); await page.click('#setroot [data-sa="save-user"]');
+  await page.waitForFunction(() => !document.querySelector('#setroot .smodal'));
+  ok('trocar @usuário chama o banco', world.usernameCalls[0] === 'novo.nome');
+  await page.click('#setroot [data-sa="page"][data-id="plus"]'); await page.click('#setroot .splus-hero [data-sa="pay"]');
+  await page.waitForSelector('#toast .toast');
+  ok('Square Plus: pagamento avisa que ainda não existe', /ainda não/.test(await page.textContent('#toast')));
+  await page.keyboard.press('Escape');
+  ok('Esc fecha as Configurações', (await page.locator('#setroot .set').count()) === 0);
 
   // 5. logout
   const menuBtn = page.locator('[data-act="menu"]');

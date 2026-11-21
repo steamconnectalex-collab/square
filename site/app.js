@@ -158,6 +158,7 @@ async function loadProfile() {
 }
 async function logout() {
   const tok = S.session && S.session.access_token;
+  if (window.SQ_SET) { window.SQ_SET.close(); window.SQ_SET.forget(); }
   clearSession();
   S.lId = ''; S.lPw = ''; S.lTouched = false; S.lErr = '';
   go('login');
@@ -713,6 +714,21 @@ async function sb(path, o = {}) {
   return txt ? JSON.parse(txt) : null;
 }
 const rpc = (name, args) => sb('/rest/v1/rpc/' + name, { method: 'POST', body: args || {} });
+/* ponte para as Configurações (settings.js) */
+window.SQ_API = {
+  rpc, sb, toast, displayName, logout: () => logout(),
+  me: () => (A && A.me) || null,
+  email: () => (S.session && S.session.user && S.session.user.email) || '',
+  plan: () => (A && A.plan) || 'free',
+  servers: () => SERVERS,
+  unread: () => (A && A.unread ? Object.keys(A.unread).filter((k) => A.unread[k]).length : 0),
+  reload: () => { if (A && S.view === 'app') loadWorld(); },
+  authFetch: async (path, o = {}) => {
+    const t = await freshToken();
+    return fetch(C.SUPABASE_URL + path, { method: o.method || 'GET', headers: { apikey: C.SUPABASE_KEY, authorization: 'Bearer ' + t, 'content-type': 'application/json' }, body: o.body !== undefined ? JSON.stringify(o.body) : undefined });
+  },
+  editProfile: () => { if (!A) return; const me = A.me || {}; A.menu = false; A.modal = { type: 'editprofile', display: me.name || displayName(), status: me.status || '', bio: me.bio || '', accent: me.accent || ACCENTS[0], err: '', busy: false }; render(); focusModal(); }
+};
 const ERRS = {
   plan_widget: 'Remover ou trocar o card Servidores destaque exige um plano pago (ainda vamos definir qual).',
   too_many_pins: 'Plano grátis: até 4 servidores fixados. Desafixe um para fixar outro.',
@@ -748,7 +764,7 @@ function msgBody(m) {
 }
 const msgTime = (iso) => {
   const d = new Date(iso), t = new Date(), p2 = (n) => String(n).padStart(2, '0');
-  const hm = p2(d.getHours()) + ':' + p2(d.getMinutes());
+  const hm = window.SQ_SET ? window.SQ_SET.hm(d) : p2(d.getHours()) + ':' + p2(d.getMinutes());
   return d.toDateString() === t.toDateString() ? hm : p2(d.getDate()) + '/' + p2(d.getMonth() + 1) + ' ' + hm;
 };
 
@@ -776,6 +792,7 @@ function initApp() {
     threads: {}, loaded: {}, loading: {}, more: {}, terr: {}, modal: null, poll: null, beat: null, tt: null, typing: {}, pollN: 0, friends: [], incoming: [], outgoing: [], known: {}, dmByUser: {}, dmUser: {}, blocked: new Set(), unread: {}, vrost: {}
   };
   restoreQueue(); startLive(); loadWorld(); openJoin(); loadFavs(); loadFeatured();
+  if (window.SQ_SET) window.SQ_SET.boot(uid);
 }
 function openJoin() {
   if (S.joinCode && A) { A.modal = { type: 'srv', mode: 'join', name: '', code: S.joinCode, err: '', busy: false }; S.joinCode = null; }
@@ -1028,12 +1045,15 @@ async function voiceJoin(ch) {
   if (VC) voiceLeave(true);
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof RTCPeerConnection === 'undefined') return toast('Este navegador não permite chamadas de voz.');
   let stream;
-  try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
-  catch (e) { return toast('Não consegui usar o microfone. Libere o microfone para este site no navegador e tente de novo.'); }
+  const wantAudio = window.SQ_SET ? window.SQ_SET.audioConstraints() : { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
+  try { stream = await navigator.mediaDevices.getUserMedia({ audio: wantAudio }); }
+  catch (e0) { try { delete wantAudio.deviceId; stream = await navigator.mediaDevices.getUserMedia({ audio: wantAudio }); } catch (e) { stream = null; } }
+  if (!stream) return toast('Não consegui usar o microfone. Libere o microfone para este site no navegador e tente de novo.');
   try { await rpc('voice_join', { p_channel: ch }); }
   catch (e) { stream.getTracks().forEach((t) => t.stop()); return toast(errText(e)); }
   VC = { ch, stream, peers: {}, ping: setInterval(() => { rpc('voice_ping', { p_channel: ch }).catch(() => {}); }, 15000) };
   voiceApply();
+  if (window.SQ_SET) { window.SQ_SET.fx('join'); window.SQ_SET.entrySound(); }
   A.voice = ch;
   const t = await freshToken().catch(() => null);
   if (t) voiceRtJoin(t);
@@ -1053,6 +1073,7 @@ function voicePeer(uid) {
   pc.ontrack = (e) => {
     if (!peer.audio) { const a = document.createElement('audio'); a.autoplay = true; a.setAttribute('playsinline', ''); a.style.display = 'none'; document.body.appendChild(a); peer.audio = a; }
     peer.audio.srcObject = e.streams[0]; peer.audio.muted = !!(A && A.deafened);
+    if (window.SQ_SET) { peer.audio.volume = window.SQ_SET.outputVolume(); const od = window.SQ_SET.outputDevice(); if (od !== 'default' && peer.audio.setSinkId) peer.audio.setSinkId(od).catch(() => {}); }
     const pr = peer.audio.play(); if (pr && pr.catch) pr.catch(() => {});
   };
   pc.onconnectionstatechange = () => { if (['failed', 'closed'].includes(pc.connectionState)) voiceDrop(uid); };
@@ -1095,6 +1116,7 @@ async function voiceSignal(ev, d) {
 }
 function voiceLeave(quiet) {
   if (!VC) return;
+  if (window.SQ_SET && !quiet) window.SQ_SET.fx('leave');
   const v = VC; vsend('bye', {});
   VC = null;
   clearInterval(v.ping);
@@ -1120,8 +1142,8 @@ function rtChange(d) {
   if (d.type === 'INSERT') {
     const ch = r.channel_id, th = A.threads[ch];
     if (r.author_id !== myId() && !serverOfChan(ch) && !A.dmUser[ch]) { reloadSoon(); return; }
-    if (r.author_id !== myId() && A.dmUser[ch] && !A.blocked.has(r.author_id) && (curKey() !== ch || document.hidden)) { const f = dmPeer(ch); toast('Nova mensagem de ' + (f ? f.name : 'um amigo')); A.unread[ch] = 1; if (!th) reloadSoon(); else render(); }
-    if (r.author_id !== myId() && serverOfChan(ch) && mentionsMe(r.content) && !A.blocked.has(r.author_id)) { const f = findPerson(r.author_id); toast((f ? f.name : 'Alguém') + ' mencionou você'); }
+    if (r.author_id !== myId() && A.dmUser[ch] && !A.blocked.has(r.author_id) && (curKey() !== ch || document.hidden)) { const f = dmPeer(ch); toast('Nova mensagem de ' + (f ? f.name : 'um amigo')); if (window.SQ_SET) window.SQ_SET.notify('message', 'Nova mensagem de ' + (f ? f.name : 'um amigo'), String(r.content || '').slice(0, 120)); A.unread[ch] = 1; if (!th) reloadSoon(); else render(); }
+    if (r.author_id !== myId() && serverOfChan(ch) && mentionsMe(r.content) && !A.blocked.has(r.author_id)) { const f = findPerson(r.author_id); toast((f ? f.name : 'Alguém') + ' mencionou você'); if (window.SQ_SET) window.SQ_SET.notify('message', (f ? f.name : 'Alguém') + ' mencionou você', String(r.content || '').slice(0, 120)); }
     if (!th || th.some((x) => x.id === r.id)) return;
     th.push(mapMsg(r));
     if (A.typing) delete A.typing[ch + '|' + r.author_id];
@@ -2258,10 +2280,10 @@ function appAction(act, el, ev) {
     case 'chan': A.channel = el.dataset.id; A.draft = ''; break;
     case 'vjoin': voiceJoin(el.dataset.id); return;
     case 'vleave': voiceLeave(); return;
-    case 'mute': A.muted = !A.muted; voiceApply(); break;
-    case 'deaf': A.deafened = !A.deafened; voiceApply(); break;
+    case 'mute': A.muted = !A.muted; voiceApply(); if (window.SQ_SET) window.SQ_SET.fx(A.muted ? 'mute' : 'unmute'); break;
+    case 'deaf': A.deafened = !A.deafened; voiceApply(); if (window.SQ_SET) window.SQ_SET.fx(A.deafened ? 'deaf' : 'undeaf'); break;
     case 'menu': A.menu = !A.menu; break;
-    case 'settings': toast('Configurações chegam em breve'); break;
+    case 'settings': A.menu = false; if (window.SQ_SET) window.SQ_SET.open(); else toast('Não foi possível abrir as configurações.'); break;
     case 'logout': logout(); return;
     case 'nav': { const k = el.dataset.k; if (k === 'invite') { openInvite(); return; } if (k === 'members') A.showMembers = !A.showMembers; else { A.panel = A.panel === k ? null : k; if (A.panel === 'mentions') loadMentions(); if (A.panel === 'search') { A.sres = null; runSearch(); } } break; }
     case 'close-panel': A.panel = null; break;
