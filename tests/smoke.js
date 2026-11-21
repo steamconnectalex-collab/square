@@ -57,6 +57,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
         if (!world.pins.includes(body.p_server)) world.pins.push(body.p_server);
         return send(204, null);
       }
+      if (fn === 'set_my_presence') { world.presence = body.p_status; return send(204, null); }
       if (fn === 'my_plan') return send(200, world.plan);
       if (fn === 'get_my_settings') return send(200, world.settings);
       if (fn === 'save_my_settings') { world.settings = body.p; world.saved.push(body.p); return send(204, null); }
@@ -80,7 +81,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
       if (fn === 'send_friend_request') {
         const u = world.profiles.find((x) => x.username === String(body.p_username).toLowerCase());
         if (!u) return send(400, { message: 'user_not_found' });
-        world.friendships.push({ user_a: 'u1' < u.id ? 'u1' : u.id, user_b: 'u1' < u.id ? u.id : 'u1', requester: 'u1', status: 'pending' });
+        world.friendships.push({ user_a: 'u1' < u.id ? 'u1' : u.id, user_b: 'u1' < u.id ? u.id : 'u1', requester: 'u1', status: 'pending', note: body.p_note || '' });
         return send(200, 'pending');
       }
       if (fn === 'respond_friend_request') {
@@ -240,168 +241,119 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await page.waitForSelector('.alert');
   ok('erro de credencial aparece', /incorretos/.test(await page.textContent('.alert')));
 
-  // 3. login ok -> app
+  // 3. login ok -> app (menu principal novo)
   await page.fill('#login-pw', 'Senha1234!');
   await page.click('button.btn[type=submit]');
-  await page.waitForSelector('.hub', { timeout: 5000 });
-  ok('depois do login abre o painel inicial', true);
-  ok('painel mostra o nome do perfil', ((await page.getAttribute('.ubar .pic', 'aria-label')) || '').includes('Tester Um'));
-  ok('painel tem todos os blocos', (await page.locator('.w-fr, .w-chat, .w-most, .w-mus, .w-news, .ubar').count()) === 6);
-  await page.waitForTimeout(900);
+  await page.waitForSelector('.x .x-ph', { timeout: 5000 });
+  ok('depois do login abre a página Amigos do menu principal', /Amigos/.test(await page.textContent('.x-tt')));
+  ok('barra do usuário mostra o nome do perfil', ((await page.getAttribute('.ub-me', 'aria-label')) || '').includes('Tester Um'));
+  ok('menu tem trilho, coluna, barra do usuário e Ativo agora', (await page.locator('.x-rail, .x-col, .x-ub, .x-act').count()) === 4);
+  const colTxt = await page.textContent('.x-col');
+  ok('coluna tem Amigos, Square Plus, Loja, Missões e Mensagens diretas', ['Amigos', 'Square Plus', 'Loja', 'Missões', 'Mensagens diretas', 'Encontre ou comece uma conversa'].every((t) => colTxt.includes(t)));
+  ok('DM oficial da Square aparece', /OFICIAL/.test(colTxt) && /Mensagem Oficial da Square/.test(colTxt));
+  ok('trilho tem Criar, Explorar e Baixar', (await page.locator('.x-rail .rt.act').count()) === 3);
+  ok('Ativo agora mostra "está quieto"', /Por enquanto, está quieto/.test(await page.textContent('.x-act')));
+  ok('sem amigos: a lista convida a adicionar', /ainda não tem amigos/.test(await page.textContent('#flist')));
+  await page.waitForTimeout(600);
   await page.screenshot({ path: OUT + '/2-app.png' });
-  // barra do usuário expande e recolhe
-  const w0 = (await page.locator('#ubar').boundingBox()).width;
-  await page.click('#b-dots');
-  await page.waitForTimeout(800);
-  const w1 = (await page.locator('#ubar').boundingBox()).width;
-  ok('barra do usuário expande ao clicar nos três pontos', w1 > w0 * 1.6);
-  ok('aparecem os 5 botões extras', (await page.locator('.xtra .tb').evaluateAll((l) => l.filter((b) => getComputedStyle(b).opacity === '1').length)) === 5);
+  // páginas Loja / Missões / Square oficial
+  await page.click('.cn:has-text("Loja")');
+  ok('Loja abre uma página "em breve"', /Loja: em breve/.test(await page.textContent('.x-pm')));
+  await page.click('.cn:has-text("Missões")');
+  ok('Missões abre uma página "em breve"', /Missões: em breve/.test(await page.textContent('.x-pm')));
+  await page.click('[data-act="go-official"]');
+  ok('mensagem oficial da Square abre e não aceita resposta', /Bem-vindo/.test(await page.textContent('.x-chat')) && (await page.locator('.x-chat .cbar input[disabled]').count()) === 1);
+  await page.click('.cn:has-text("Amigos")');
+  // status: Disponível / Ausente / Não perturbe / Invisível
+  await page.click('.ub-me');
+  await page.waitForSelector('.upop');
+  const upTxt = await page.textContent('.upop');
+  ok('cartão do usuário tem todas as linhas das fotos', ['Editar perfil', 'Disponível', 'Insígnias', '0 Pontos', 'Mudar de conta'].every((t) => upTxt.includes(t)));
+  await page.click('.upop [data-sub="status"]');
+  const stTxt = await page.textContent('.upop .fly');
+  ok('menu de status tem as 4 opções', ['Disponível', 'Ausente', 'Não perturbe', 'Você não receberá notificação', 'Invisível', 'Você vai aparecer Off-line'].every((t) => stTxt.includes(t)));
+  await page.hover('.upop .pi-w:has-text("Ausente")');
+  ok('Ausente abre as durações', /Por 15 minutos/.test(await page.textContent('.upop')) && /Até eu mudar/.test(await page.textContent('.upop')));
+  await page.click('.upop [data-act="status-set"][data-s="dnd"]');
+  await page.waitForFunction(() => /Não perturbe/.test(document.querySelector('.ub-me').textContent));
+  ok('mudar o status grava no banco e aparece na barra', world.presence === 'dnd');
+  await page.click('.ub-me'); await page.click('.upop [data-sub="pts"]');
+  ok('Pontos mostra desafios, Missões e Loja', /Desafios ativos/.test(await page.textContent('.upop .pts')) && /Compre um item da loja/.test(await page.textContent('.upop .pts')));
   await page.screenshot({ path: OUT + '/2b-barra.png' });
-  await page.click('.xtra .tb:last-child');
-  await page.waitForTimeout(800);
-  ok('seta recolhe a barra', (await page.locator('#ubar').boundingBox()).width < w1 * 0.7);
-  // abas de notícias
-  await page.click('#tab-free');
-  ok('aba Jogos grátis troca o conteúdo', await page.isVisible('#pane-free') && !(await page.isVisible('#pane-news')));
-  // música: busca, fila, favoritas, playlists
-  ok('player começa vazio e parado', (await page.locator('#disc.spin').count()) === 0 && /Nenhuma música/.test(await page.textContent('#mt')));
-  await page.click('.w-mus [data-act="mus-open"][data-tab="search"]');
-  await page.waitForSelector('.modal.wide #mf-q');
-  await page.fill('#mf-q', 'magnolia');
-  await page.waitForSelector('#mus-res .mrow2');
-  ok('busca mostra só músicas com prévia', (await page.locator('#mus-res .mrow2').count()) === 2);
-  await page.screenshot({ path: OUT + '/9-musica-busca.png' });
-  await page.click('#mus-res .mrow2:nth-child(1) [data-act="mus-q"]');
-  await page.click('#mus-res .mrow2:nth-child(2) [data-act="mus-q"]');
-  await page.click('#mus-res .mrow2:nth-child(1) [data-act="mus-fav"]');
-  await page.waitForTimeout(200);
-  ok('favoritar grava no banco', world.favs.length === 1 && world.favs[0].track_id === '101');
-  await page.click('.mtab[data-tab="pl"]');
-  await page.fill('#mf-new', 'Treino');
-  await page.click('[data-act="mus-pl-new"]');
-  await page.waitForSelector('.plrow');
-  ok('criar playlist', world.pls.length === 1 && /Treino/.test(await page.textContent('.plrow')));
-  await page.click('.mtab[data-tab="fav"]');
-  await page.click('.mrow2 [data-act="mus-pick"]');
-  await page.click('[data-act="mus-addpl"]');
-  await page.waitForTimeout(300);
-  await page.click('.mtab[data-tab="search"]');
-  await page.fill('#mf-q', 'sky');
-  await page.waitForSelector('#mus-res .mrow2');
-  await page.click('#mus-res .mrow2:nth-child(2) [data-act="mus-pick"]');
-  await page.click('[data-act="mus-addpl"]');
-  await page.waitForTimeout(300);
-  ok('adicionar músicas à playlist (posição crescente)', world.ptracks.length === 2 && world.ptracks[1].position === 2);
-  await page.click('.mtab[data-tab="pl"]');
-  await page.click('[data-act="mus-pl-open"]');
-  await page.waitForSelector('.plhead');
-  ok('abrir playlist mostra as faixas', (await page.locator('.modal .mrow2').count()) === 2);
-  await page.click('.modal .mrow2:nth-child(2) [data-act="mus-pl-mv"][data-d="-1"]');
-  await page.waitForTimeout(200);
-  ok('mover para cima chama o banco e muda a ordem', world.moves.length === 1 && world.moves[0][1] === -1 && /Sky/.test(await page.textContent('.modal .mrow2:first-child')));
-  await page.click('[data-act="mus-pl-share"]');
-  await page.waitForSelector('#toast .toast');
-  ok('compartilhar sem conversa aberta avisa', /conversa primeiro/.test(await page.textContent('#toast')));
-  await page.click('[data-act="mus-pl-playall"]');
-  await page.click('.modal [data-act="modal-close"]');
-  await page.waitForSelector('#disc.spin', { timeout: 4000 });
-  await page.screenshot({ path: OUT + '/9-musica-player.png' });
-  ok('tocar playlist enche a fila e o disco gira', (await page.locator('.w-mus .trk').count()) === 2 && (await page.locator('#disc.spin').count()) === 1);
-  ok('capa da música aparece no disco', /mzstatic/.test((await page.getAttribute('#disc .core', 'style')) || ''));
-  await page.click('.w-mus [data-act="mus-qmove"][data-i="0"][data-d="1"]');
-  ok('mover na fila troca a ordem', /Magnolia/.test(await page.textContent('.w-mus .trk:first-child')) || /Sky|Magnolia/.test(await page.textContent('.w-mus .tracks')));
-  await page.click('.w-mus [data-act="mus-qdel"][data-i="1"]');
-  ok('tirar da fila', (await page.locator('.w-mus .trk').count()) === 1);
-  ok('tirar a música que toca para o disco', await page.locator('#disc.spin').count() === 0);
-  await page.click('#mplay');
-  await page.waitForSelector('#disc.spin', { timeout: 4000 });
-  ok('tocar começa a música', true);
-  await page.click('#mplay');
-  await page.waitForTimeout(300);
-  ok('pausar para o disco', await page.locator('#disc.spin').count() === 0);
-  await page.reload();
-  await page.waitForSelector('.hub');
-  ok('fila lembrada depois de recarregar', (await page.locator('.w-mus .trk').count()) === 1);
-  // conta nova: sem servidores
-  ok('conta nova mostra estado vazio com convite para criar servidor', /ainda não está em nenhum servidor/.test(await page.textContent('.hchat')));
-  await page.screenshot({ path: OUT + '/2d-vazio.png' });
-  // 55 mensagens antigas já guardadas no futuro canal Geral (para testar o histórico)
-  for (let i = 0; i < 55; i++) world.messages.push({ id: i - 54, channel_id: 'srv1c1', author_id: 'u2', content: 'antiga ' + i, created_at: '2026-11-17T10:00:00Z', edited_at: null });
-  // card de servidores: Criar servidor + Explorar (sem "Entrar com convite")
-  const cardTxt = await page.textContent('.hsrv .hcta');
-  ok('card tem Criar servidor e Explorar, sem "Entrar com convite"', /Criar servidor/.test(cardTxt) && /Explorar/.test(cardTxt) && !/Entrar com convite/.test(cardTxt));
-  // explorar: lista pública e entrar
-  await page.click('.hsrv .hcta [data-mode="explore"]');
+  await page.click('.upop [data-sub="status"]'); await page.click('.upop [data-act="status-set"][data-s="online"]');
+  await page.waitForFunction(() => /Disponível/.test(document.querySelector('.ub-me').textContent));
+  await page.click('.ub-me'); await page.click('.upop [data-sub="acct"]');
+  ok('Mudar de conta mostra a conta atual e Gerenciar contas', /Gerenciar contas/.test(await page.textContent('.upop .fly')));
+  await page.keyboard.press('Escape'); await page.click('.x-tt'); 
+  // microfone e fone: menus
+  await page.click('.ugc >> nth=0');
+  await page.waitForSelector('.dpop.mic');
+  const micTxt = await page.textContent('.dpop.mic');
+  ok('menu do microfone tem tudo das fotos', ['Dispositivo de entrada', 'Perfil de entrada', 'Volume de entrada', 'Configurações de voz'].every((t) => micTxt.includes(t)));
+  await page.click('.ugc >> nth=1');
+  await page.waitForSelector('.dpop.head');
+  const headTxt = await page.textContent('.dpop.head');
+  ok('menu do fone tem saída, volume e Configurações de voz', ['Dispositivo de saída', 'Volume de saída', 'Configurações de voz'].every((t) => headTxt.includes(t)));
+  await page.click('.dpop.head [data-act="open-settings"]');
+  await page.waitForSelector('#setroot .set');
+  ok('Configurações de voz abre a tela de Voz', /Voz|voz/.test(await page.textContent('#setroot .scontent')));
+  await page.keyboard.press('Escape');
+  // buscar conversa (Encontre ou comece uma conversa)
+  await page.click('.qfind');
+  await page.waitForSelector('#qs-in');
+  ok('"Encontre ou comece uma conversa" abre a busca', true);
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('.modal'));
+  // Adicionar amigo (aba) com contador de 120
+  await page.click('[data-act="ftab"][data-k="add"]');
+  await page.waitForSelector('#af-user');
+  ok('aba Adicionar amigo tem campo, mensagem opcional, contador 120 e Explorar Servidores Públicos', (await page.textContent('.x-pm')).includes('Explorar Servidores Públicos') && (await page.textContent('#af-cnt')) === '120' && /Personalize sua solicitação/.test(await page.getAttribute('#af-note', 'placeholder')));
+  ok('botão de enviar pedido começa desligado', await page.isDisabled('#af-send'));
+  await page.screenshot({ path: OUT + '/2c-add.png' });
+  // criar servidor em passos (primeiro servidor)
+  await page.click('[data-act="srv-new"]');
+  await page.waitForSelector('.modal.sn');
+  ok('primeiro servidor: "Crie seu primeiro servidor na Square" com molde e convite', /Crie seu primeiro servidor/.test(await page.textContent('.modal.sn')) && /Começar de um molde/.test(await page.textContent('.modal.sn')) && /Já tem um convite/.test(await page.textContent('.modal.sn')));
+  await page.click('[data-act="sn-tpl"][data-k="own"]');
+  ok('passo 2: "Conte-nos mais sobre o seu servidor"', /Conte-nos mais/.test(await page.textContent('.modal.sn')));
+  await page.click('.sn-back');
+  ok('Voltar retorna ao passo 1', /Começar de um molde/.test(await page.textContent('.modal.sn')));
+  await page.click('[data-act="sn-tpl"][data-k="own"]');
+  await page.click('[data-act="sn-kind"][data-k="community"]');
+  ok('passo 3: nome já vem como "Servidor de …"', /Servidor de/.test(await page.inputValue('#mf-name')) && /Personalize o seu servidor/.test(await page.textContent('.modal.sn')));
+  await page.fill('#mf-name', 'Clube do Teste');
+  await page.click('[data-act="m-pub"]');
+  await page.click('[data-act="modal-submit"]');
+  await page.waitForSelector('.wlc', { timeout: 6000 });
+  ok('criar servidor abre o servidor com o "Bem-vindo(a)"', /Clube do Teste/.test(await page.textContent('.x-tt')) && /Bem-vindo\(a\) a/.test(await page.textContent('.wlc')));
+  ok('RPC create_server chamada com o nome e servidor marcado como público', calls.some((c) => c[1] === '/rest/v1/rpc/create_server' && c[2].p_name === 'Clube do Teste') && world.publicCalls.length === 1 && world.publicCalls[0].p_public === true);
+  ok('servidor novo tem as 6 dicas, Geral e Sala principal', (await page.locator('.wlc .wc').count()) === 6 && /Geral/.test(await page.textContent('.x-col')) && /Sala principal/.test(await page.textContent('.x-col')));
+  ok('o servidor entra no trilho', (await page.locator('.x-rail .rt[data-act="srv-open"]').count()) === 1);
+  await page.screenshot({ path: OUT + '/2d-servidor.png' });
+  // explorar
+  await page.click('[data-act="srv-explore"]');
   await page.waitForSelector('.exrow');
   ok('Explorar lista servidores públicos', /Servidor Aberto/.test(await page.textContent('.exrow')));
   await page.click('[data-act="explore-join"]');
-  await page.waitForSelector('.scard', { timeout: 5000 });
-  ok('entrar por Explorar fica no painel e aparece no carrossel', (await page.locator('.scard').count()) === 1 && /Servidor Aberto/.test(await page.textContent('.scar')));
-  // criar servidor pela janela (público)
-  await page.click('.hsrv .hcta .mbtn:not(.ghost)');
-  await page.waitForSelector('.modal');
-  await page.click('[data-act="m-pub"]');
-  await page.fill('#mf-name', 'Clube do Teste');
-  await page.click('[data-act="modal-submit"]');
-  await page.waitForFunction(() => document.querySelectorAll('.scard').length === 2, null, { timeout: 6000 }).catch(async () => { console.log('DEBUG modal:', await page.textContent('.mbody').catch(() => 'sem modal'), '| erros:', errors.join(' | ')); });
-  ok('criar servidor mantém o painel e o servidor aparece no carrossel', (await page.locator('.scard').count()) === 2 && (await page.locator('.hub').count()) === 1);
-  ok('servidor criado como público chama set_server_public', world.publicCalls.length === 1 && world.publicCalls[0].p_public === true);
-  // fixar / desafixar / limite de 4 / carrossel com a roda do mouse
-  for (let i = 0; i < 10; i++) { const id = 'ex' + i; world.servers.push({ id, name: 'Extra ' + i, owner_id: 'u2', created_at: new Date().toISOString() }); world.members.push({ server_id: id, user_id: 'u1', role: 'member' }); world.channels.push({ id: id + 'c1', server_id: id, name: 'Geral', kind: 'text', position: 0 }); }
-  await page.reload(); await page.waitForSelector('.scard');
-  ok('carrossel mostra no máximo 10 dos 12 servidores e avisa do resto', (await page.locator('.scard').count()) === 10 && /Mostrando 10 de 12/.test(await page.textContent('.scmore')));
-  ok('painel diz Servidores fixados (não Festas)', /Servidores fixados/.test(await page.textContent('.pp h2')) && !/Festas/.test(await page.textContent('.w-chat')));
-  await page.waitForSelector('.w-most .frow');
-  ok('card Servidores destaque substitui Mais jogados', /Servidores destaque/.test(await page.textContent('.w-most h2')) && !/Mais jogados/.test(await page.textContent('.w-most')) && (await page.locator('.w-most .frow').count()) === 2);
-  ok('destaque mostra nível e membros', /Nível 3 · 12 membros/.test(await page.textContent('.w-most')) && /Nível 4 · 1 membro/.test(await page.textContent('.w-most')));
-  await page.click('.w-most [data-act="wd-opts"]');
-  await page.waitForSelector('#toast .toast');
-  ok('plano grátis não consegue trocar/remover o card', /plano pago/.test(await page.textContent('#toast')) && (await page.locator('.modal, .mbody').count()) === 0);
-  world.plan = 'pro'; await page.reload(); await page.waitForSelector('.w-most .frow');
-  await page.click('.w-most [data-act="wd-opts"]'); await page.waitForSelector('[data-act="wd-set"]');
-  await page.click('[data-act="wd-set"][data-k="netflix"]');
-  await page.waitForFunction(() => /Servidores de Netflix/.test(document.querySelector('.w-most h2').textContent));
-  await page.waitForFunction(() => /Ainda não há/.test(document.querySelector('.w-most').textContent));
-  ok('plano pago troca o card por servidores de Netflix', /Ainda não há servidores públicos de Netflix/.test(await page.textContent('.w-most')));
-  await page.click('.w-most [data-act="wd-opts"]'); await page.click('[data-act="wd-set"][data-k="featured"]');
-  await page.waitForSelector('.w-most .frow');
-  for (let i = 0; i < 4; i++) { await page.locator('.scard .spin2').nth(i).click(); await page.waitForTimeout(120); }
-  ok('4 servidores fixados aparecem em Servidores fixados', (await page.locator('.pp .pslot.has').count()) === 4 && world.pins.length === 4);
-  await page.locator('.scard .spin2').nth(4).click();
-  await page.waitForSelector('#toast .toast');
-  ok('o 5º fixado é barrado (plano grátis, até 4)', /até 4 servidores fixados/.test(await page.textContent('#toast')) && world.pins.length === 4);
-  await page.locator('.pp .pun').first().click(); await page.waitForTimeout(150);
-  ok('desafixar libera um espaço', (await page.locator('.pp .pslot.has').count()) === 3 && world.pins.length === 3);
-  await page.click('.pp .pslot:not(.has)'); await page.waitForSelector('.modal .pk');
-  ok('botão + abre a lista de servidores para fixar', (await page.locator('.modal .pk').count()) === 9);
-  await page.click('.modal .pk >> nth=0'); await page.waitForTimeout(200);
-  ok('fixar pela lista', world.pins.length === 4 && (await page.locator('.modal').count()) === 0);
-  const sl0 = await page.evaluate(() => document.getElementById('scar').scrollLeft);
-  const bb = await page.locator('#scar').boundingBox();
-  await page.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2); await page.mouse.wheel(0, 300); await page.waitForTimeout(250);
-  const sl1 = await page.evaluate(() => document.getElementById('scar').scrollLeft);
-  ok('roda do mouse gira o carrossel para a esquerda', sl1 > sl0);
-  await page.mouse.wheel(0, -600); await page.waitForTimeout(250);
-  ok('roda para cima volta ao início', (await page.evaluate(() => document.getElementById('scar').scrollLeft)) < sl1);
-  // volta ao mundo de antes (tira os extras e os fixados)
-  world.servers = world.servers.filter((x) => !x.id.startsWith('ex')); world.members = world.members.filter((x) => !x.server_id.startsWith('ex')); world.channels = world.channels.filter((x) => !x.server_id.startsWith('ex')); world.pins = [];
-  await page.reload(); await page.waitForSelector('.scard');
-  // abre o servidor criado
-  await page.locator('.scard .sopen', { hasText: 'Clube do Teste' }).click();
-  await page.waitForSelector('.ap .chat', { timeout: 6000 });
-  ok('clicar no servidor do carrossel abre o servidor', /Clube do Teste/.test(await page.textContent('.top h1')));
-  ok('servidor novo tem os canais Geral e Sala principal', /Geral/.test(await page.textContent('body')) && /Sala principal/.test(await page.textContent('body')));
-  ok('RPC create_server chamada com o nome', calls.some((c) => c[1] === '/rest/v1/rpc/create_server' && c[2].p_name === 'Clube do Teste'));
+  await page.waitForFunction(() => document.querySelectorAll('.x-rail .rt[data-act="srv-open"]').length === 2, null, { timeout: 5000 });
+  ok('entrar por Explorar põe o servidor no trilho e abre ele', /Servidor Aberto/.test(await page.textContent('.x-tt')));
+  await page.click('.x-rail .rt[data-act="srv-open"] >> nth=0');
+  await page.waitForSelector('.wlc');
+  // 55 mensagens antigas no canal Geral (para testar o histórico) e recarrega
+  for (let i = 0; i < 55; i++) world.messages.push({ id: i - 54, channel_id: 'srv1c1', author_id: 'u2', content: 'antiga ' + i, created_at: '2026-11-17T10:00:00Z', edited_at: null });
+  await page.reload(); await page.waitForSelector('.x .x-ph');
+  await page.click('.x-rail .rt[data-act="srv-open"] >> nth=0');
+  await page.waitForSelector('#msgs .bub', { timeout: 6000 });
   // mandar mensagem de verdade
   await page.fill('#msg', 'Olá, mundo real');
   await page.press('#msg', 'Enter');
-  await page.waitForFunction(() => /Olá, mundo real/.test(document.getElementById('msgs').textContent), null, { timeout: 5000 }).catch(async () => { console.log('DEBUG msgs:', await page.textContent('#msgs'), '| erros:', errors.join(' | '), '| calls:', JSON.stringify(calls.slice(-5))); });
+  await page.waitForFunction(() => /Olá, mundo real/.test(document.getElementById('msgs').textContent), null, { timeout: 5000 }).catch(async () => { console.log('DEBUG msgs:', await page.textContent('#msgs'), '| erros:', errors.join(' | ')); });
   ok('mensagem enviada aparece no chat e foi gravada', world.messages.some((m) => m.content === 'Olá, mundo real'));
-  // histórico: botão "ver mensagens mais antigas"
   ok('chat mostra o botão de mensagens mais antigas', (await page.locator('#msgs .older').count()) === 1 && !/antiga 0\b/.test(await page.textContent('#msgs')));
   await page.click('#msgs .older');
   await page.waitForFunction(() => /antiga 0(?!\d)/.test(document.getElementById('msgs').textContent), null, { timeout: 4000 });
   ok('"ver mais antigas" carrega o resto do histórico e o botão some', (await page.locator('#msgs .older').count()) === 0);
+  const srvId = (world.servers.find((x) => x.owner_id === 'u1') || world.servers[0]).id;
   // mensagem de outra pessoa chega pelo tempo real (WebSocket)
   await page.waitForFunction(() => true);
   for (let i = 0; i < 40 && !wsIn.some((j) => j.event === 'phx_join'); i++) await page.waitForTimeout(100);
@@ -439,23 +391,23 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await page.click('[data-act="modal-close"]');
   ok('fechar o cartão', (await page.locator('.modal').count()) === 0);
   // criar canal
-  await page.click('[data-act="modal-open"][data-k="chan"]');
+  await page.click('[data-act="modal-open"][data-k="chan"] >> nth=0');
   await page.fill('#mf-name', 'Avisos');
   await page.click('[data-act="modal-submit"]');
   await page.waitForFunction(() => /Avisos/.test(document.body.textContent));
   ok('canal novo aparece na lista', world.channels.some((c) => c.name === 'Avisos' && c.kind === 'text'));
   // convite
-  await page.click('[data-act="nav"][data-k="invite"]');
+  await page.click('[data-act="nav"][data-k="invite"] >> nth=0');
   await page.waitForSelector('#mf-link');
   ok('convite mostra o link com código', /#join\?c=abc123def0/.test(await page.inputValue('#mf-link')));
   await page.click('[data-act="modal-close"]');
   // editar o próprio perfil
-  await page.click('.who .pic');
-  await page.waitForSelector('.pcard');
-  await page.click('[data-act="edit-profile"]');
+  await page.click('.ub-me');
+  await page.waitForSelector('.upop');
+  await page.click('.upop .pgrp [data-act="edit-profile"]');
   const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
   await page.setInputFiles('#mf-avatar', { name: 'foto.png', mimeType: 'image/png', buffer: png });
-  await page.waitForFunction(() => { const e = document.querySelector('.who .pic'); return !!e && /avatars/.test(e.style.background + e.getAttribute('style')); }, null, { timeout: 5000 });
+  await page.waitForFunction(() => { const e = document.querySelector('.ub-me .xav'); return !!e && /avatars/.test(e.getAttribute('style') || ''); }, null, { timeout: 5000 });
   ok('foto enviada ao Storage na pasta da pessoa e salva no perfil', storageCalls.some((c) => c[0] === 'POST' && /\/avatars\/u1\/\d+\.jpg$/.test(c[1])) && /^u1\/\d+\.jpg$/.test(world.profiles[0].avatar_path || ''));
   ok('avatar novo aparece na barra do usuário', true);
   await page.fill('#mf-bio', 'Minha bio de teste');
@@ -472,22 +424,23 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await fc.setFiles({ name: 'foto.png', mimeType: 'image/png', buffer: png });
   await page.waitForSelector('.att img', { timeout: 6000 });
   ok('imagem enviada ao Storage e aparece na mensagem', storageCalls.some((c) => c[0] === 'POST' && /\/attachments\/u1\/[0-9a-f-]+\.jpg$/.test(c[1])) && world.messages.some((x) => /^u1\//.test(x.attachment_path || '')));
-  await page.click('.nav [data-act="nav"][data-k="search"]');
+  await page.click('.xsearch');
   await page.fill('#sq', 'tudo bem');
   await page.waitForSelector('.panel .res', { timeout: 5000 });
   ok('busca de mensagens acha a mensagem no canal', (await page.locator('.panel .res').count()) >= 1);
   await page.click('[data-act="close-panel"]');
   world.messages.push({ id: world.nextMsg++, channel_id: c1, author_id: 'u2', content: 'Oi @tester, vem jogar!', created_at: new Date().toISOString(), edited_at: null, attachment_path: null });
-  await page.click('.nav [data-act="nav"][data-k="mentions"]');
+  await page.click('.x-ti [data-act="nav"][data-k="notif"]');
+  await page.click('[data-act="mentions-open"]');
   await page.waitForSelector('.panel .res', { timeout: 5000 });
   ok('painel de menções lista quem mencionou você', /Marina/.test(await page.textContent('.panel')));
   await page.click('[data-act="close-panel"]');
   // etapa 7: voz
   const vch = world.channels.find((c) => c.kind === 'voice').id;
-  await page.click('.vjoin');
+  await page.click('[data-act="vjoin"]');
   await page.waitForSelector('.vbar', { timeout: 6000 });
-  await page.waitForSelector('.vu', { timeout: 6000 });
-  ok('entrar na voz: barra "Voz conectada" e a pessoa aparece na sala', /Voz conectada/.test(await page.textContent('.vbar')) && /Tester/.test(await page.textContent('.vg')));
+  await page.waitForSelector('.xvu', { timeout: 6000 });
+  ok('entrar na voz: barra "Voz conectada" e a pessoa aparece na sala', /Voz conectada/.test(await page.textContent('.vbar')) && /Tester/.test(await page.textContent('.xvg')));
   ok('sala de voz usa canal privado do Realtime', wsIn.some((j) => j.topic === 'realtime:voice:' + vch && j.event === 'phx_join' && j.payload.config.private === true));
   wsConn.send(JSON.stringify({ topic: 'realtime:voice:' + vch, event: 'broadcast', payload: { type: 'broadcast', event: 'hello', payload: { from: 'u2' } } }));
   await page.waitForFunction((v) => true, vch);
@@ -503,8 +456,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await page.waitForFunction(() => !document.querySelector('.vbar'), null, { timeout: 4000 });
   ok('sair da voz: avisa os outros ("bye") e limpa a sala', wsIn.some((j) => j.event === 'broadcast' && j.payload && j.payload.event === 'bye') && world.voice.length === 0);
   // etapa 8: banir e desbanir (só o dono do servidor)
-  const srvId = (world.servers.find((x) => x.owner_id === 'u1') || world.servers[0]).id;
-  if (!(await page.locator('.banlnk').count())) await page.click('.nav [data-act="nav"][data-k="members"]');
+  if (!(await page.locator('.banlnk').count())) await page.click('.x-ph [data-act="nav"][data-k="members"]');
   await page.waitForSelector('.banlnk');
   if (!(await page.locator('.mlist .pf[data-id="u2"]').count())) { for (const b of await page.locator('.mlist .mg[aria-expanded="false"]').all()) await b.click(); }
   await page.click('.mlist .pf[data-id="u2"]');
@@ -523,32 +475,27 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   ok('desbanir remove da lista', world.bans.length === 0);
   await page.click('.modal [data-act="modal-close"]');
   world.members.push({ server_id: srvId, user_id: 'u2', role: 'member' });
-  // painel inicial agora com dados reais
-  await page.click('.tbh');
-  await page.waitForSelector('.hub');
-  ok('ícone de conversa volta ao painel', true);
-  ok('sem amigos: o painel convida a adicionar', /ainda não tem amigos/.test(await page.textContent('#flist')));
-  if (await page.locator('.hch .ctab:not(.srvtab)').count()) await page.click('.hch .ctab:not(.srvtab) >> nth=0');
-  await page.fill('#hmsg', 'Oi pessoal');
-  await page.press('#hmsg', 'Enter');
-  await page.waitForFunction(() => /Oi pessoal/.test(document.getElementById('hmsgs').textContent));
-  ok('mensagem aparece na conversa do painel', true);
-  // adicionar amigo pelo @usuário
-  await page.click('#flist [data-act="toast-friend"]');
-  await page.fill('#mf-user', '@Marina');
-  await page.click('[data-act="modal-submit"]');
-  await page.waitForFunction(() => !document.querySelector('.modal'));
+
+  // amigos e conversas privadas (menu novo)
+  await page.click('.x-rail .rt.home');
+  await page.waitForSelector('#flist');
+  ok('ícone da Square no trilho volta para Amigos', /Amigos/.test(await page.textContent('.x-tt')));
+  await page.click('[data-act="ftab"][data-k="add"]');
+  await page.fill('#af-user', '@Marina');
+  await page.fill('#af-note', 'Oi, sou eu!');
+  ok('contador da mensagem do pedido desce de 120', (await page.textContent('#af-cnt')) === String(120 - 'Oi, sou eu!'.length));
+  await page.click('#af-send');
+  await page.waitForFunction(() => /Pedido|pedido/.test((document.getElementById('toast') || {}).textContent || ''), null, { timeout: 5000 }).catch(() => {});
+  await page.waitForTimeout(400);
   ok('pedido de amizade enviado pelo @usuário', world.friendships.length === 1 && world.friendships[0].requester === 'u1' && world.friendships[0].status === 'pending');
-  await page.click('[data-act="toast-friend"] >> nth=0').catch(() => {});
-  await page.waitForSelector('.modal');
-  await page.fill('#mf-user', 'ninguemassim');
-  await page.click('[data-act="modal-submit"]');
-  await page.waitForSelector('.merr');
-  ok('@usuário que não existe mostra erro em português', /Não encontramos/.test(await page.textContent('.merr')));
-  await page.click('[data-act="modal-close"]');
+  ok('o pedido leva a mensagem opcional', world.friendships[0].note === 'Oi, sou eu!');
+  await page.fill('#af-user', 'ninguemassim');
+  await page.click('#af-send');
+  await page.waitForFunction(() => /Não encontramos/.test((document.getElementById('toast') || {}).textContent || ''), null, { timeout: 5000 });
+  ok('@usuário que não existe mostra erro em português', true);
   // o cartão de quem recebeu o pedido mostra "Cancelar pedido"
-  await page.click(`[data-act="srv-open"][data-id="${srvId}"] >> nth=0`);
-  await page.waitForSelector('.ap .chat');
+  await page.click(`.x-rail [data-act="srv-open"][data-id="${srvId}"]`);
+  await page.waitForSelector('#msgs');
   await page.click('#msgs [data-act="profile"][data-id="u2"]');
   await page.waitForSelector('.pcard');
   ok('cartão de pedido enviado oferece cancelar', /Cancelar pedido/.test(await page.textContent('.mfoot')));
@@ -556,88 +503,94 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   // Marina aceita (chega pelo tempo real)
   world.friendships[0].status = 'accepted';
   wsConn.send(JSON.stringify({ topic: 'realtime:sq', event: 'postgres_changes', payload: { data: { type: 'UPDATE', table: 'friendships', record: { requester: 'u1', status: 'accepted' } } } }));
-  await page.click('.tbh');
-  await page.waitForFunction(() => document.querySelectorAll('#flist .frow').length === 1, null, { timeout: 5000 });
-  ok('amiga aceita aparece na lista de amigos', /Marina Rocha/.test(await page.textContent('#flist')));
-  await page.click('[data-act="gsearch"]');
-  await page.fill('#gsearch', 'marina');
-  ok('busca filtra os amigos', (await page.locator('#flist .frow').count()) === 1);
+  await page.click('.x-rail .rt.home');
+  await page.click('[data-act="ftab"][data-k="all"]');
+  await page.waitForFunction(() => document.querySelectorAll('#flist .fr').length === 1, null, { timeout: 5000 });
+  ok('amiga aceita aparece em Todos os amigos', /Marina Rocha/.test(await page.textContent('#flist')) && /Todos os amigos — 1/.test(await page.textContent('#flist')));
+  await page.click('[data-act="ftab"][data-k="online"]');
+  ok('aba Disponível mostra só quem está online', /Disponível — 1/.test(await page.textContent('#flist')));
+  await page.click('[data-act="ftab"][data-k="all"]');
   await page.fill('#gsearch', 'zzz');
   ok('busca sem resultado', /Nenhum amigo/.test(await page.textContent('#flist')));
+  await page.fill('#gsearch', 'marina');
+  ok('busca filtra os amigos', (await page.locator('#flist .fr').count()) === 1);
   await page.fill('#gsearch', '');
-  await page.click('[data-act="gsearch"]');
-  // conversa privada
-  await page.click('#flist .frow');
+  await page.click('#flist [data-act="fmenu"]');
+  await page.waitForSelector('.pop.fm');
+  ok('os três pontinhos do amigo abrem um menu com Ver perfil', /Ver perfil/.test(await page.textContent('.pop.fm')));
+  await page.click('.pop.fm [data-act="profile"]');
   await page.waitForSelector('.pcard');
-  ok('cartão de amigo oferece enviar mensagem', /Enviar mensagem/.test(await page.textContent('.mfoot')) && /Remover amigo/.test(await page.textContent('.mfoot')));
+  ok('cartão de amigo oferece enviar mensagem e remover', /Enviar mensagem/.test(await page.textContent('.mfoot')) && /Remover amigo/.test(await page.textContent('.mfoot')));
   await page.click('[data-act="dm"]');
-  await page.waitForFunction(() => !document.querySelector('.modal') && document.querySelector('.dmtab.on'));
-  await page.fill('#hmsg', 'Oi Marina, tudo bem?');
-  await page.press('#hmsg', 'Enter');
-  await page.waitForFunction(() => /Oi Marina, tudo bem/.test(document.getElementById('hmsgs').textContent));
+  await page.waitForSelector('.x-chat #msg', { timeout: 5000 });
+  ok('Enviar mensagem abre a conversa privada', /Marina/.test(await page.textContent('.x-tt')) && /começo da sua conversa/.test(await page.textContent('#msgs')));
+  await page.fill('#msg', 'Oi Marina, tudo bem?');
+  await page.press('#msg', 'Enter');
+  await page.waitForFunction(() => /Oi Marina, tudo bem/.test(document.getElementById('msgs').textContent));
   ok('conversa privada: mensagem enviada ao canal da conversa', world.messages.some((m) => /^dm/.test(m.channel_id) && m.content === 'Oi Marina, tudo bem?'));
+  ok('a conversa aparece em Mensagens diretas', (await page.locator('.x-col .dmr[data-act="dm-open"]').count()) === 1);
   await page.screenshot({ path: OUT + '/2g-dm.png' });
   const dmId = world.dms[0].id;
   const rowdm = { id: world.nextMsg++, channel_id: dmId, author_id: 'u2', content: 'Tudo ótimo!', created_at: new Date().toISOString(), edited_at: null };
   world.messages.push(rowdm);
   wsConn.send(JSON.stringify({ topic: 'realtime:sq', event: 'postgres_changes', payload: { data: { type: 'INSERT', table: 'messages', record: rowdm } } }));
-  await page.waitForFunction(() => /Tudo ótimo/.test(document.getElementById('hmsgs').textContent), null, { timeout: 4000 });
+  await page.waitForFunction(() => /Tudo ótimo/.test(document.getElementById('msgs').textContent), null, { timeout: 4000 });
   ok('resposta da amiga chega em tempo real na conversa privada', true);
   // pedido recebido: sino mostra e aceita
-  world.friendships.push({ user_a: 'u1', user_b: 'u3', requester: 'u3', status: 'pending' });
+  world.friendships.push({ user_a: 'u1', user_b: 'u3', requester: 'u3', status: 'pending', note: 'Sou o Pedro' });
   wsConn.send(JSON.stringify({ topic: 'realtime:sq', event: 'postgres_changes', payload: { data: { type: 'INSERT', table: 'friendships', record: { requester: 'u3', status: 'pending' } } } }));
   await page.waitForTimeout(700);
-  if (!(await page.locator('#ubar.open, #ubar.exp').count())) { await page.click('#b-dots'); await page.waitForTimeout(800); }
-  await page.click('#ubar [data-act="panel"][data-k="notif"]');
+  await page.click('.x-ti [data-act="nav"][data-k="notif"]');
   await page.waitForSelector('.panel .it.req');
-  ok('sino mostra o pedido de amizade recebido', /Pedro Alves/.test(await page.textContent('.panel')));
+  ok('caixa de entrada mostra o pedido de amizade recebido', /Pedro Alves/.test(await page.textContent('.panel')));
   await page.click('.panel [data-act="fr-accept"]');
-  await page.waitForFunction(() => document.querySelectorAll('#flist .frow').length === 2, null, { timeout: 5000 });
+  await page.waitForTimeout(500);
+  await page.click('[data-act="close-panel"]').catch(() => {});
+  await page.click('.cn:has-text("Amigos")');
+  await page.waitForFunction(() => document.querySelectorAll('#flist .fr').length === 2, null, { timeout: 5000 });
   ok('aceitar o pedido adiciona o novo amigo', world.friendships.every((f) => f.status === 'accepted'));
-  // etapa 5 parte 2: conversa em tela cheia, não lidas, bloquear
-  await page.click('.hchat [data-act="chat-open"]');
-  await page.waitForSelector('.dmrow', { timeout: 5000 });
-  await page.waitForFunction(() => /Tudo ótimo/.test(document.getElementById('msgs').textContent), null, { timeout: 5000 });
-  ok('conversa privada abre em tela cheia com a lista de amigos', (await page.locator('.dmrow').count()) === 2);
-  await page.fill('#msg', 'Mensagem na tela cheia');
-  await page.press('#msg', 'Enter');
-  await page.waitForFunction(() => /Mensagem na tela cheia/.test(document.getElementById('msgs').textContent));
-  ok('tela cheia: mensagem enviada ao canal da conversa', world.messages.some((x) => x.channel_id === world.dms[0].id && x.content === 'Mensagem na tela cheia'));
-  await page.screenshot({ path: OUT + '/2h-dm-cheia.png' });
+  // não lidas
   world.dms.push({ id: 'dm9', user: 'u3' });
   const rowp = { id: world.nextMsg++, channel_id: 'dm9', author_id: 'u3', content: 'E aí, Tester?', created_at: new Date().toISOString(), edited_at: null };
   world.messages.push(rowp);
   wsConn.send(JSON.stringify({ topic: 'realtime:sq', event: 'postgres_changes', payload: { data: { type: 'INSERT', table: 'messages', record: rowp } } }));
-  await page.waitForSelector('.dmrow .udot', { timeout: 6000 });
-  ok('bolinha de não lida aparece na conversa que chegou', (await page.locator('.dmrow .udot').count()) === 1 && (await page.locator('.tbh .udot').count()) === 1);
-  await page.click('.dmrow:has(.udot)');
+  await page.waitForSelector('.x-col .dmr .udot, #flist .udot', { timeout: 6000 });
+  ok('bolinha de não lida aparece na conversa que chegou', (await page.locator('.rt.home .udot').count()) === 1);
+  await page.click('#flist .fr:has(.udot) .fmain, .x-col .dmr:has(.udot)');
   await page.waitForFunction(() => /E aí, Tester/.test((document.getElementById('msgs') || {}).textContent || ''), null, { timeout: 5000 });
   await page.waitForFunction(() => !document.querySelector('.udot'), null, { timeout: 5000 });
   ok('abrir a conversa apaga a bolinha', true);
-  await page.click('.top [data-act="profile"]');
+  await page.click('.x-ph [data-act="profile"]');
   await page.waitForSelector('.blink');
   await page.click('.blink');
   await page.waitForSelector('.modal:has-text("Bloquear pessoa")');
   await page.click('[data-act="modal-submit"]');
-  await page.waitForSelector('.hub', { timeout: 6000 });
-  ok('bloquear remove a amizade e volta ao painel', world.blocks.length === 1 && world.blocks[0].blocked === 'u3' && world.friendships.every((x) => x.user_a !== 'u3' && x.user_b !== 'u3'));
+  await page.waitForFunction(() => /Amigos/.test(document.querySelector('.x-tt').textContent), null, { timeout: 6000 });
+  ok('bloquear remove a amizade e volta para Amigos', world.blocks.length === 1 && world.blocks[0].blocked === 'u3' && world.friendships.every((x) => x.user_a !== 'u3' && x.user_b !== 'u3'));
   await page.screenshot({ path: OUT + '/2i-bloqueado.png' });
+  // celular
   await page.setViewportSize({ width: 390, height: 800 });
   await page.waitForTimeout(300);
-  ok('painel no celular sem rolagem lateral', await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
-  await page.screenshot({ path: OUT + '/2c-painel-celular.png', fullPage: true });
+  ok('menu no celular sem rolagem lateral', await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
+  ok('no celular a coluna fica escondida atrás do botão de menu', (await page.isVisible('.x-burger')) && !(await page.locator('.x-left.open').count()));
+  await page.screenshot({ path: OUT + '/2c-painel-celular.png' });
+  await page.click('.x-burger');
+  await page.waitForTimeout(400);
+  ok('botão de menu abre a gaveta com trilho, coluna e barra do usuário', (await page.locator('.x-left.open').count()) === 1 && (await page.isVisible('.x-left .ub-me')));
+  await page.screenshot({ path: OUT + '/2c-gaveta-celular.png' });
+  await page.click('.x-bk', { position: { x: 370, y: 400 } });
   await page.setViewportSize({ width: 1440, height: 900 });
   ok('sessão salva', !!(await page.evaluate(() => localStorage.getItem('sq.session'))));
 
   // 4. recarregar mantém sessão
   await page.reload();
-  await page.waitForSelector('.hub', { timeout: 5000 });
+  await page.waitForSelector('.x .x-ph', { timeout: 5000 });
   ok('recarregar mantém a sessão', true);
 
   // 4b. configurações
-  await page.click('[data-act="menu"]'); await page.click('[data-act="settings"]');
+  await page.click('.x-ub [data-act="settings"]');
   await page.waitForSelector('#setroot .set');
-  ok('Configurações abrem pelo menu da conta', (await page.locator('#setroot .snavb').count()) >= 16 && /Informações da conta/.test(await page.textContent('#setroot .scontent')));
+  ok('Configurações abrem pela engrenagem da barra do usuário', (await page.locator('#setroot .snavb').count()) >= 16 && /Informações da conta/.test(await page.textContent('#setroot .scontent')));
   const navText = await page.textContent('#setroot .snavl');
   ok('menu lateral tem Conta, Dados, Mensagens, Notificações, Plus, Voz, Aparência, Apps, Desenvolvedor e Sair', ['Conta', 'Dados e privacidade', 'Permissões de mensagens', 'Notificações', 'Square Plus', 'Impulso de servidor', 'Voz e vídeo', 'Aparência', 'Acessibilidade', 'Sistema', 'Idioma e Horário', 'Apps conectados', 'Desenvolvedor', 'Sair'].every((t) => new RegExp(t).test(navText)));
   ok('e-mail aparece escondido até clicar em Mostrar', /\*+@/.test(await page.textContent('#setroot .semail')));
@@ -669,9 +622,9 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   ok('Esc fecha as Configurações', (await page.locator('#setroot .set').count()) === 0);
 
   // 5. logout
-  const menuBtn = page.locator('[data-act="menu"]');
-  await menuBtn.click();
-  await page.click('[data-act="logout"]');
+  await page.click('.x-ub [data-act="settings"]');
+  await page.waitForSelector('#setroot .set');
+  await page.click('#setroot [data-sa="logout"]');
   await page.waitForSelector('[data-form="login"]');
   ok('logout volta ao login', !(await page.evaluate(() => localStorage.getItem('sq.session'))));
 
@@ -709,7 +662,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await page.fill('#otp', 'abc-234');
   // o campo envia sozinho ao completar 6 caracteres; se ainda não enviou, clica
   await page.click('button.btn[type=submit]', { timeout: 1500 }).catch(() => {});
-  await page.waitForSelector('.hub', { timeout: 5000 });
+  await page.waitForSelector('.x .x-ph', { timeout: 5000 });
   ok('código certo entra no app', true);
   await page.evaluate(() => { localStorage.clear(); });
 

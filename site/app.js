@@ -693,7 +693,7 @@ const PANELS = {
   pins: { title: 'Mensagens fixadas', items: [] },
   mentions: { title: 'Menções', items: [] },
   search: { title: 'Buscar mensagens', items: [] },
-  help: { title: 'Central de ajuda', items: [{ t: 'Como criar um servidor', s: 'Clique no “+” da barra de cima e escolha “Criar servidor”.' }, { t: 'Como convidar amigos', s: 'Dentro do servidor, clique em “Convidar” e envie o link.' }, { t: 'Atalhos do teclado', s: 'Enter envia a mensagem que você escreveu.' }] }
+  help: { title: 'Central de ajuda', items: [{ t: 'Como criar um servidor', s: 'Clique no “+” da barra lateral e escolha “Criar o meu”.' }, { t: 'Como convidar amigos', s: 'Dentro do servidor, clique em “Convidar” e envie o link.' }, { t: 'Atalhos do teclado', s: 'Enter envia a mensagem que você escreveu.' }] }
 };
 const EMOJIS = [['😀', 'Sorriso'], ['😂', 'Rindo'], ['👍', 'Joia'], ['🔥', 'Fogo'], ['🎮', 'Controle'], ['🎉', 'Festa'], ['❤️', 'Coração'], ['😮', 'Surpresa']];
 
@@ -771,12 +771,13 @@ const msgTime = (iso) => {
 function person(p, uid, role) {
   const me = uid === myId();
   const name = (p && (p.display_name || p.username)) || 'Membro';
-  const on = me || !!(p && p.last_seen && Date.now() - Date.parse(p.last_seen) < ONLINE_MS);
+  const pres = (p && p.presence) || 'online';
+  const on = me || (!!(p && p.last_seen && Date.now() - Date.parse(p.last_seen) < ONLINE_MS) && pres !== 'invisible');
   const status = (p && p.status_text) || '';
   const av = (p && p.avatar_path) || '';
   return {
     id: uid, name, user: (p && p.username) || '', bio: (p && p.bio) || '', status, accent: (p && p.accent) || '#9D8CCF',
-    since: (p && p.created_at) || '', role: role || '', me, on, st: on ? (status || 'Online') : 'Offline',
+    since: (p && p.created_at) || '', role: role || '', me, on, presence: me ? pres : (on ? pres : 'off'), st: on ? (pres === 'idle' ? 'Ausente' : pres === 'dnd' ? 'Não perturbe' : (status || 'Online')) : 'Offline',
     avatar: av, g: avBg(av, me ? G.lilac : gradFor(uid)), ini: av ? '' : name.charAt(0).toUpperCase()
   };
 }
@@ -788,10 +789,10 @@ function initApp() {
   A = {
     owner: uid, world: 'loading', werr: '', me: null, server: null, channel: null, voice: null, muted: false, deafened: false,
     panel: null, showMembers: true, onlineOpen: true, offlineOpen: true, draft: '', search: '', emojiOpen: false, menu: false,
-    view: 'hub', hubSrv: true, pins: [], feat: null, plan: 'free', pubAll: null, hubKey: '', hubKeys: [], hdraft: '', gq: '', searchOpen: false, barOpen: false, playing: false, prog: 0, queue: [], qi: -1, tcache: {}, favs: [], loadedId: '', ntab: 'news', entered: false,
+    view: 'friends', ftab: 'all', af: { user: '', note: '', busy: false }, pop: null, drawer: false, csec: { text: false, voice: false }, devs: null, hubSrv: true, pins: [], feat: null, plan: 'free', pubAll: null, hubKey: '', hubKeys: [], hdraft: '', gq: '', searchOpen: false, barOpen: false, playing: false, prog: 0, queue: [], qi: -1, tcache: {}, favs: [], loadedId: '', ntab: 'news', entered: false,
     threads: {}, loaded: {}, loading: {}, more: {}, terr: {}, modal: null, poll: null, beat: null, tt: null, typing: {}, pollN: 0, friends: [], incoming: [], outgoing: [], known: {}, dmByUser: {}, dmUser: {}, blocked: new Set(), unread: {}, vrost: {}
   };
-  restoreQueue(); startLive(); loadWorld(); openJoin(); loadFavs(); loadFeatured();
+  startLive(); loadWorld(); openJoin();
   if (window.SQ_SET) window.SQ_SET.boot(uid);
 }
 function openJoin() {
@@ -807,9 +808,10 @@ function startLive() {
 }
 function stopAppTimers() { try { AUD.pause(); } catch (e) { /* ok */ } voiceLeave(true); if (A) { clearInterval(A.poll); clearInterval(A.beat); clearInterval(A.tt); A.poll = A.beat = A.tt = null; } rtStop(false); }
 
+const srvIni = (n) => { const w = String(n || '').trim().split(/\s+/).filter(Boolean); return (w.length ? w.map((x) => Array.from(x)[0]).slice(0, 3).join('') : '?'); };
 const curServer = () => SERVERS.find((s) => s.id === A.server) || SERVERS[0] || null;
 const serverOfChan = (cid) => SERVERS.find((s) => s.text.some((c) => c.id === cid)) || null;
-const curKey = () => (A.view === 'hub' ? A.hubKey : (A.channel || ''));
+const curKey = () => ((A.view === 'dm' || A.view === 'server') ? (A.channel || '') : '');
 const findPerson = (id) => { if (A.me && id === A.me.id) return A.me; for (const s of SERVERS) if (s.byId[id]) return s.byId[id]; return (A.known && A.known[id]) || null; };
 const relOf = (id) => (A.blocked.has(id) ? 'blocked' : A.friends.some((f) => f.id === id) ? 'friend' : A.incoming.some((f) => f.id === id) ? 'incoming' : A.outgoing.some((f) => f.id === id) ? 'outgoing' : 'none');
 const rk = (ch) => 'sq.read.' + myId() + '.' + ch;
@@ -831,7 +833,7 @@ async function loadWorld(paint) {
       sb('/rest/v1/servers?select=id,name,owner_id,created_at,is_public&order=created_at.asc'),
       sb('/rest/v1/channels?select=id,server_id,name,kind,position&server_id=not.is.null&order=position.asc'),
       sb('/rest/v1/server_members?select=server_id,user_id,role'),
-      sb('/rest/v1/friendships?select=user_a,user_b,requester,status'),
+      sb('/rest/v1/friendships?select=user_a,user_b,requester,status,note'),
       sb('/rest/v1/channels?select=id&kind=eq.dm'),
       sb('/rest/v1/dm_members?select=channel_id,user_id'),
       sb('/rest/v1/blocks?select=blocked'),
@@ -839,7 +841,7 @@ async function loadWorld(paint) {
     ]);
     const other = (f) => (f.user_a === myId() ? f.user_b : f.user_a);
     const ids = Array.from(new Set(mem.map((m) => m.user_id).concat(fr.map(other), blk.map((b) => b.blocked), [myId()])));
-    const profs = await sb('/rest/v1/profiles?select=id,username,display_name,bio,status_text,avatar_path,accent,last_seen,created_at&id=in.(' + ids.join(',') + ')');
+    const profs = await sb('/rest/v1/profiles?select=id,username,display_name,bio,status_text,avatar_path,accent,last_seen,presence,created_at&id=in.(' + ids.join(',') + ')');
     if (A !== w) return;
     const P = {}; profs.forEach((p) => { P[p.id] = p; });
     w.me = person(P[myId()] || { display_name: displayName(), username: S.profile && S.profile.username }, myId(), '');
@@ -855,13 +857,13 @@ async function loadWorld(paint) {
         const last = (await sb('/rest/v1/messages?select=id,author_id&channel_id=eq.' + c.id + '&order=id.desc&limit=1'))[0];
         if (!last) return;
         const mark = Number(store.get(rk(c.id)) || 0);
-        if (last.author_id !== myId() && last.id > mark && !(w.view === 'dm' && w.channel === c.id) && !(w.view === 'hub' && w.hubKey === c.id)) unread[c.id] = 1;
+        if (last.author_id !== myId() && last.id > mark && !(w.view === 'dm' && w.channel === c.id)) unread[c.id] = 1;
       } catch (e) { /* sem aviso de não lida */ }
     }));
     w.unread = unread;
     loadVoice();
     w.friends = fr.filter((f) => f.status === 'accepted').map((f) => known[other(f)]).filter(Boolean).map((p) => Object.assign({}, p, { dm: dmByUser[p.id] || '' })).sort(byName);
-    w.incoming = fr.filter((f) => f.status === 'pending' && f.requester !== myId()).map((f) => known[other(f)]).filter(Boolean);
+    w.incoming = fr.filter((f) => f.status === 'pending' && f.requester !== myId() && known[other(f)]).map((f) => Object.assign({}, known[other(f)], { note: f.note || '' }));
     w.outgoing = fr.filter((f) => f.status === 'pending' && f.requester === myId()).map((f) => known[other(f)]).filter(Boolean);
     SERVERS = srv.map((s) => {
       const people = mem.filter((m) => m.server_id === s.id).map((m) => person(P[m.user_id], m.user_id, m.role));
@@ -869,7 +871,7 @@ async function loadWorld(paint) {
       const by = (a, b) => a.name.localeCompare(b.name);
       const chan = (k) => chs.filter((c) => c.server_id === s.id && c.kind === k).map((c) => ({ id: c.id, name: c.name }));
       return {
-        id: s.id, name: s.name, owner: s.owner_id, pub: !!s.is_public, mine: s.owner_id === myId(), users: people.length, ini: s.name.charAt(0).toUpperCase(), tile: tileFor(s.id),
+        id: s.id, name: s.name, owner: s.owner_id, pub: !!s.is_public, mine: s.owner_id === myId(), users: people.length, ini: srvIni(s.name), tile: tileFor(s.id),
         text: chan('text'), voice: chan('voice'), byId, online: people.filter((p) => p.on).sort(by), offline: people.filter((p) => !p.on).sort(by)
       };
     });
@@ -878,6 +880,7 @@ async function loadWorld(paint) {
     S.profile = Object.assign({}, S.profile, { display_name: w.me.name, username: w.me.user || (S.profile && S.profile.username) });
     store.set('sq.profile', S.profile);
     fixSelection();
+    presenceExpire();
   } catch (e) {
     if (A !== w) return;
     if (w.world === 'ready') return;
@@ -886,21 +889,12 @@ async function loadWorld(paint) {
   (paint || render)();
 }
 function fixSelection() {
-  const dms = A.friends.filter((f) => f.dm).map((f) => f.dm);
-  const dmKeys = dms.slice(0, 4);
-  if (A.hubKey && dms.includes(A.hubKey) && !dmKeys.includes(A.hubKey)) dmKeys[3] = A.hubKey;
-  if (A.view === 'dm' && !A.friends.some((f) => f.dm && f.dm === A.channel)) { A.view = 'hub'; A.channel = null; }
-  if (!SERVERS.length) {
-    A.server = null; if (A.view !== 'dm') { A.channel = null; A.view = 'hub'; }
-  } else if (A.view === 'dm') {
-    if (!SERVERS.some((x) => x.id === A.server)) A.server = SERVERS[0].id;
-  } else {
-    let s = SERVERS.find((x) => x.id === A.server);
-    if (!s) { s = SERVERS[0]; A.server = s.id; A.channel = null; }
-    if (!s.text.some((c) => c.id === A.channel)) A.channel = s.text[0] ? s.text[0].id : null;
+  if (A.view === 'dm' && !A.friends.some((f) => f.dm && f.dm === A.channel)) { A.view = 'friends'; A.channel = null; }
+  if (A.view === 'server') {
+    const s = SERVERS.find((x) => x.id === A.server);
+    if (!s) { A.view = 'friends'; A.server = null; A.channel = null; }
+    else if (!s.text.some((c) => c.id === A.channel)) A.channel = s.text[0] ? s.text[0].id : null;
   }
-  A.hubKeys = SERVERS.slice(0, 3).map((x) => (x.text[0] ? x.text[0].id : '')).filter(Boolean).concat(dmKeys);
-  if (!A.hubKeys.includes(A.hubKey)) A.hubKey = A.hubKeys[0] || '';
 }
 function selectServer(id) {
   const s = SERVERS.find((x) => x.id === id); if (!s) return;
@@ -911,6 +905,7 @@ async function beat(first) {
   const w = A;
   try {
     await sb('/rest/v1/profiles?id=eq.' + myId(), { method: 'PATCH', body: { last_seen: new Date().toISOString() } });
+    presenceExpire();
     if (!first && A === w && w.world === 'ready') await loadWorld(refilter);
   } catch (e) { /* tenta de novo no próximo ciclo */ }
 }
@@ -930,10 +925,9 @@ async function ensureThread(key) {
   if (A === w && S.view === 'app' && curKey() === key) { const had = A.unread[key]; paintMsgs(true); markCur(); if (had && !A.unread[key]) render(); }
 }
 function paintMsgs(stick) {
-  const hub = A.view === 'hub';
-  const el = document.getElementById(hub ? 'hmsgs' : 'msgs'); if (!el) return;
+  const el = document.getElementById('msgs'); if (!el) return;
   const near = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-  el.innerHTML = hub ? hubMsgsHTML() : serverMsgsHTML();
+  el.innerHTML = serverMsgsHTML();
   if (stick === true || (stick !== 'keep' && near)) el.scrollTop = el.scrollHeight;
 }
 async function pollTick(force) {
@@ -1051,7 +1045,13 @@ async function voiceJoin(ch) {
   if (!stream) return toast('Não consegui usar o microfone. Libere o microfone para este site no navegador e tente de novo.');
   try { await rpc('voice_join', { p_channel: ch }); }
   catch (e) { stream.getTracks().forEach((t) => t.stop()); return toast(errText(e)); }
-  VC = { ch, stream, peers: {}, ping: setInterval(() => { rpc('voice_ping', { p_channel: ch }).catch(() => {}); }, 15000) };
+  let raw = stream, gain = null, ctx = null;
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext; ctx = new AC(); if (ctx.resume) ctx.resume().catch(() => {});
+    const src = ctx.createMediaStreamSource(raw); gain = ctx.createGain(); gain.gain.value = SPV('in_vol', 100) / 100;
+    const dest = ctx.createMediaStreamDestination(); src.connect(gain); gain.connect(dest); stream = dest.stream;
+  } catch (e) { try { if (ctx) ctx.close(); } catch (e2) { /* ok */ } ctx = null; gain = null; stream = raw; }
+  VC = { ch, stream, raw, ctx, gain, peers: {}, ping: setInterval(() => { rpc('voice_ping', { p_channel: ch }).catch(() => {}); }, 15000) };
   voiceApply();
   if (window.SQ_SET) { window.SQ_SET.fx('join'); window.SQ_SET.entrySound(); }
   A.voice = ch;
@@ -1122,6 +1122,8 @@ function voiceLeave(quiet) {
   clearInterval(v.ping);
   Object.keys(v.peers).forEach((u) => { const p = v.peers[u]; try { p.pc.close(); } catch (e) { /* já fechado */ } if (p.audio) { p.audio.srcObject = null; p.audio.remove(); } });
   v.stream.getTracks().forEach((t) => t.stop());
+  if (v.raw && v.raw !== v.stream) v.raw.getTracks().forEach((t) => t.stop());
+  if (v.ctx) { try { v.ctx.close(); } catch (e) { /* ok */ } }
   rtSend(VTOP(v.ch), 'phx_leave', {});
   if (A) A.voice = null;
   rpc('voice_leave', {}).catch(() => {});
@@ -1142,8 +1144,8 @@ function rtChange(d) {
   if (d.type === 'INSERT') {
     const ch = r.channel_id, th = A.threads[ch];
     if (r.author_id !== myId() && !serverOfChan(ch) && !A.dmUser[ch]) { reloadSoon(); return; }
-    if (r.author_id !== myId() && A.dmUser[ch] && !A.blocked.has(r.author_id) && (curKey() !== ch || document.hidden)) { const f = dmPeer(ch); toast('Nova mensagem de ' + (f ? f.name : 'um amigo')); if (window.SQ_SET) window.SQ_SET.notify('message', 'Nova mensagem de ' + (f ? f.name : 'um amigo'), String(r.content || '').slice(0, 120)); A.unread[ch] = 1; if (!th) reloadSoon(); else render(); }
-    if (r.author_id !== myId() && serverOfChan(ch) && mentionsMe(r.content) && !A.blocked.has(r.author_id)) { const f = findPerson(r.author_id); toast((f ? f.name : 'Alguém') + ' mencionou você'); if (window.SQ_SET) window.SQ_SET.notify('message', (f ? f.name : 'Alguém') + ' mencionou você', String(r.content || '').slice(0, 120)); }
+    if (r.author_id !== myId() && A.dmUser[ch] && !A.blocked.has(r.author_id) && (curKey() !== ch || document.hidden) && !(A.me && A.me.presence === 'dnd')) { const f = dmPeer(ch); toast('Nova mensagem de ' + (f ? f.name : 'um amigo')); if (window.SQ_SET) window.SQ_SET.notify('message', 'Nova mensagem de ' + (f ? f.name : 'um amigo'), String(r.content || '').slice(0, 120)); A.unread[ch] = 1; if (!th) reloadSoon(); else render(); }
+    if (r.author_id !== myId() && serverOfChan(ch) && mentionsMe(r.content) && !A.blocked.has(r.author_id) && !(A.me && A.me.presence === 'dnd')) { const f = findPerson(r.author_id); toast((f ? f.name : 'Alguém') + ' mencionou você'); if (window.SQ_SET) window.SQ_SET.notify('message', (f ? f.name : 'Alguém') + ' mencionou você', String(r.content || '').slice(0, 120)); }
     if (!th || th.some((x) => x.id === r.id)) return;
     th.push(mapMsg(r));
     if (A.typing) delete A.typing[ch + '|' + r.author_id];
@@ -1261,7 +1263,7 @@ function friendsHTML() {
   return list.map((p) => `<button type="button" class="frow hov${p.on ? '' : ' off'}" data-act="profile" data-id="${p.id}" aria-label="Ver perfil de ${esc(p.name)}"><span class="pf" style="background:${p.g}" aria-hidden="true">${esc(p.ini)}${p.on ? '<i></i>' : ''}</span><span class="tx"><b>${esc(p.name)}</b><small>${esc(p.st)}</small></span>${p.dm ? udot(p.dm) : ''}</button>`).join('');
 }
 function refilter() {
-  const f = document.getElementById('flist'); if (f) f.innerHTML = friendsHTML();
+  const f = document.getElementById('flist'); if (f) f.innerHTML = flistHTML();
   const l = document.getElementById('mlist'); if (l) l.innerHTML = membersListHTML();
 }
 
@@ -1317,9 +1319,8 @@ function loadExplore() {
     .catch((e) => { if (A.modal === m) { m.list = []; m.err = errText(e); render(); } });
 }
 function afterJoin(id, msg) {
-  A.modal = null; A.hubSrv = true;
-  if (A.view !== 'hub') selectServer(id);
-  render({ scroll: A.view !== 'hub' }); toast(msg);
+  A.modal = null; selectServer(id);
+  render({ scroll: true }); toast(msg);
 }
 
 function hubChatHTML() {
@@ -1730,6 +1731,7 @@ function serverMsgsHTML() {
   if ((!srv && !dm) || !key) return '<div class="fill"></div><div class="empty">Este servidor ainda não tem canais de texto.</div>';
   if (!A.loaded[key]) return `<div class="fill"></div><div class="empty">${A.terr[key] ? 'Não foi possível carregar as mensagens. <button type="button" class="lnk" data-act="retry-thread">Tentar de novo</button>' : 'Carregando mensagens…'}</div>`;
   const th = (A.threads[key] || []).filter((m) => !A.blocked.has(m.from));
+  const intro = A.more[key] ? '' : (srv ? welcomeHTML(srv, srv.text.find((c) => c.id === key)) : dmIntroHTML(dmPeer(key)));
   const acts = (m) => {
     const mine = m.from === me;
     if (!mine && !(srv && srv.owner === me)) return '';
@@ -1737,7 +1739,8 @@ function serverMsgsHTML() {
   };
   return '<div class="fill"></div>'
     + (A.more[key] ? '<button type="button" class="lnk older" data-act="older">Ver mensagens mais antigas</button>' : '')
-    + (th.length ? '' : '<div class="empty">Nenhuma mensagem ainda. Seja o primeiro a escrever.</div>')
+    + intro
+    + (th.length || intro ? '' : '<div class="empty">Nenhuma mensagem ainda. Seja o primeiro a escrever.</div>')
     + th.map((m) => {
       const ed = m.edited ? ' <small class="ed">(editada)</small>' : '';
       if (m.from === me) return `<div class="mout">${acts(m)}<div class="bub"><span class="sr">Você: </span>${msgBody(m)}${ed}</div></div>`;
@@ -1756,7 +1759,9 @@ function composerHTML(ok, ph) {
           <input id="msg" type="text" placeholder="${ph}" maxlength="2000" value="${esc(A.draft)}" data-app-bind="draft" autocomplete="off" aria-label="Escreva uma mensagem"${ok ? '' : ' disabled'}>
           <button type="button" class="hov ib" data-act="toast-gift" aria-label="Enviar presente">${ic(D.gift, 19, '#55555F', 1.6)}</button>
           <button type="button" class="hov ib" data-act="toast-gif" aria-label="Escolher GIF"><span class="gif">GIF</span></button>
+          <button type="button" class="hov ib" data-act="toast-soon" data-msg="As figurinhas chegam em breve" aria-label="Escolher figurinha">${ic(D.sticker, 19, '#55555F', 1.6)}</button>
           <button type="button" class="hov ib" data-act="emoji-toggle" aria-label="Escolher emoji" aria-expanded="${A.emojiOpen}">${ic(D.smile, 19, '#55555F', 1.6)}</button>
+          <button type="button" class="hov ib" data-act="toast-soon" data-msg="Os apps chegam em breve" aria-label="Apps">${ic(D.apps, 19, '#55555F', 1.6)}</button>
           <button type="button" class="go" id="send-btn" data-act="send" aria-label="Enviar mensagem"${A.draft.trim() ? '' : ' hidden'}>${ic(D.send, 18, '#FFFFFF', 1.8)}</button>
         </div>
       </div>`;
@@ -1879,13 +1884,16 @@ const mField = (id, label, field, value, o = {}) => `<div class="mf"><label for=
 
 function modalHTML() {
   const m = A.modal; if (!m) return '';
+  if (m.type === 'qs') return qsHTML();
+  if (m.type === 'srvnew') return srvNewHTML(m);
   let title = '', body = '', foot = '', label = 'Salvar';
   const tabs = (items) => `<div class="mtabs" role="tablist">${items.map((t) => `<button type="button" role="tab" class="mtab${t.on ? ' on' : ''}" data-act="${t.act}" data-mode="${t.mode}" aria-selected="${t.on}">${t.l}</button>`).join('')}</div>`;
   if (m.type === 'srv') {
     const md = m.mode === 'join' ? 'join' : m.mode === 'explore' ? 'explore' : 'create';
     title = md === 'join' ? 'Entrar com convite' : md === 'explore' ? 'Explorar servidores' : 'Criar um servidor';
     label = md === 'join' ? 'Entrar' : 'Criar servidor';
-    const head = tabs([{ act: 'modal-mode', mode: 'create', l: 'Criar', on: md === 'create' }, { act: 'modal-mode', mode: 'explore', l: 'Explorar', on: md === 'explore' }, { act: 'modal-mode', mode: 'join', l: 'Convite', on: md === 'join' }]);
+    const head = '';
+    if (md === 'join') title = 'Entrar em um servidor';
     if (md === 'join') body = head + mField('mf-code', 'Código ou link do convite', 'code', m.code, { ph: 'Cole aqui o código', max: 200 });
     else if (md === 'explore') {
       body = head + (m.list == null ? '<p class="mnote">Carregando…</p>' : m.list.length ? `<div class="mus-list">${m.list.map((x) => `<div class="exrow"><span class="stl sm" style="background:${tileFor(x.id)}">${esc(String(x.name).charAt(0).toUpperCase())}</span><span class="tx"><b>${esc(x.name)}</b><small>${x.members} ${x.members === 1 ? 'membro' : 'membros'}</small></span>${x.joined ? '<small class="exin">Você já está</small>' : `<button type="button" class="mbtn sm" data-act="explore-join" data-id="${esc(x.id)}"${m.busy ? ' disabled' : ''}>Entrar</button>`}</div>`).join('')}</div>` : '<p class="mnote">Ainda não há servidores públicos. Crie o primeiro: marque "Servidor público" ao criar.</p>');
@@ -2041,6 +2049,16 @@ async function modalSubmit() {
     catch (e) { if (A.modal === m) { m.busy = false; m.err = errText(e); render(); } }
   };
   if (m.type === 'srv' && m.mode === 'explore') return;
+  if (m.type === 'srvnew') {
+    if (m.step !== 'name') return;
+    const name = m.name.trim();
+    if (name.length < 2) return modalErr('O nome precisa ter de 2 a 40 caracteres.');
+    return run(async () => {
+      const id = await rpc('create_server', { p_name: name }); let msg = 'Servidor criado';
+      if (m.pub) { try { await rpc('set_server_public', { p_server: id, p_public: true }); } catch (e) { msg = 'Servidor criado, mas não foi possível torná-lo público.'; } }
+      await loadWorld(() => {}); afterJoin(id, msg);
+    });
+  }
   if (m.type === 'srv' && m.mode !== 'join') {
     const name = m.name.trim();
     if (name.length < 2) return modalErr('O nome precisa ter de 2 a 40 caracteres.');
@@ -2114,7 +2132,7 @@ async function friendAct(kind, id, user, full) {
       const ch = await rpc('open_dm', { p_other: id });
       await loadWorld(() => {});
       if (A !== w) return;
-      if (full) { A.channel = ch; A.view = 'dm'; } else { A.hubKey = ch; A.view = 'hub'; }
+      A.channel = ch; A.view = 'dm'; A.pop = null;
       A.panel = null; A.modal = null; A.menu = false;
       render({ scroll: true }); return;
     }
@@ -2146,7 +2164,8 @@ function modalAct(act, el, ev) {
         const s = curServer(); if (!s) return true;
         if (!s.mine) { toast('Só o dono do servidor cria canais.'); return true; }
         A.modal = { type: 'chan', kind: el.dataset.kind === 'voice' ? 'voice' : 'text', name: '', err: '', busy: false };
-      } else A.modal = { type: 'srv', mode: el.dataset.mode === 'join' ? 'join' : el.dataset.mode === 'explore' ? 'explore' : 'create', name: '', code: '', pub: false, list: null, err: '', busy: false };
+      } else if (el.dataset.mode !== 'join' && el.dataset.mode !== 'explore') A.modal = { type: 'srvnew', step: 'start', tpl: '', kind: '', name: '', pub: false, err: '', busy: false };
+      else A.modal = { type: 'srv', mode: el.dataset.mode === 'join' ? 'join' : 'explore', name: '', code: '', pub: false, list: null, err: '', busy: false };
       render(); focusModal(); if (A.modal.type === 'srv' && A.modal.mode === 'explore') loadExplore(); return true;
     }
     case 'modal-copy': {
@@ -2154,6 +2173,16 @@ function modalAct(act, el, ev) {
       const fallback = () => { const i = document.getElementById('mf-link'); if (i) { i.focus(); i.select(); } toast('Selecione o link e copie'); };
       try { navigator.clipboard.writeText(link).then(() => toast('Link copiado'), fallback); } catch (e) { fallback(); }
       return true;
+    }
+    case 'sn-tpl': if (A.modal) { A.modal.tpl = el.dataset.k; A.modal.step = 'about'; render(); } return true;
+    case 'sn-kind': if (A.modal) { A.modal.kind = el.dataset.k || ''; A.modal.step = 'name'; if (!A.modal.name) A.modal.name = 'Servidor de ' + displayName(); render(); focusModal(); } return true;
+    case 'sn-back': if (A.modal) { const m = A.modal; m.err = ''; m.step = m.step === 'name' ? 'about' : 'start'; render(); } return true;
+    case 'qs-go': {
+      const k = el.dataset.k, id = el.dataset.id; A.modal = null;
+      if (k === 'dm') { friendAct('dm', id, '', true); return true; }
+      if (k === 'srv') selectServer(id);
+      else { A.server = el.dataset.sid; A.channel = id; A.view = 'server'; A.panel = null; }
+      render({ scroll: true }); return true;
     }
     case 'm-pub': if (A.modal) { A.modal.pub = !A.modal.pub; render(); focusModal(); } return true;
     case 'explore-join': { const m = A.modal; if (!m || m.busy) return true; m.busy = true; m.err = ''; render(); const id = el.dataset.id; rpc('join_public_server', { p_server: id }).then(async () => { await loadWorld(() => {}); afterJoin(id, 'Você entrou no servidor'); }).catch((e) => { m.busy = false; m.err = errText(e); if (A.modal === m) render(); }); return true; }
@@ -2216,22 +2245,343 @@ function loadMentions() {
     .then((rows) => { if (A === w) { A.mres = rows.filter((r) => serverOfChan(r.channel_id) && mentionsMe(r.content) && !A.blocked.has(r.author_id)); if (A.panel === 'mentions') render(); } })
     .catch(() => { if (A === w) { A.mres = []; if (A.panel === 'mentions') render(); } });
 }
-function appView() {
-  const enter = !A.entered; A.entered = true;
-  const panel = A.panel ? PANELS[A.panel] : null;
-  const reqRow = (p) => `<div class="it req"><button type="button" class="pf" data-act="profile" data-id="${p.id}" aria-label="Ver perfil de ${esc(p.name)}" style="background:${p.g}">${esc(p.ini)}</button><span class="tx"><b>${esc(p.name)}</b><span>Quer ser seu amigo${p.user ? ' · @' + esc(p.user) : ''}</span></span><button type="button" class="mbtn sm ghost" data-act="fr-decline" data-id="${p.id}">Recusar</button><button type="button" class="mbtn sm" data-act="fr-accept" data-id="${p.id}">Aceitar</button></div>`;
-  const panelHTML = panel ? `<div class="panel" role="dialog" aria-label="${panel.title}"><div class="ph"><span>${panel.title}</span><button type="button" class="hov sq" data-act="close-panel" aria-label="Fechar painel">${ic(D.close, 16, '#55555F', 1.8)}</button></div>
-    ${A.panel === 'search' ? searchPanelHTML() : A.panel === 'mentions' ? mentionsPanelHTML() : A.panel === 'notif' ? (A.incoming.length ? A.incoming.map(reqRow).join('') : '<div class="it"><span>Nada por aqui ainda.</span></div>') : panel.items.length ? panel.items.map((it) => `<div class="it"><b>${esc(it.t)}</b><span>${esc(it.s)}</span></div>`).join('') : '<div class="it"><span>Nada por aqui ainda.</span></div>'}</div>` : '';
-  markCur();
-  const showServer = A.view === 'server' && SERVERS.length && A.world === 'ready';
-  const showDm = A.view === 'dm' && A.world === 'ready';
-  return `<div class="shell">
-<div class="cloud" aria-hidden="true" style="left:-140px;bottom:-180px;width:600px;height:480px;background:radial-gradient(closest-side,rgba(140,140,158,.34),rgba(140,140,158,0))"></div>
-<div class="cloud c2" aria-hidden="true" style="right:-160px;top:20%;width:520px;height:420px;background:radial-gradient(closest-side,rgba(214,200,240,.4),rgba(214,200,240,0))"></div>
-${topbarHTML()}${panelHTML}${showServer ? serverHTML() : showDm ? dmViewHTML() : hubHTML(enter)}${!showServer && !showDm && A.voice ? voiceBarHTML().replace('class="vbar"', 'class="vbar fix"') : ''}${modalHTML()}</div>`;
+/* ===================================================================
+   NOVA CASCA (2026-11-21): barra de servidores + coluna + página central,
+   como nas fotos da pessoa. Substitui o painel inicial e as telas antigas.
+   =================================================================== */
+Object.assign(D, {
+  compass: '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
+  download: '<path d="M12 4v11M7 11l5 5 5-5M5 20h14"/>',
+  inbox: '<path d="M4 13l2.2-6.4A2 2 0 0 1 8.1 5.2h7.8a2 2 0 0 1 1.9 1.4L20 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M4 13h4.5a2 2 0 0 0 2 2h3a2 2 0 0 0 2-2H20"/>',
+  chevR: '<path d="m9 5 7 7-7 7"/>',
+  spark: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M18.5 16.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/>',
+  quest: '<circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/>',
+  calendar: '<rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3.5v3M16 3.5v3"/>',
+  shield: '<path d="M12 3l7 3v5.5c0 4.3-2.9 7.6-7 9.5-4.1-1.9-7-5.2-7-9.5V6z"/>',
+  badge: '<circle cx="12" cy="9" r="5.5"/><path d="M8.6 13.4 7 21l5-2.5 5 2.5-1.6-7.6"/>',
+  coin: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5l3 4.5-3 4.5-3-4.5z"/>',
+  sticker: '<path d="M20 12.5V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h5.5z"/><path d="M20 12.5h-4a3.5 3.5 0 0 0-3.5 3.5V20"/>',
+  apps: '<rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><path d="M16.75 13.5V20M13.5 16.75H20"/>',
+  threads: '<path d="M5 9h10M5 15h6M9 4 7 20M15 4l-1.2 8"/><path d="M16 17h5M18.5 14.5v5"/>',
+  camera: '<path d="M4 8a2 2 0 0 1 2-2h2l1.5-2h5L16 6h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><circle cx="12" cy="12.5" r="3.5"/>',
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>'
+});
+const PRES = { online: 'Disponível', idle: 'Ausente', dnd: 'Não perturbe', invisible: 'Invisível' };
+const sdCls = (p) => { const s = p && p.presence; return s === 'idle' ? 'idle' : s === 'dnd' ? 'dnd' : (!p || s === 'invisible' || s === 'off' || !p.on) ? 'off' : 'on'; };
+const xAv = (p, cls = '') => `<span class="xav ${cls}" style="background:${p.g}">${esc(p.ini)}<i class="sd ${sdCls(p)}"></i></span>`;
+const SPV = (k, d) => { const v = window.SQ_SET ? window.SQ_SET.P(k) : undefined; return v === undefined || v === null ? d : v; };
+const IMG_MASCOT = '<svg class="mascot" viewBox="0 0 120 100" aria-hidden="true"><defs><linearGradient id="mg1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#D9CDF2"/><stop offset="1" stop-color="#9D8CCF"/></linearGradient></defs><ellipse cx="60" cy="92" rx="34" ry="6" fill="rgba(29,29,34,.08)"/><rect x="26" y="22" width="68" height="64" rx="20" fill="url(#mg1)"/><path d="M30 44a30 30 0 0 1 60 0" fill="none" stroke="#44444C" stroke-width="5" stroke-linecap="round"/><rect x="20" y="40" width="10" height="20" rx="5" fill="#44444C"/><rect x="90" y="40" width="10" height="20" rx="5" fill="#44444C"/><circle cx="47" cy="56" r="5" fill="#1D1D22"/><circle cx="73" cy="56" r="5" fill="#1D1D22"/><path d="M50 70q10 8 20 0" fill="none" stroke="#1D1D22" stroke-width="3.5" stroke-linecap="round"/><path d="M60 22V10" stroke="#44444C" stroke-width="4" stroke-linecap="round"/><circle cx="60" cy="8" r="5" fill="#E897AB"/></svg>';
+const ILLUS = '<svg viewBox="0 0 180 360" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs><linearGradient id="il1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#B9CCF4"/><stop offset=".55" stop-color="#DCD3F3"/><stop offset="1" stop-color="#F6D3DE"/></linearGradient><linearGradient id="il2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#D79BB0"/><stop offset="1" stop-color="#A9809F"/></linearGradient></defs><rect width="180" height="360" fill="url(#il1)"/><g fill="#fff" opacity=".85"><ellipse cx="40" cy="60" rx="30" ry="9"/><ellipse cx="64" cy="54" rx="20" ry="8"/><ellipse cx="140" cy="100" rx="34" ry="9"/><ellipse cx="118" cy="94" rx="18" ry="7"/></g><path d="M0 230 L48 170 L84 210 L120 150 L180 220 V360 H0z" fill="url(#il2)" opacity=".75"/><path d="M0 270 C40 240 70 300 110 270 S160 250 180 262 V360 H0z" fill="#CBA3BE"/><path d="M0 310 C50 290 90 330 140 306 S170 300 180 304 V360 H0z" fill="#9FC8B0"/><rect x="38" y="196" width="3.5" height="74" rx="1.7" fill="#5A5A66"/><path d="M41 198l34 10-34 14z" fill="#9D8CCF"/><path d="M118 292l22-34 22 34z" fill="#F3D9B0"/><path d="M140 258v34" stroke="#C9A06A" stroke-width="2"/><circle cx="96" cy="300" r="9" fill="#E897AB" opacity=".9"/><circle cx="76" cy="308" r="6" fill="#B79BDB" opacity=".9"/></svg>';
+const TPLS = [['games', 'Jogos', '🎮'], ['friends', 'Amigos', '💗'], ['study', 'Grupo de estudos', '📚'], ['school', 'Clube escolar', '🏫'], ['art', 'Artes e criação', '🎨'], ['local', 'Comunidade local', '🏘️']];
+
+/* ---- presença (Disponível / Ausente / Não perturbe / Invisível) ---- */
+async function setPresence(s, ms) {
+  if (!A || !A.me || !PRES[s]) return;
+  const before = A.me.presence || 'online';
+  A.me.presence = s; A.pop = null;
+  store.set('sq.pres.' + myId(), ms ? { until: Date.now() + ms } : null);
+  render();
+  try { await rpc('set_my_presence', { p_status: s }); toast('Status: ' + PRES[s]); }
+  catch (e) { if (A && A.me) { A.me.presence = before; render(); } toast(errText(e)); }
+}
+function presenceExpire() {
+  if (!A || !A.me || (A.me.presence || 'online') === 'online') return;
+  const u = store.get('sq.pres.' + myId());
+  if (u && u.until && Date.now() > u.until) setPresence('online', 0);
+}
+async function loadDevs() {
+  const w = A; if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) { A.devs = { in: [], out: [] }; return; }
+  try {
+    const l = await navigator.mediaDevices.enumerateDevices();
+    if (A !== w) return;
+    const mk = (k) => l.filter((d) => d.kind === k && d.deviceId !== 'default' && d.deviceId !== 'communications').map((d, i) => ({ id: d.deviceId, label: d.label || (k === 'audioinput' ? 'Microfone ' : 'Alto-falante ') + (i + 1) }));
+    w.devs = { in: mk('audioinput'), out: mk('audiooutput') };
+  } catch (e) { w.devs = { in: [], out: [] }; }
+  if (A === w && A.pop && (A.pop.k === 'mic' || A.pop.k === 'head')) render();
+}
+const devLabel = (kind, id) => { const l = (A.devs && A.devs[kind]) || []; const d = l.find((x) => x.id === id); return !id || id === 'default' ? 'Padrão' : d ? d.label : 'Padrão'; };
+const PROFS = { isolation: 'Isolamento de voz', studio: 'Estúdio', custom: 'Personalizado' };
+const sliderHTML = (k, v) => `<input type="range" class="xr" min="0" max="100" step="1" value="${v}" data-pv="${k}" style="--v:${v}%" aria-label="${k === 'in_vol' ? 'Volume de entrada' : 'Volume de saída'}">`;
+
+/* ---- peças da casca ---- */
+function railHTML() {
+  const home = ['friends', 'dm', 'official', 'shop', 'quests'].includes(A.view);
+  return `<nav class="x-rail" aria-label="Servidores">
+  <button type="button" class="rt home${home ? ' on' : ''}" data-act="go-home" aria-label="Mensagens diretas" title="Mensagens diretas">${logoMark(22)}${anyUnread() ? '<i class="udot"></i>' : ''}</button>
+  <i class="rsep" aria-hidden="true"></i>
+  ${SERVERS.map((s) => { const on = A.view === 'server' && A.server === s.id; return `<button type="button" class="rt${on ? ' on' : ''}" data-act="srv-open" data-id="${s.id}" aria-label="${esc(s.name)}" aria-pressed="${on}" title="${esc(s.name)}" style="background:${s.tile}">${esc(s.ini)}</button>`; }).join('')}
+  <button type="button" class="rt act" data-act="srv-new" aria-label="Criar ou entrar em um servidor" title="Adicionar um servidor">${ic(D.plus, 22, '#1B6B47', 2)}</button>
+  <button type="button" class="rt act" data-act="srv-explore" aria-label="Explorar servidores públicos" title="Explorar servidores públicos">${ic(D.compass, 22, '#1B6B47', 1.8)}</button>
+  <button type="button" class="rt act" data-act="toast-soon" data-msg="Os apps para celular e computador chegam em breve" aria-label="Baixar apps" title="Baixar apps">${ic(D.download, 22, '#1B6B47', 1.8)}</button>
+</nav>`;
+}
+function dmColHTML() {
+  const v = A.view;
+  const nav = (act, icon, label, on, extra = '') => `<button type="button" class="cn${on ? ' on' : ''}" data-act="${act}">${ic(icon, 22, '#33333A', 1.6)}<span>${label}</span>${extra}</button>`;
+  const row = (f) => { const on = v === 'dm' && f.dm === A.channel; return `<button type="button" class="dmr${on ? ' on' : ''}" data-act="dm-open" data-id="${f.id}" aria-current="${on}">${xAv(f, 'sm')}<span class="tx"><b>${esc(f.name)}</b></span>${udot(f.dm)}</button>`; };
+  return `<button type="button" class="qfind" data-act="qs-open">Encontre ou comece uma conversa</button>
+  <div class="cnav">${nav('go-home', D.users, 'Amigos', v === 'friends')}${nav('open-plus', D.spark, 'Square Plus', false)}${nav('go-shop', D.grid, 'Loja', v === 'shop')}${nav('go-quests', D.quest, 'Missões', v === 'quests', '<em class="xnb">NOVO</em>')}</div>
+  <hr class="chr0">
+  <div class="dmh"><span>Mensagens diretas</span><button type="button" class="hov sq" data-act="add-tab" aria-label="Criar mensagem direta" title="Criar mensagem direta">${ic(D.plus, 16, '#55555F', 2)}</button></div>
+  <button type="button" class="dmr${v === 'official' ? ' on' : ''}" data-act="go-official" aria-current="${v === 'official'}"><span class="xav sm sqo">${logoMark(16)}</span><span class="tx"><b>Square <u class="ofi">${ic(D.check, 10, '#fff', 3.2)}OFICIAL</u></b><small>Mensagem Oficial da Square</small></span></button>
+  ${A.friends.filter((f) => f.dm).map(row).join('')}`;
+}
+function srvColHTML(s) {
+  const cs = A.csec;
+  const plus = (label, kind) => (s.mine ? `<button type="button" class="hov sq" data-act="modal-open" data-k="chan" data-kind="${kind}" aria-label="${label}" title="${label}">${ic(D.plus, 16, '#55555F', 2)}</button>` : '');
+  const sec = (key, label, kind, add) => `<div class="sech"><button type="button" class="sect" data-act="csec" data-k="${key}" aria-expanded="${!cs[key]}">${label}${ic(cs[key] ? D.chevR : D.down, 12, '#55555F', 2.4)}</button>${plus(add, kind)}</div>`;
+  const nav = (act, icon, label, extra = '') => `<button type="button" class="cn" data-act="${act}" ${extra}>${ic(icon, 20, '#33333A', 1.6)}<span>${label}</span></button>`;
+  const menu = A.pop && A.pop.k === 'srv' ? `<div class="pop smenu" role="menu"><button type="button" class="pi" data-act="nav" data-k="invite">Convidar pessoas${ic(D.userPlus, 16)}</button>${s.mine ? `<button type="button" class="pi" data-act="modal-open" data-k="chan" data-kind="text">Criar canal${ic(D.plus, 16)}</button><button type="button" class="pi" data-act="bans">Ver banidos${ic(D.shield, 16)}</button>` : ''}</div>` : '';
+  return `<div class="srvh"><button type="button" class="srvn" data-act="srvmenu" aria-haspopup="true" aria-expanded="${!!menu}"><span>${esc(s.name)}</span>${ic(D.down, 14, '#33333A', 2.2)}</button><button type="button" class="hov sq" data-act="nav" data-k="invite" aria-label="Convidar pessoas" title="Convidar pessoas">${ic(D.userPlus, 18, '#33333A', 1.7)}</button>${menu}</div>
+  <div class="cnav">${nav('toast-soon', D.calendar, 'Eventos', 'data-msg="Eventos chegam em breve"')}${nav('open-boost', D.shield, 'Impulsos de servidor')}</div>
+  <hr class="chr0">
+  ${sec('text', 'Canais de Texto', 'text', 'Adicionar canal de texto')}
+  ${cs.text ? '' : s.text.map((c) => { const on = A.channel === c.id; return `<div class="chr${on ? ' on' : ''}"><button type="button" class="chn" data-act="chan" data-id="${c.id}" aria-current="${on}">${ic(D.hash, 18, '#55555F', 1.9)}<span>${esc(c.name)}</span></button><span class="chx"><button type="button" class="hov" data-act="nav" data-k="invite" aria-label="Convidar pessoas" title="Convidar pessoas">${ic(D.userPlus, 15, '#33333A', 1.8)}</button><button type="button" class="hov" data-act="toast-soon" data-msg="As configurações do canal chegam em breve" aria-label="Editar canal" title="Editar canal">${ic(D.gear, 15, '#33333A', 1.7)}</button></span></div>`; }).join('')}
+  ${sec('voice', 'Canais de Voz', 'voice', 'Adicionar canal de voz')}
+  ${cs.voice ? '' : s.voice.map((g) => { const on = A.voice === g.id; return `<div class="xvg"><div class="chr${on ? ' on' : ''}"><button type="button" class="chn" data-act="vjoin" data-id="${g.id}" aria-label="${on ? 'Você está em ' : 'Entrar em '}${esc(g.name)}">${ic(D.volume, 18, '#55555F', 1.8)}<span>${esc(g.name)}</span></button></div>${voiceRoster(g.id).map((u) => { const p = s.byId[u]; return p ? `<div class="xvu"><span class="xav xs" style="background:${p.g}">${esc(p.ini)}</span><span>${esc(p.name)}</span></div>` : ''; }).join('')}</div>`; }).join('')}`;
+}
+function userPopHTML() {
+  const me = A.me || {}, sub = A.pop.sub || '', pr = me.presence || 'online';
+  const durs = (s) => `<div class="fly fly2">${[['Por 15 minutos', 900000], ['Por 1 hora', 3600000], ['Por 3 horas', 10800000], ['Por 8 horas', 28800000], ['Por 24 horas', 86400000], ['Até eu mudar', 0]].map((d) => `<button type="button" class="pi" data-act="status-set" data-s="${s}" data-ms="${d[1]}">${d[0]}</button>`).join('')}</div>`;
+  const sti = (s, label, desc, dot) => `<div class="pi-w"><button type="button" class="pi st${pr === s ? ' cur' : ''}" data-act="status-set" data-s="${s}" data-ms="0"><i class="sd ${dot} stat"></i><span class="tx"><b>${label}</b>${desc ? `<small>${desc}</small>` : ''}</span>${s === 'online' ? '' : ic(D.chevR, 14, '#55555F', 2.2)}</button>${s === 'online' ? '' : durs(s)}</div>`;
+  const statusFly = `<div class="fly" role="menu">${sti('online', 'Disponível', '', 'on')}${sti('idle', 'Ausente', '', 'idle')}${sti('dnd', 'Não perturbe', 'Você não receberá notificação na área de trabalho', 'dnd')}${sti('invisible', 'Invisível', 'Você vai aparecer Off-line', 'off')}</div>`;
+  const ptsFly = `<div class="fly pts"><div class="ptsh">${ic(D.coin, 30, '#7B6BB5', 1.6)}<b>0</b></div><div class="ptst"><small>Desafios ativos</small><button type="button" class="tagx" data-act="toast-soon" data-msg="O Square Plus chega em breve">Desbloquear 1.2x</button></div>
+    <button type="button" class="ch2" data-act="go-shop"><span class="ci">${ic(D.grid, 18, '#fff', 1.8)}</span><span class="tx"><b>Compre um item da loja</b><small>Ganhe 2000 Pontos</small></span>${ic(D.chevR, 14, '#55555F', 2.2)}</button>
+    <button type="button" class="ch2" data-act="go-shop"><span class="ci">${ic(D.heart, 18, '#fff', 1.8)}</span><span class="tx"><b>Adicione um item à lista de desejos</b><small>Ganhe 150 Pontos</small></span>${ic(D.chevR, 14, '#55555F', 2.2)}</button>
+    <div class="ptsb"><button type="button" class="mbtn ghost sm" data-act="go-quests">${ic(D.quest, 16, '#1D1D22', 1.8)}Missões</button><button type="button" class="mbtn ghost sm" data-act="go-shop">${ic(D.grid, 16, '#1D1D22', 1.8)}Loja</button></div>
+    <small class="ptsf">Pontos resgatados no total • <a href="#" data-act="soon" data-msg="A central de ajuda abre pelo ? no topo">Precisa de ajuda?</a></small></div>`;
+  const acctFly = `<div class="fly" role="menu"><div class="pi cur2">${xAv(me, 'xs')}<span class="tx"><b>${esc(me.user || displayName())}</b></span>${ic(D.check, 16, '#4B4BC8', 2.6)}</div><button type="button" class="pi" data-act="open-settings" data-p="account"><span class="tx"><b>Gerenciar contas</b></span></button></div>`;
+  const row = (key, icon, label, fly, lead) => `<div class="pi-w"><button type="button" class="pi" data-act="pop-sub" data-sub="${key}" aria-expanded="${sub === key}">${lead || ic(icon, 18, '#33333A', 1.7)}<span class="tx"><b>${label}</b></span>${ic(D.chevR, 14, '#55555F', 2.2)}</button>${sub === key ? fly : ''}</div>`;
+  return `<div class="pop upop" role="menu" aria-label="Seu perfil">
+  <div class="ubanner" style="background:${esc(me.accent || '#9D8CCF')}"></div>
+  <div class="uav">${xAv(me, 'xl')}<button type="button" class="think" data-act="edit-profile">${ic(D.plus, 14, '#33333A', 2)}<span>${me.status ? esc(me.status) : 'O que você tem lido?'}</span></button></div>
+  <div class="uname"><b>${esc(displayName())}</b><small>${esc(me.user || '')}</small></div>
+  <div class="pgrp"><button type="button" class="pi" data-act="edit-profile">${ic(D.edit, 18, '#33333A', 1.7)}<span class="tx"><b>Editar perfil</b></span></button>
+    ${row('status', 0, PRES[pr], statusFly, `<i class="sd ${sdCls(me)} stat"></i>`)}
+    <button type="button" class="pi" data-act="toast-soon" data-msg="As insígnias chegam em breve">${ic(D.badge, 18, '#33333A', 1.7)}<span class="tx"><b>Insígnias</b></span></button>
+    ${row('pts', D.coin, '0 Pontos', ptsFly)}</div>
+  <div class="pgrp">${row('acct', D.user, 'Mudar de conta', acctFly)}</div></div>`;
+}
+function micPopHTML() {
+  const sub = A.pop.sub || '', dev = SPV('in_device', 'default'), prof = SPV('input_profile', 'custom'), vol = SPV('in_vol', 100);
+  const l = (A.devs && A.devs.in) || [];
+  const fly = sub === 'indev' ? `<div class="fly fl-l"><button type="button" class="pi${dev === 'default' ? ' cur' : ''}" data-act="pop-dev" data-k="in_device" data-id="default"><span class="tx"><b>Padrão</b></span></button>${l.map((d) => `<button type="button" class="pi${dev === d.id ? ' cur' : ''}" data-act="pop-dev" data-k="in_device" data-id="${esc(d.id)}"><span class="tx"><b>${esc(d.label)}</b></span></button>`).join('')}</div>`
+    : sub === 'inprof' ? `<div class="fly fl-l">${Object.keys(PROFS).map((k) => `<button type="button" class="pi${prof === k ? ' cur' : ''}" data-act="pop-dev" data-k="input_profile" data-id="${k}"><span class="tx"><b>${PROFS[k]}</b></span></button>`).join('')}</div>` : '';
+  return `<div class="pop dpop mic" role="menu" aria-label="Opções do microfone">
+  <div class="pi-w"><button type="button" class="pi two" data-act="pop-sub" data-sub="indev"><span class="tx"><b>Dispositivo de entrada</b><small>${esc(devLabel('in', dev))}</small></span>${ic(D.chevR, 14, '#55555F', 2.2)}</button>${sub === 'indev' ? fly : ''}</div>
+  <div class="pi-w"><button type="button" class="pi two" data-act="pop-sub" data-sub="inprof"><span class="tx"><b>Perfil de entrada</b><small>${PROFS[prof] || 'Personalizado'}</small></span>${ic(D.chevR, 14, '#55555F', 2.2)}</button>${sub === 'inprof' ? fly : ''}</div>
+  <hr class="chr0"><div class="vol"><b>Volume de entrada</b>${sliderHTML('in_vol', vol)}</div><hr class="chr0">
+  <button type="button" class="pi" data-act="open-settings" data-p="voice">${ic(D.gear, 18, '#33333A', 1.7)}<span class="tx"><b>Configurações de voz</b></span></button></div>`;
+}
+function headPopHTML() {
+  const sub = A.pop.sub || '', dev = SPV('out_device', 'default'), vol = SPV('out_vol', 100);
+  const l = (A.devs && A.devs.out) || [];
+  const fly = sub === 'outdev' ? `<div class="fly fl-l"><button type="button" class="pi${dev === 'default' ? ' cur' : ''}" data-act="pop-dev" data-k="out_device" data-id="default"><span class="tx"><b>Padrão</b></span></button>${l.map((d) => `<button type="button" class="pi${dev === d.id ? ' cur' : ''}" data-act="pop-dev" data-k="out_device" data-id="${esc(d.id)}"><span class="tx"><b>${esc(d.label)}</b></span></button>`).join('')}</div>` : '';
+  return `<div class="pop dpop head" role="menu" aria-label="Opções do áudio">
+  <div class="pi-w"><button type="button" class="pi two" data-act="pop-sub" data-sub="outdev"><span class="tx"><b>Dispositivo de saída</b><small>${esc(devLabel('out', dev))}</small></span>${ic(D.chevR, 14, '#55555F', 2.2)}</button>${sub === 'outdev' ? fly : ''}</div>
+  <hr class="chr0"><div class="vol"><b>Volume de saída</b>${sliderHTML('out_vol', vol)}</div><hr class="chr0">
+  <button type="button" class="pi" data-act="open-settings" data-p="voice">${ic(D.gear, 18, '#33333A', 1.7)}<span class="tx"><b>Configurações de voz</b></span></button></div>`;
+}
+function ubarHTML() {
+  const me = A.me || {}, name = displayName(), pr = me.presence || 'online', pk = A.pop ? A.pop.k : '';
+  const micOff = A.muted || A.deafened;
+  return `${voiceBarHTML()}<div class="x-ub">
+  ${pk === 'user' ? userPopHTML() : pk === 'mic' ? micPopHTML() : pk === 'head' ? headPopHTML() : ''}
+  <button type="button" class="ub-me" data-act="pop" data-k="user" aria-haspopup="true" aria-expanded="${pk === 'user'}" aria-label="Seu perfil: ${esc(name)}">${xAv(Object.assign({ g: meBg(), ini: meIni(name), on: true }, me), 'sm')}<span class="tx"><b>${esc(name)}</b><small class="s1">${PRES[pr]}</small><small class="s2">${esc(me.user || '')}</small></span></button>
+  <div class="ug${micOff ? ' off' : ''}"><button type="button" class="ugb" data-act="mute" aria-label="${micOff ? 'Ativar microfone' : 'Silenciar microfone'}" aria-pressed="${micOff}">${micOff ? ic(D.micOff, 20, '#B3261E', 1.9) : ic(D.mic, 20, '#33333A', 1.7)}</button><button type="button" class="ugc" data-act="pop" data-k="mic" aria-label="Opções do microfone" aria-expanded="${pk === 'mic'}">${ic(pk === 'mic' ? D.up : D.down, 12, '#33333A', 2.4)}</button></div>
+  <div class="ug${A.deafened ? ' off' : ''}"><button type="button" class="ugb" data-act="deaf" aria-label="${A.deafened ? 'Ativar áudio' : 'Desativar áudio'}" aria-pressed="${A.deafened}">${A.deafened ? ic(D.head + '<path d="M4 4l16 16"/>', 20, '#B3261E', 1.9) : ic(D.head, 20, '#33333A', 1.7)}</button><button type="button" class="ugc" data-act="pop" data-k="head" aria-label="Opções do áudio" aria-expanded="${pk === 'head'}">${ic(pk === 'head' ? D.up : D.down, 12, '#33333A', 2.4)}</button></div>
+  <button type="button" class="hov ugg" data-act="settings" aria-label="Configurações" title="Configurações">${ic(D.gear, 20, '#33333A', 1.6)}</button></div>`;
+}
+function leftHTML() {
+  const srv = A.view === 'server' ? curServer() : null;
+  return `<div class="x-left${A.drawer ? ' open' : ''}">
+  <div class="x-lt">${railHTML()}<aside class="x-col" aria-label="${srv ? 'Canais do servidor' : 'Mensagens diretas'}"><div class="x-cs" id="sscroll">${srv ? srvColHTML(srv) : dmColHTML()}</div></aside></div>
+  <div class="x-ubw">${ubarHTML()}</div></div>${A.drawer ? '<button type="button" class="x-bk" data-act="drawer" aria-label="Fechar menu"></button>' : ''}`;
+}
+function titlebarHTML() {
+  const v = A.view, srv = v === 'server' ? curServer() : null, peer = v === 'dm' ? dmPeer(A.channel) : null;
+  const t = srv ? [D.hash, srv.name] : peer ? [D.at, peer.name] : v === 'official' ? [D.bubble, 'Square'] : v === 'shop' ? [D.grid, 'Loja'] : v === 'quests' ? [D.quest, 'Missões'] : [D.users, 'Amigos'];
+  const n = A.incoming.length;
+  return `<header class="x-tb"><button type="button" class="hov x-burger" data-act="drawer" aria-label="Abrir menu">${ic(D.menu, 20, '#33333A', 1.8)}</button><span class="x-tt">${ic(t[0], 15, '#33333A', 1.9)}<span>${esc(t[1])}</span></span><span class="x-ti"><button type="button" class="hov" data-act="nav" data-k="notif" aria-label="Caixa de entrada" title="Caixa de entrada">${ic(D.inbox, 18, '#33333A', 1.8)}${n ? '<i class="udot"></i>' : ''}</button><button type="button" class="hov" data-act="nav" data-k="help" aria-label="Central de ajuda" title="Central de ajuda">${ic(D.help, 18, '#33333A', 1.8)}</button></span></header>`;
 }
 
+/* ---- página Amigos ---- */
+function flistHTML() {
+  const q = (A.gq || '').trim().toLowerCase();
+  const base = A.ftab === 'online' ? A.friends.filter((p) => p.on) : A.friends;
+  const list = base.filter((p) => !q || p.name.toLowerCase().indexOf(q) !== -1 || (p.user || '').toLowerCase().indexOf(q) !== -1);
+  const title = `<h2 class="fcount">${A.ftab === 'online' ? 'Disponível' : 'Todos os amigos'} — ${base.length}</h2>`;
+  if (!list.length) return title + `<div class="fempty">${q ? 'Nenhum amigo encontrado.' : A.ftab === 'online' ? 'Ninguém está disponível agora.' : 'Você ainda não tem amigos.'}${A.friends.length || q ? '' : '<div class="hcta"><button type="button" class="mbtn sm" data-act="add-tab">Adicionar amigo</button></div>'}</div>`;
+  return title + list.map((p) => `<div class="fr"><button type="button" class="fmain" data-act="dm-open" data-id="${p.id}" aria-label="Abrir conversa com ${esc(p.name)}">${xAv(p, 'md')}<span class="tx"><b>${esc(p.name)}</b><small>${esc(p.st)}</small></span>${udot(p.dm)}</button><span class="fx"><button type="button" class="rb" data-act="dm-open" data-id="${p.id}" aria-label="Enviar mensagem" title="Enviar mensagem">${ic(D.bubble, 18, '#33333A', 1.8)}</button><button type="button" class="rb" data-act="fmenu" data-id="${p.id}" aria-label="Mais ações" title="Mais">${ic(D.dots, 18, '#33333A', 2)}</button></span></div>`).join('');
+}
+function addFriendHTML() {
+  const f = A.af;
+  return `<div class="af"><div class="afh"><div><h2>Adicionar amigo</h2><p>Você pode adicionar amigos com o nome de usuário Square deles.</p></div>${IMG_MASCOT}</div>
+  <div class="afbox"><div class="afr"><input id="af-user" type="text" placeholder="Insira um nome de usuário" maxlength="30" value="${esc(f.user)}" data-app-bind="af:user" autocomplete="off" spellcheck="false" aria-label="Nome de usuário"><button type="button" class="mbtn sm" id="af-send" data-act="af-send"${f.user.trim() && !f.busy ? '' : ' disabled'}>Enviar pedido de amizade</button></div>
+  <div class="afn"><textarea id="af-note" rows="3" maxlength="120" placeholder="Personalize sua solicitação (opcional)" data-app-bind="af:note" aria-label="Mensagem do pedido">${esc(f.note)}</textarea><span class="afc" id="af-cnt">${120 - f.note.length}</span></div></div>
+  <p class="afhint">O que você escrever aqui também aparecerá nas suas mensagens diretas se vocês se tornarem amigos.</p>
+  <hr class="chr0"><h3>Outros lugares para fazer amigos</h3><p class="afp">Ninguém vem à cabeça? Confira nossa lista de servidores públicos que tem todas as tribos, de jogos a culinária, música, anime e muito mais.</p>
+  <button type="button" class="exl" data-act="srv-explore"><span class="exi">${ic(D.compass, 20, '#fff', 1.8)}</span><b>Explorar Servidores Públicos</b>${ic(D.chevR, 16, '#33333A', 2)}</button></div>`;
+}
+function friendsPageHTML() {
+  const tab = A.ftab, t = (k, l) => `<button type="button" class="ftab${tab === k ? ' on' : ''}" data-act="ftab" data-k="${k}" aria-pressed="${tab === k}">${l}</button>`;
+  const body = tab === 'add' ? addFriendHTML() : `<label class="fsearch"><input id="gsearch" type="text" placeholder="Buscar" value="${esc(A.gq)}" data-app-bind="gq" autocomplete="off" aria-label="Buscar amigos">${ic(D.search, 18, '#55555F', 1.8)}</label><div class="flist2" id="flist">${flistHTML()}</div>`;
+  return `<header class="x-ph"><div class="pt fpt">${ic(D.users, 22, '#33333A', 1.6)}<h1>Amigos</h1></div><i class="dotsep" aria-hidden="true"></i>${t('online', 'Disponível')}${t('all', 'Todos')}<button type="button" class="ftab add${tab === 'add' ? ' on' : ''}" data-act="ftab" data-k="add" aria-pressed="${tab === 'add'}">Adicionar amigo</button><span class="tsp"></span><button type="button" class="hov sq" data-act="toast-soon" data-msg="Conversas em grupo chegam em breve" aria-label="Nova conversa em grupo" title="Nova conversa em grupo">${ic(D.userPlus, 20, '#33333A', 1.7)}</button></header>
+  <div class="x-pb"><section class="x-pm">${body}</section><aside class="x-act" aria-label="Ativo agora"><h2>Ativo agora</h2><div class="acard"><b>Por enquanto, está quieto...</b><p>Quando um(a) amigo(a) começa uma atividade, como jogar um jogo ou bater papo por voz, mostraremos aqui!</p></div></aside></div>`;
+}
+const soonPage = (icon, title, text) => `<header class="x-ph"><div class="pt">${ic(icon, 22, '#33333A', 1.6)}<h1>${title}</h1></div></header><div class="x-pb"><section class="x-pm soon"><div class="soonc">${ic(icon, 40, '#9A9AA7', 1.4)}<h2>${title}: em breve</h2><p>${text}</p></div></section></div>`;
+function officialPageHTML() {
+  const name = (displayName() || '').split(' ')[0];
+  return `<header class="x-ph"><div class="pt"><span class="xav sm sqo">${logoMark(16)}</span><h1>Square <u class="ofi">${ic(D.check, 10, '#fff', 3.2)}OFICIAL</u></h1></div></header>
+  <div class="x-pb"><div class="x-chat"><div class="msgs"><div class="fill"></div><div class="min"><div class="col"><span class="av40 sqo">${logoMark(20)}</span></div><div class="bub"><span class="an">Square</span>Olá, ${esc(name)}! Bem-vindo(a) à Square. Aqui você conversa com amigos, cria servidores e participa de comunidades. Para começar, adicione um amigo ou crie o seu primeiro servidor.</div></div></div>
+  <div class="comp"><div class="cbar"><input type="text" placeholder="Você não pode responder a esta conversa." disabled aria-label="Resposta indisponível"></div></div></div></div>`;
+}
+function dmPageHTML() {
+  const peer = dmPeer(A.channel) || { name: 'Conversa', ini: '?', g: G.lilac, id: '' };
+  return `<header class="x-ph"><div class="pt">${ic(D.at, 22, '#33333A', 1.6)}<h1>${esc(peer.name)}</h1><i class="sd ${sdCls(peer)} inl"></i></div><span class="tsp"></span><button type="button" class="hov sq${A.panel === 'search' ? ' sel' : ''}" data-act="nav" data-k="search" aria-label="Buscar mensagens" title="Buscar mensagens">${ic(D.search, 20, '#33333A', 1.7)}</button><button type="button" class="hov sq" data-act="profile" data-id="${peer.id}" aria-label="Ver perfil" title="Ver perfil">${ic(D.user, 20, '#33333A', 1.7)}</button></header>
+  <div class="x-pb"><div class="x-chat"><div class="msgs" id="msgs" role="log" aria-label="Mensagens" aria-live="polite">${serverMsgsHTML()}</div>${composerHTML(true, 'Conversar com @' + peer.name)}</div></div>`;
+}
+function serverPageHTML() {
+  const srv = curServer(), chObj = srv.text.find((c) => c.id === A.channel);
+  const ib = (act, icon, label, on, extra = '') => `<button type="button" class="hov sq${on ? ' sel' : ''}" data-act="${act}" ${extra} aria-label="${label}" title="${label}">${ic(icon, 20, '#33333A', 1.7)}</button>`;
+  return `<header class="x-ph"><div class="pt">${ic(D.hash, 22, '#33333A', 1.7)}<h1>${esc(chObj ? chObj.name : 'Sem canal')}</h1></div><span class="tsp"></span>${ib('toast-soon', D.threads, 'Tópicos', false, 'data-msg="Os tópicos chegam em breve"')}${ib('toast-soon', D.bell, 'Configurações de notificação', false, 'data-msg="As notificações por canal chegam em breve"')}${ib('nav', D.pin, 'Mensagens fixadas', A.panel === 'pins', 'data-k="pins"')}${ib('nav', D.users, 'Lista de membros', A.showMembers, 'data-k="members"')}<button type="button" class="xsearch" data-act="nav" data-k="search" aria-label="Buscar mensagens"><span>Buscar ${esc(srv.name)}</span>${ic(D.search, 16, '#55555F', 1.8)}</button></header>
+  <div class="x-pb"><div class="x-chat"><div class="msgs" id="msgs" role="log" aria-label="Mensagens" aria-live="polite">${serverMsgsHTML()}</div>${composerHTML(!!chObj, chObj ? 'Conversar em #' + chObj.name : 'Crie um canal de texto para conversar')}</div>
+  ${A.showMembers ? `<aside class="x-mem" aria-label="Lista de membros">${srv.mine ? '<button type="button" class="lnk banlnk" data-act="bans">Ver banidos</button>' : ''}<div class="mlist" id="mlist">${membersListHTML()}</div></aside>` : ''}</div>`;
+}
+function welcomeHTML(srv, chObj) {
+  if (!srv.mine) return `<div class="wlc"><h2>Bem-vindo(a) a ${esc(srv.name)}</h2><p>Este é o começo do canal #${esc(chObj ? chObj.name : '')}.</p></div>`;
+  const card = (act, bg, icon, label, extra = '') => `<button type="button" class="wc" data-act="${act}" ${extra}><span class="wi" style="background:${bg}">${ic(icon, 18, '#fff', 1.8)}</span><b>${label}</b>${ic(D.chevR, 16, '#55555F', 2)}</button>`;
+  return `<div class="wlc"><h2>Bem-vindo(a) a<br>${esc(srv.name)}</h2><p>Este é seu servidor, novinho em folha. Aqui vão algumas dicas para ajudar você a começar! Para mais informações, confira nosso <a href="#" data-act="soon" data-msg="O guia de como começar chega em breve">guia de como começar</a>.</p>
+  <div class="wcs">${card('nav', '#9D8CCF', D.userPlus, 'Convide seus amigos', 'data-k="invite"')}${card('toast-soon', '#78BE9D', D.camera, 'Personalize seu servidor com um ícone', 'data-msg="Os ícones de servidor chegam em breve"')}${card('focus-msg', '#7DB8CF', D.send, 'Envie sua primeira mensagem')}${card('toast-soon', '#6CBF7E', D.download, 'Baixar o App Square', 'data-msg="Os apps para celular e computador chegam em breve"')}${card('toast-soon', '#E897AB', D.apps, 'Adicione seu primeiro app', 'data-msg="Os apps de servidor chegam em breve"')}${card('open-boost', '#C77DBA', D.spark, 'Desbloqueie vantagens para todos com impulsos')}</div></div>`;
+}
+function dmIntroHTML(peer) {
+  if (!peer) return '';
+  return `<div class="wlc dmi">${xAv(peer, 'xl')}<h2>${esc(peer.name)}</h2><small>@${esc(peer.user || '')}</small><p>Este é o começo da sua conversa com <b>${esc(peer.name)}</b>.</p></div>`;
+}
+
+/* ---- janelas novas: buscar conversa e criar servidor em passos ---- */
+function qsResHTML(q) {
+  q = String(q || '').trim().toLowerCase();
+  const m = (s) => !q || String(s || '').toLowerCase().indexOf(q) !== -1;
+  const fr = A.friends.filter((f) => m(f.name) || m(f.user)).slice(0, 6).map((f) => `<button type="button" class="qr" data-act="qs-go" data-k="dm" data-id="${f.id}">${xAv(f, 'sm')}<b>${esc(f.name)}</b><small>@${esc(f.user)}</small></button>`);
+  const sv = SERVERS.filter((s) => m(s.name)).slice(0, 5).map((s) => `<button type="button" class="qr" data-act="qs-go" data-k="srv" data-id="${s.id}"><span class="stl sm" style="background:${s.tile}">${esc(s.ini)}</span><b>${esc(s.name)}</b><small>servidor</small></button>`);
+  const ch = []; SERVERS.forEach((s) => s.text.forEach((c) => { if (m(c.name) && q) ch.push(`<button type="button" class="qr" data-act="qs-go" data-k="chan" data-id="${c.id}" data-sid="${s.id}">${ic(D.hash, 18, '#55555F', 1.9)}<b>${esc(c.name)}</b><small>${esc(s.name)}</small></button>`); }));
+  const all = [].concat(fr.length ? ['<h4>Amigos</h4>'].concat(fr) : [], sv.length ? ['<h4>Servidores</h4>'].concat(sv) : [], ch.length ? ['<h4>Canais</h4>'].concat(ch.slice(0, 6)) : []);
+  return all.length ? all.join('') : '<p class="mnote">Nada encontrado.</p>';
+}
+function qsHTML() {
+  return `<div class="mback qsb" data-act="modal-bg"><div class="modal qs" role="dialog" aria-modal="true" aria-label="Encontre ou comece uma conversa"><input id="qs-in" class="qsin" type="text" placeholder="Onde você quer ir?" value="${esc(A.modal.q || '')}" data-app-bind="m:q" autocomplete="off" aria-label="Buscar"><div class="qsres" id="qsres">${qsResHTML(A.modal.q)}</div><div class="qsf">Procure amigos, servidores e canais.</div></div></div>`;
+}
+function srvNewHTML(m) {
+  const first = !SERVERS.length, step = m.step;
+  const x = `<button type="button" class="hov sq mx" data-act="modal-close" aria-label="Fechar">${ic(D.close, 18, '#55555F', 1.8)}</button>`;
+  let inner = '';
+  if (step === 'start') {
+    const row = (k, ico, label) => `<button type="button" class="sn-r" data-act="sn-tpl" data-k="${k}"><span class="sn-i">${ico}</span><b>${label}</b>${ic(D.chevR, 16, '#55555F', 2)}</button>`;
+    inner = `<h2>${first ? 'Crie seu primeiro servidor na Square' : 'Criar seu servidor'}</h2><p class="sn-p">Seu servidor é onde você e seus amigos se reúnem. Crie o seu e comece a interagir.</p>
+    <div class="sn-l">${row('own', '🛠️', 'Criar o meu')}<h3>Começar de um molde</h3>${TPLS.map((t) => row(t[0], t[2], t[1])).join('')}</div>
+    ${first ? '<div class="sn-f"><a href="#" data-act="modal-open" data-k="srv" data-mode="join">Já tem um convite? Entrar em um servidor</a></div>' : '<div class="sn-f2"><b>Já tem um convite?</b><button type="button" class="mbtn ghost" data-act="modal-open" data-k="srv" data-mode="join">Entrar em um servidor</button></div>'}`;
+  } else if (step === 'about') {
+    inner = `<h2>Conte-nos mais sobre o seu servidor</h2><p class="sn-p">Para podermos te ajudar com as configurações, seu novo servidor é para alguns amigos ou uma grande comunidade?</p>
+    <div class="sn-l"><button type="button" class="sn-r" data-act="sn-kind" data-k="friends"><span class="sn-i">🛋️</span><b>Para meus amigos e eu</b>${ic(D.chevR, 16, '#55555F', 2)}</button><button type="button" class="sn-r" data-act="sn-kind" data-k="community"><span class="sn-i">🌍</span><b>Para um clube ou comunidade</b>${ic(D.chevR, 16, '#55555F', 2)}</button></div>
+    <p class="sn-skip">Não sabe? Você pode <a href="#" data-act="sn-kind" data-k="">pular essa pergunta</a> por enquanto.</p><div class="sn-b"><button type="button" class="sn-back" data-act="sn-back">Voltar</button></div>`;
+  } else {
+    inner = `<h2>Personalize o seu servidor</h2><p class="sn-p">Deixe seu novo servidor com a sua cara dando um nome e um ícone a ele. Se quiser, é possível mudar depois.</p>
+    <button type="button" class="sn-up" data-act="toast-soon" data-msg="Os ícones de servidor chegam em breve" aria-label="Enviar ícone"><span>${ic(D.camera, 22, '#33333A', 1.7)}<small>Enviar</small></span><i>${ic(D.plus, 14, '#fff', 2.4)}</i></button>
+    <div class="mf sn-n"><label for="mf-name">Nome do servidor <em>*</em></label><input id="mf-name" data-mf type="text" data-app-bind="m:name" maxlength="40" value="${esc(m.name)}" autocomplete="off" spellcheck="false"></div>
+    ${m.kind === 'community' ? `<div class="mf"><button type="button" class="mtog${m.pub ? ' on' : ''}" data-act="m-pub" aria-pressed="${!!m.pub}"><i></i><span>Servidor público (aparece em Explorar)</span></button></div>` : ''}
+    <p class="sn-t">Ao criar um servidor, você concorda com as <a href="/termos" target="_blank" rel="noopener">diretrizes da comunidade</a> da Square.</p>
+    ${m.err ? `<div class="merr" role="alert">${esc(m.err)}</div>` : ''}
+    <div class="sn-b"><button type="button" class="sn-back" data-act="sn-back">Voltar</button><button type="button" class="mbtn" data-act="modal-submit"${m.busy ? ' disabled' : ''}>${m.busy ? 'Aguarde…' : 'Criar'}</button></div>`;
+  }
+  const compact = step === 'start' && !first;
+  return `<div class="mback" data-act="modal-bg"><div class="modal sn${compact ? ' compact' : ''}" role="dialog" aria-modal="true" aria-label="Criar servidor">${compact ? '' : `<div class="sn-art">${ILLUS}</div>`}<div class="sn-c">${x}${inner}</div></div></div>`;
+}
+
+function appView() {
+  if (window.SQ_SET && window.SQ_SET.def.in_vol === undefined) window.SQ_SET.def.in_vol = 100;
+  const panel = A.panel ? PANELS[A.panel] : null;
+  const reqRow = (p) => `<div class="it req"><button type="button" class="pf" data-act="profile" data-id="${p.id}" aria-label="Ver perfil de ${esc(p.name)}" style="background:${p.g}">${esc(p.ini)}</button><span class="tx"><b>${esc(p.name)}</b><span>Quer ser seu amigo${p.user ? ' · @' + esc(p.user) : ''}</span>${p.note ? `<span class="rnote">“${esc(p.note)}”</span>` : ''}</span><button type="button" class="mbtn sm ghost" data-act="fr-decline" data-id="${p.id}">Recusar</button><button type="button" class="mbtn sm" data-act="fr-accept" data-id="${p.id}">Aceitar</button></div>`;
+  const panelHTML = panel ? `<div class="panel" role="dialog" aria-label="${panel.title}"><div class="ph"><span>${panel.title}</span><button type="button" class="hov sq" data-act="close-panel" aria-label="Fechar painel">${ic(D.close, 16, '#55555F', 1.8)}</button></div>
+    ${A.panel === 'search' ? searchPanelHTML() : A.panel === 'mentions' ? mentionsPanelHTML() : A.panel === 'notif' ? (A.incoming.length ? A.incoming.map(reqRow).join('') : '<div class="it"><span>Nada por aqui ainda.</span></div>') + '<button type="button" class="it res" data-act="mentions-open"><b>Ver menções</b><span>Mensagens em que citaram você</span></button>' : panel.items.length ? panel.items.map((it) => `<div class="it"><b>${esc(it.t)}</b><span>${esc(it.s)}</span></div>`).join('') : '<div class="it"><span>Nada por aqui ainda.</span></div>'}</div>` : '';
+  markCur();
+  const ready = A.world === 'ready', v = A.view;
+  let page;
+  if (A.world === 'loading') page = '<div class="x-load"><div class="spin" role="status" aria-label="Carregando"></div></div>';
+  else if (A.world === 'error') page = `<div class="x-load"><div class="hempty">${esc(A.werr)}</div><div class="hcta"><button type="button" class="mbtn" data-act="reload-world">Tentar de novo</button></div></div>`;
+  else if (v === 'server' && SERVERS.length) page = serverPageHTML();
+  else if (v === 'dm') page = dmPageHTML();
+  else if (v === 'official') page = officialPageHTML();
+  else if (v === 'shop') page = soonPage(D.grid, 'Loja', 'Estamos preparando a loja da Square. Por enquanto, nada para comprar.');
+  else if (v === 'quests') page = soonPage(D.quest, 'Missões', 'As missões e os Pontos chegam junto com a loja.');
+  else page = friendsPageHTML();
+  let fm = '';
+  if (A.pop && A.pop.k === 'fmenu') {
+    const p = findPerson(A.pop.id);
+    if (p) fm = `<div class="pop fm" role="menu" style="left:${A.pop.x}px;top:${A.pop.y}px"><button type="button" class="pi" data-act="profile" data-id="${p.id}"><span class="tx"><b>Ver perfil</b></span></button><button type="button" class="pi" data-act="dm-open" data-id="${p.id}"><span class="tx"><b>Enviar mensagem</b></span></button><button type="button" class="pi bad" data-act="fr-remove" data-id="${p.id}"><span class="tx"><b>Remover amigo</b></span></button><button type="button" class="pi bad" data-act="fr-block" data-id="${p.id}"><span class="tx"><b>Bloquear</b></span></button></div>`;
+  }
+  return `<div class="x">${titlebarHTML()}<div class="x-bd">${leftHTML()}<main class="x-main" aria-label="Conteúdo">${page}</main></div>${panelHTML}${fm}${!ready ? '' : ''}${modalHTML()}</div>`;
+}
+
+
+/* ---- ações da nova casca ---- */
+async function afSend() {
+  const f = A.af, u = f.user.trim().replace(/^@/, ''); if (!u || f.busy) return;
+  f.busy = true; render();
+  const w = A;
+  try {
+    const r = await rpc('send_friend_request', { p_username: u, p_note: f.note.trim() });
+    await loadWorld(() => {});
+    if (A !== w) return;
+    A.af = { user: '', note: '', busy: false }; render(); toast(FR_MSG[r] || 'Pronto');
+  } catch (e) { if (A === w) { f.busy = false; render(); toast(errText(e)); } }
+}
+function shellAct(act, el, ev) {
+  const go = (v) => { A.view = v; A.panel = null; render(); return true; };
+  switch (act) {
+    case 'soon': if (ev) ev.preventDefault(); toast(el.dataset.msg || 'Em breve'); return true;
+    case 'go-home': return go('friends');
+    case 'go-official': return go('official');
+    case 'go-shop': return go('shop');
+    case 'go-quests': return go('quests');
+    case 'add-tab': A.ftab = 'add'; go('friends'); setTimeout(() => { const f = document.getElementById('af-user'); if (f) f.focus(); }, 0); return true;
+    case 'ftab': A.ftab = el.dataset.k; go('friends'); if (A.ftab === 'add') setTimeout(() => { const f = document.getElementById('af-user'); if (f) f.focus(); }, 0); return true;
+    case 'open-plus': if (window.SQ_SET) window.SQ_SET.open('plus'); return true;
+    case 'open-boost': if (window.SQ_SET) window.SQ_SET.open('boost'); return true;
+    case 'open-settings': if (window.SQ_SET) window.SQ_SET.open(el.dataset.p || undefined); return true;
+    case 'srv-new': A.modal = { type: 'srvnew', step: 'start', tpl: '', kind: '', name: '', pub: false, err: '', busy: false }; render(); return true;
+    case 'srv-explore': A.modal = { type: 'srv', mode: 'explore', name: '', code: '', pub: false, list: null, err: '', busy: false }; render(); loadExplore(); return true;
+    case 'qs-open': A.modal = { type: 'qs', q: '' }; render(); setTimeout(() => { const f = document.getElementById('qs-in'); if (f) f.focus(); }, 0); return true;
+    case 'drawer': A.drawer = !A.drawer; render(); return true;
+    case 'csec': A.csec[el.dataset.k] = !A.csec[el.dataset.k]; render(); return true;
+    case 'srvmenu': A.pop = A.pop && A.pop.k === 'srv' ? null : { k: 'srv', sub: '' }; render(); return true;
+    case 'pop': { const k = el.dataset.k; A.pop = A.pop && A.pop.k === k ? null : { k, sub: '' }; if (A.pop && (k === 'mic' || k === 'head')) loadDevs(); render(); return true; }
+    case 'pop-sub': if (A.pop) { const x = el.dataset.sub; A.pop.sub = A.pop.sub === x ? '' : x; if (x === 'indev' || x === 'outdev') loadDevs(); render(); } return true;
+    case 'pop-dev': {
+      const k = el.dataset.k, id = el.dataset.id;
+      if (window.SQ_SET) window.SQ_SET.setP(k, id);
+      if (k === 'out_device' && VC) Object.keys(VC.peers).forEach((u) => { const a = VC.peers[u].audio; if (a && a.setSinkId) a.setSinkId(id === 'default' ? '' : id).catch(() => {}); });
+      if (A.pop) A.pop.sub = ''; render(); return true;
+    }
+    case 'status-set': setPresence(el.dataset.s, Number(el.dataset.ms) || 0); return true;
+    case 'fmenu': {
+      const r = el.getBoundingClientRect(), w = 200, h = 176;
+      const x = Math.max(8, Math.min(window.innerWidth - w - 8, r.right - w));
+      let y = r.bottom + 4; if (y + h > window.innerHeight) y = Math.max(8, r.top - h - 4);
+      A.pop = { k: 'fmenu', id: el.dataset.id, x, y }; render(); return true;
+    }
+    case 'af-send': afSend(); return true;
+    case 'mentions-open': A.panel = 'mentions'; loadMentions(); render(); return true;
+    case 'focus-msg': setTimeout(() => { const f = document.getElementById('msg'); if (f) f.focus(); }, 0); return true;
+    default: return false;
+  }
+}
+const POP_ACTS = ['pop', 'pop-sub', 'pop-dev', 'status-set', 'srvmenu', 'drawer'];
 function appAction(act, el, ev) {
+  if (A.pop && !POP_ACTS.includes(act)) A.pop = null;
+  if (A.drawer && !POP_ACTS.includes(act) && act !== 'mute' && act !== 'deaf') A.drawer = false;
+  if (shellAct(act, el, ev)) return;
   if (modalAct(act, el, ev)) return;
   const wasMenu = A.menu;
   const quiet = () => { if (wasMenu) { A.menu = false; const m = document.querySelector('.menu'); if (m) m.remove(); } };
@@ -2293,7 +2643,7 @@ function appAction(act, el, ev) {
     case 'emoji': A.draft += el.dataset.ch; A.emojiOpen = false; render(); { const m = document.getElementById('msg'); if (m) m.focus(); } return;
     case 'send': doSend(false); return;
     case 'hsend': doSend(true); return;
-    case 'hub': A.view = 'hub'; A.panel = null; break;
+    case 'hub': A.view = 'friends'; A.panel = null; break;
     case 'srv-open': { selectServer(el.dataset.id); render({ scroll: true }); return; }
     case 'friends-open': if (SERVERS.length) { A.view = 'server'; A.showMembers = true; A.panel = null; } break;
     case 'chat-open': { const s = serverOfChan(A.hubKey); if (!s && dmPeer(A.hubKey)) { A.channel = A.hubKey; A.view = 'dm'; A.panel = null; render({ scroll: true }); return; } if (s) { A.server = s.id; A.channel = A.hubKey; A.search = ''; A.view = 'server'; A.panel = null; render({ scroll: true }); } return; }
@@ -2310,7 +2660,7 @@ function appAction(act, el, ev) {
     case 'wd-opts': if (!planPaid()) return toast(ERRS.plan_widget); A.modal = { type: 'widget', err: '', busy: false }; render(); return;
     case 'wd-set': if (planPaid() && (el.dataset.k === 'featured' || STREAMS[el.dataset.k])) { store.set('sq.wd.' + myId(), el.dataset.k); A.modal = null; render(); } return;
     case 'feat-join': { const id = el.dataset.id; rpc('join_public_server', { p_server: id }).then(async () => { await loadWorld(() => {}); A.hubSrv = true; render(); toast('Você entrou no servidor'); }).catch((e) => toast(errText(e))); return; }
-    case 'toast-soon': toast('Isso chega em breve'); return;
+    case 'toast-soon': toast(el.dataset.msg || 'Isso chega em breve'); return;
     case 'attach': pickImage(el.dataset.hub === '1'); return;
     case 'toast-gift': toast('Presentes chegam em breve'); return;
     case 'toast-gif': toast('GIFs chegam em breve'); return;
@@ -2343,11 +2693,21 @@ function onBound(path, el) {
 
 $root.addEventListener('input', (e) => {
   const t = e.target;
+  if (t.dataset.pv) {
+    const v = Number(t.value); t.style.setProperty('--v', v + '%');
+    if (window.SQ_SET) window.SQ_SET.setP(t.dataset.pv, v);
+    if (VC) {
+      if (t.dataset.pv === 'in_vol' && VC.gain) VC.gain.gain.value = v / 100;
+      if (t.dataset.pv === 'out_vol') Object.keys(VC.peers).forEach((u) => { if (VC.peers[u].audio) VC.peers[u].audio.volume = v / 100; });
+    }
+    return;
+  }
   if (t.dataset.appBind) {
+    if (t.dataset.appBind.startsWith('af:')) { A.af[t.dataset.appBind.slice(3)] = t.value; const b = document.getElementById('af-send'); if (b) b.disabled = !A.af.user.trim() || A.af.busy; const c = document.getElementById('af-cnt'); if (c) c.textContent = String(120 - A.af.note.length); return; }
     if (t.dataset.appBind === 'sq') { A.sq = t.value; clearTimeout(sqTimer); sqTimer = setTimeout(() => { runSearch(); if (A.panel === 'search') render(); }, 350); return; }
     if (t.dataset.appBind === 'search') { A.search = t.value; const l = document.getElementById('mlist'); if (l) l.innerHTML = membersListHTML(); }
     else if (t.dataset.appBind === 'gq') { A.gq = t.value; A.search = t.value; refilter(); }
-    else if (t.dataset.appBind.startsWith('m:')) { if (A.modal) { A.modal[t.dataset.appBind.slice(2)] = t.value; if (A.modal.type === 'music' && t.dataset.appBind === 'm:q') { clearTimeout(musT); musT = setTimeout(musSearch, 450); } } }
+    else if (t.dataset.appBind.startsWith('m:')) { if (A.modal) { A.modal[t.dataset.appBind.slice(2)] = t.value; if (A.modal.type === 'music' && t.dataset.appBind === 'm:q') { clearTimeout(musT); musT = setTimeout(musSearch, 450); } if (A.modal.type === 'qs') { const r = document.getElementById('qsres'); if (r) r.innerHTML = qsResHTML(A.modal.q); } } }
     else if (t.dataset.appBind === 'hdraft') { A.hdraft = t.value; const b = document.getElementById('hsend'); if (b) b.hidden = !A.hdraft.trim(); if (t.value) sendTyping(); }
     else { A.draft = t.value; const b = document.getElementById('send-btn'); if (b) b.hidden = !A.draft.trim(); if (t.value) sendTyping(); }
     return;
@@ -2373,11 +2733,13 @@ $root.addEventListener('change', (e) => {
 $root.addEventListener('keydown', (e) => {
   if (e.target.id === 'msg' && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend(false); }
   if (e.target.id === 'hmsg' && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend(true); }
+  if (e.target.id === 'af-user' && e.key === 'Enter') { e.preventDefault(); afSend(); }
+  if (e.target.id === 'qs-in' && e.key === 'Enter') { e.preventDefault(); const b = document.querySelector('#qsres .qr'); if (b) b.click(); }
   if (e.target.matches && e.target.matches('.modal input[data-mf]') && e.key === 'Enter') { e.preventDefault(); modalSubmit(); }
 });
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && S.view === 'app' && A.modal) { closeModal(); return; }
-  if (e.key === 'Escape' && S.view === 'app' && (A.menu || A.panel || A.emojiOpen)) { A.menu = false; A.panel = null; A.emojiOpen = false; render(); }
+  if (e.key === 'Escape' && S.view === 'app' && (A.menu || A.panel || A.emojiOpen || A.pop || A.drawer)) { A.menu = false; A.panel = null; A.emojiOpen = false; A.pop = null; A.drawer = false; render(); }
 });
 $root.addEventListener('submit', (e) => {
   e.preventDefault();
@@ -2388,7 +2750,7 @@ $root.addEventListener('click', (e) => {
   const el = e.target.closest('[data-act]');
   if (S.view === 'app') {
     if (el) { appAction(el.dataset.act, el, e); return; }
-    if (A.menu || A.emojiOpen) { A.menu = false; A.emojiOpen = false; render(); }
+    if (A.menu || A.emojiOpen || (A.pop && !e.target.closest('.pop'))) { A.menu = false; A.emojiOpen = false; if (!e.target.closest('.pop')) A.pop = null; render(); }
     return;
   }
   if (!el) return;
