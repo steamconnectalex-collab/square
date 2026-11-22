@@ -152,8 +152,6 @@ button.sback:hover,.sclose:hover{background:rgba(29,29,34,.08)}
 .srange input[type=range]::-moz-range-progress{height:6px;border-radius:999px;background:var(--accent)}
 .srange input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;margin-top:-6px;border-radius:50%;background:#fff;border:2px solid var(--accent);box-shadow:0 1px 4px rgba(29,29,34,.3)}
 .srange input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#fff;border:2px solid var(--accent)}
-.srange.vad input[type=range]::-webkit-slider-runnable-track{background:linear-gradient(90deg,#E8A33D 0,#E8A33D var(--pc,0%),#2DA770 var(--pc,0%),#2DA770 100%)}
-.srange.vad input[type=range]::-moz-range-track{background:linear-gradient(90deg,#E8A33D 0,#2DA770 100%)}
 .sticks{display:flex;justify-content:space-between;margin-top:2px;font-size:11px;color:var(--muted)}
 .sout{display:block;margin-top:2px;font-size:12.5px;color:var(--muted);text-align:right}
 .sout:empty{display:none}
@@ -221,14 +219,6 @@ button.sback:hover,.sclose:hover{background:rgba(29,29,34,.08)}
 .sperk b{font-size:15px}
 .sperk small{color:var(--muted);font-size:12.5px;line-height:1.4}
 .sperk-art{width:100%;height:92px;border-radius:12px;margin-bottom:8px;background:linear-gradient(135deg,#D6C8F0,#F9D0DA 60%,#C4E4EE)}
-.sperk-art.a-vid{background:linear-gradient(135deg,#C4E4EE,#D6C8F0)}
-.sperk-art.a-up{background:linear-gradient(135deg,#F9D0DA,#FBE6C4)}
-.sperk-art.a-ico{background:linear-gradient(135deg,#C9F0DC,#C4E4EE)}
-.sperk-art.a-snd{background:linear-gradient(135deg,#FBE6C4,#F9D0DA)}
-.sperk-art.a-bg{background:linear-gradient(135deg,#D6C8F0,#C4E4EE)}
-.sperk-art.a-rx{background:linear-gradient(135deg,#F9D0DA,#D6C8F0)}
-.sperk-art.a-st{background:linear-gradient(135deg,#C9F0DC,#FBE6C4)}
-.sperk-art.a-bd{background:linear-gradient(135deg,#E6D6F4,#C4E4EE)}
 .scmp{border-radius:18px;border:1px solid rgba(29,29,34,.1);overflow:hidden}
 .scmp-h,.scmp-r{display:grid;grid-template-columns:minmax(0,1.5fr) 1fr 1fr;align-items:center;gap:8px;padding:14px 16px}
 .scmp-h{padding:20px 16px;background:rgba(29,29,34,.04);font-size:14.5px}
@@ -277,9 +267,8 @@ html.pf-compact .msgs{gap:calc(var(--msgap) / 2 + 2px)}
 html:not(.pf-compact) .msgs{gap:calc(var(--msgap) + 0px)}
 html.pf-noav .msgs .av40{display:none}
 html.pf-noatt .msgs .att{display:none}
-html.pf-hide-inv .invcode,html.pf-hide-inv [data-secret="invite"]{filter:blur(7px)}
+html.pf-hide-inv [data-secret="invite"]{filter:blur(7px)}
 html.pf-hide-personal .semail{filter:blur(6px)}
-html.pf-streamer .ubar .pic{outline:2px solid #D92D45;outline-offset:1px}
 
 /* ---- celular: lista de páginas e página, uma de cada vez ---- */
 @media (max-width:760px){

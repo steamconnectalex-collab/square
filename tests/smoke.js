@@ -258,9 +258,9 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await page.screenshot({ path: OUT + '/2-app.png' });
   // páginas Loja / Missões / Square oficial
   await page.click('.cn:has-text("Loja")');
-  ok('Loja abre uma página "em breve"', /Loja: em breve/.test(await page.textContent('.x-pm')));
-  await page.click('.cn:has-text("Missões")');
-  ok('Missões abre uma página "em breve"', /Missões: em breve/.test(await page.textContent('.x-pm')));
+  await page.waitForSelector('.lj-h');
+  const lh = await page.textContent('.lj-h');
+  ok('Loja abre com abas Destaques, Navegar, Loja de Pontos e Lojas do jogo', ['Destaques', 'Navegar', 'Loja de Pontos', 'Lojas do jogo'].every((t) => lh.includes(t)));
   await page.click('[data-act="go-official"]');
   ok('mensagem oficial da Square abre e não aceita resposta', /Bem-vindo/.test(await page.textContent('.x-chat')) && (await page.locator('.x-chat .cbar input[disabled]').count()) === 1);
   await page.click('.cn:has-text("Amigos")');
@@ -405,15 +405,96 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await page.click('.ub-me');
   await page.waitForSelector('.upop');
   await page.click('.upop .pgrp [data-act="edit-profile"]');
+  await page.waitForSelector('#perfroot .pwin');
   const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
-  await page.setInputFiles('#mf-avatar', { name: 'foto.png', mimeType: 'image/png', buffer: png });
-  await page.waitForFunction(() => { const e = document.querySelector('.ub-me .xav'); return !!e && /avatars/.test(e.getAttribute('style') || ''); }, null, { timeout: 5000 });
+  await page.waitForTimeout(150);
+  ok('editor de perfil abre com os blocos das fotos', /Placa de identificação/.test(await page.textContent('#perfroot')) && /Avatar e decorações/.test(await page.textContent('#perfroot')) && /Cor da faixa/.test(await page.textContent('#perfroot')) && /Efeitos de perfil e molduras/.test(await page.textContent('#perfroot')) && /Mural/.test(await page.textContent('#perfroot')) && /Membro desde/.test(await page.textContent('#perfroot')));
+  ok('sem alterações não aparece a barra de salvar', (await page.locator('#perfroot .pf-save').count()) === 0);
+  await page.screenshot({ path: OUT + '/3a-perfil.png' });
+  // janelas de decoração, efeito, moldura e placa
+  for (const [k, titulo] of [['decor', 'Mudar decoração de avatar'], ['effect', 'Alterar o efeito de perfil'], ['frame', 'Alterar moldura de perfil'], ['plate', 'Alterar placa de identificação']]) {
+    await page.click(`#perfroot [data-pf="${k}"]`);
+    await page.waitForSelector('#perfroot .pm.wide');
+    ok('janela "' + titulo + '"', (await page.textContent('#perfroot .pm.wide')).includes(titulo));
+    if (process.env.DBG) await page.screenshot({ path: OUT + '/dbg-' + k + '.png' });
+    await page.click('#perfroot .mgrid.sc .mit >> nth=1');
+    ok('item da Loja aparece bloqueado com "Ir para a Loja" (' + k + ')', /Acesse a Loja para comprar/.test(await page.textContent('#perfroot .pm')) && /Ir para a Loja/.test(await page.textContent('#perfroot .pm')));
+    if (k === 'decor') await page.screenshot({ path: OUT + '/3b-decoracao.png' });
+    if (k === 'frame') await page.screenshot({ path: OUT + '/3c-moldura.png' });
+    await page.click('#perfroot .pmf [data-pf="mclose"] >> nth=0');
+  }
+  // cor da faixa
+  await page.click('#perfroot [data-pf="picker"]');
+  await page.fill('#phexi', '78BE9D');
+  await page.waitForTimeout(300);
+  ok('seletor de cor muda a faixa do cartão', (await page.evaluate(() => getComputedStyle(document.querySelector('#perfroot .pbn')).backgroundColor)) === 'rgb(120, 190, 157)');
+  await page.screenshot({ path: OUT + '/3d-cor.png' });
+  // widgets (guardados no navegador)
+  await page.click('#perfroot .pf-lh');
+  await page.click('#perfroot [data-pf="widget"][data-k="w1"]');
+  await page.fill('#pf-wg', 'Meu jogo de corrida');
+  await page.click('#perfroot [data-pf="wgsave"]');
+  ok('widget do mural guarda o texto', /Meu jogo de corrida/.test(await page.textContent('#perfroot .pwg')));
+  await page.click('#perfroot [data-pf="tab"][data-k="act"]');
+  ok('aba Atividade mostra a explicação', /nenhuma atividade/.test(await page.textContent('#perfroot')));
+  await page.click('#perfroot [data-pf="tab"][data-k="wish"]');
+  ok('aba Lista de desejos vazia leva à Loja', /lista de desejos está vazia/.test(await page.textContent('#perfroot')));
+  await page.click('#perfroot [data-pf="tab"][data-k="mural"]');
+  // foto: enviar -> recortar -> aplicar -> salvar
+  await page.click('#perfroot [data-pf="img"]');
+  await page.waitForSelector('#perfroot .pimg');
+  await page.screenshot({ path: OUT + '/3e-imagem.png' });
+  await page.setInputFiles('#pf-file', { name: 'foto.png', mimeType: 'image/png', buffer: png });
+  await page.waitForSelector('#pf-cv');
+  ok('recorte abre com zoom e girar', (await page.locator('#pf-zoom').count()) === 1 && (await page.locator('[data-pf="rot"]').count()) === 1);
+  await page.screenshot({ path: OUT + '/3f-recorte.png' });
+  await page.click('#perfroot [data-pf="capply"]');
+  await page.waitForSelector('#perfroot .pf-save');
+  ok('depois de aplicar aparece "alterações não salvas"', /não salvas/.test(await page.textContent('#perfroot .pf-save')));
+  await page.fill('#pf-bio', 'Minha bio de teste');
+  await page.fill('#pf-status', 'Programando');
+  await page.click('#perfroot [data-pf="save"]');
+  await page.waitForFunction(() => { const e = document.querySelector('.ub-me .xav'); return !!e && /avatars/.test(e.getAttribute('style') || ''); }, null, { timeout: 6000 });
   ok('foto enviada ao Storage na pasta da pessoa e salva no perfil', storageCalls.some((c) => c[0] === 'POST' && /\/avatars\/u1\/\d+\.jpg$/.test(c[1])) && /^u1\/\d+\.jpg$/.test(world.profiles[0].avatar_path || ''));
-  ok('avatar novo aparece na barra do usuário', true);
-  await page.fill('#mf-bio', 'Minha bio de teste');
-  await page.click('[data-act="modal-submit"]');
-  await page.waitForFunction(() => !document.querySelector('.modal'));
-  ok('editar perfil grava a bio no banco', world.profiles[0].bio === 'Minha bio de teste');
+  ok('salvar grava bio, status e cor no banco', world.profiles[0].bio === 'Minha bio de teste' && world.profiles[0].status_text === 'Programando' && world.profiles[0].accent.toLowerCase() === '#78be9d');
+  await page.click('#perfroot [data-pf="close"]');
+  ok('fechar o editor', (await page.locator('#perfroot .pwin').count()) === 0);
+  // loja, missões e Square Plus
+  await page.click('.x-rail .rt.home');
+  await page.click('.cn:has-text("Loja")');
+  await page.waitForSelector('#lj .jhero');
+  ok('Loja abre em Destaques com faixa e carrossel', (await page.locator('#lj .jtrack .jt').count()) >= 4 && /Encontre seu estilo/.test(await page.textContent('#lj')));
+  await page.screenshot({ path: OUT + '/4a-loja.png' });
+  await page.click('.lj-h [data-lj="dd"][data-k="browse"]');
+  await page.click('.jmenu [data-lj="browse"][data-type="frame"]');
+  await page.waitForSelector('#lj .jside');
+  ok('Navegar filtra por tipo (molduras)', (await page.locator('#lj .jt').count()) > 0 && /Tipo de item/.test(await page.textContent('#lj')));
+  await page.screenshot({ path: OUT + '/4b-navegar.png' });
+  await page.click('#lj [data-lj="page"][data-n="2"] >> nth=0').catch(() => {});
+  await page.click('.lj-h [data-lj="tab"][data-k="points"]');
+  await page.waitForSelector('#lj .jpt-hero');
+  ok('Loja de Pontos mostra itens exclusivos', (await page.locator('#lj .jx').count()) >= 8);
+  await page.screenshot({ path: OUT + '/4c-pontos.png' });
+  await page.fill('#lj-q', 'lua');
+  await page.waitForSelector('#lj-body .jt');
+  ok('busca da loja filtra itens', (await page.locator('#lj-body .jt').count()) > 0 && /Resultados/.test(await page.textContent('#lj-body')));
+  await page.fill('#lj-q', '');
+  await page.click('.lj-h [data-lj="tab"][data-k="feat"]');
+  await page.click('#lj .jt >> nth=0');
+  await page.waitForSelector('.jmod');
+  await page.click('.jmod [data-lj="wish"]');
+  await page.click('.jmod [data-lj="closeitem"].jx2');
+  ok('item abre em janela e entra na lista de desejos', (await page.evaluate(() => (JSON.parse(localStorage.getItem('sq.wish.u1') || '[]')).length)) === 1);
+  await page.click('.cn:has-text("Missões")');
+  await page.waitForSelector('#lj .jqg');
+  ok('Missões lista os cartões', (await page.locator('#lj .jq').count()) >= 12);
+  await page.screenshot({ path: OUT + '/4d-missoes.png' });
+  await page.click('.cn:has-text("Square Plus")');
+  await page.waitForSelector('#lj .jp-hero');
+  ok('Square Plus mostra planos e comparação', /ESCOLHA SEU PLANO/.test(await page.textContent('#lj')) && (await page.locator('#lj .jtr').count()) > 10);
+  await page.screenshot({ path: OUT + '/4e-plus.png', fullPage: false });
+  await page.click('.x-rail .rt[data-act="srv-open"] >> nth=0');
+  await page.waitForSelector('#msg');
   // etapa 6: menção, imagem, busca, menções recebidas
   const c1 = world.channels[0].id;
   await page.fill('#msg', 'oi @tester tudo bem por aí?');
