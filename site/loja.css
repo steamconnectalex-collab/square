@@ -239,6 +239,9 @@
 
 /* celular */
 @media (max-width:900px){
+  .lj-h{flex-wrap:nowrap}
+  .lj-h>*{flex:none}
+  .jmenu{position:fixed;left:12px;top:calc(env(safe-area-inset-top,0px) + 96px);z-index:60;min-width:min(260px,calc(100vw - 24px))}
   .jg{grid-template-columns:repeat(2,minmax(0,1fr))}
   .jtrack .jt{flex-basis:44%}
   .jwrap{flex-direction:column-reverse}
@@ -248,9 +251,9 @@
 }
 @media (max-width:640px){
   .lj{padding:14px 14px 40px}
-  .lj-h{flex-wrap:wrap;padding:6px 10px;row-gap:4px}
   .lj-h .tsp{display:none}
-  .jsearch{width:100%;order:9}
+  .jsearch{width:150px;flex:none}
+  .jp-hero .jgem{display:none}
   .jpair,.jp-two,.jqg{grid-template-columns:1fr}
   .jhero{flex-direction:column;align-items:flex-start;padding:22px 20px}
   .jht b{font-size:26px}

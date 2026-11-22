@@ -493,7 +493,38 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await page.waitForSelector('#lj .jp-hero');
   ok('Square Plus mostra planos e comparação', /ESCOLHA SEU PLANO/.test(await page.textContent('#lj')) && (await page.locator('#lj .jtr').count()) > 10);
   await page.screenshot({ path: OUT + '/4e-plus.png', fullPage: false });
+  // celular: nenhuma tela pode ter rolagem horizontal
+  for (const [w, h] of [[360, 740], [768, 1024]]) {
+    await page.setViewportSize({ width: w, height: h });
+    const wide = async (nome) => {
+      await page.waitForTimeout(120);
+      const o = await page.evaluate(() => { const d = document.documentElement; const bad = []; document.querySelectorAll('body *').forEach((e) => { const r = e.getBoundingClientRect(); if (r.width && r.right > window.innerWidth + 1) { let p = e.parentElement, clipped = false; while (p && p !== document.body) { p = p.parentElement; } if (bad.length < 8) bad.push((e.className || e.tagName) + ':' + Math.round(r.right)); } }); return [d.scrollWidth - window.innerWidth, bad.join(' | ')]; });
+      await page.screenshot({ path: OUT + `/m${w}-${nome}.png` });
+      ok(`${w}px: sem rolagem horizontal em ${nome}`, o[0] <= 0, String(o[0]));
+    };
+    const go = (t) => page.evaluate((t) => { const e = t ? [...document.querySelectorAll('.cn')].find((x) => x.textContent.includes(t)) : document.querySelector('.x-rail .rt.home'); if (e) e.click(); }, t);
+    await go(''); await wide('Início');
+    await go('Loja'); await wide('Loja');
+    await go('Missões'); await wide('Missões');
+    await go('Square Plus'); await wide('Plus');
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.click('.x-rail .rt[data-act="srv-open"] >> nth=0');
+  await page.waitForSelector('#msg');
+  for (const [w, h] of [[360, 740], [768, 1024]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.waitForTimeout(250);
+    await page.screenshot({ path: OUT + `/m${w}-chat.png` });
+    await page.evaluate(() => window.SQ_PERFIL.open());
+    await page.waitForTimeout(250);
+    await page.screenshot({ path: OUT + `/m${w}-perfil.png` });
+    await page.evaluate(() => window.SQ_PERFIL.close());
+    await page.evaluate(() => window.SQ_SET.open && window.SQ_SET.open());
+    await page.waitForTimeout(250);
+    await page.screenshot({ path: OUT + `/m${w}-config.png` });
+    await page.keyboard.press('Escape');
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.waitForSelector('#msg');
   // etapa 6: menção, imagem, busca, menções recebidas
   const c1 = world.channels[0].id;

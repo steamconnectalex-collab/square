@@ -322,7 +322,10 @@
 @media (max-width:980px){
   .x-act{display:none}
 }
-@media (max-width:760px){
+@media (max-width:1100px){
+  .x-mem{position:absolute;z-index:6;right:0;top:0;bottom:0;background:rgba(255,255,255,.97);box-shadow:-12px 0 40px rgba(40,40,70,.18)}
+}
+@media (max-width:900px){
   .x-burger{display:flex}
   .x-tt{max-width:56%}
   .x-left{position:fixed;z-index:50;left:0;top:0;bottom:0;width:min(90vw,360px);background:#F1F1F6;transform:translateX(-105%);transition:transform .22s ease;box-shadow:none}
@@ -335,7 +338,6 @@
   .xsearch{display:none}
   .fpt,.fpt+.dotsep{display:none}
   .x-pm{padding:12px 14px 0}
-  .x-mem{position:absolute;z-index:6;right:0;top:0;bottom:0;background:rgba(255,255,255,.97);box-shadow:-12px 0 40px rgba(40,40,70,.18)}
   .x-chat .msgs{padding:12px 12px 6px}
   .x-chat .comp{margin:6px 10px 12px}
   .afh .mascot{width:72px}

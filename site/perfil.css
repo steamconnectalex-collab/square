@@ -189,6 +189,8 @@ body.perfil-open{overflow:hidden}
 .pzoom input{flex:0 1 220px;accent-color:#5B5BD6}
 
 @media (max-width:900px){
+  .pf-col{display:none}
+  .pf-lh{padding-right:64px}
   .pcols{display:block;overflow-y:auto}
   .pwin.col .pcols{display:block}
   .pf-left,.pf-ls,.pf-mid,.pf-right{overflow:visible;min-height:0}
