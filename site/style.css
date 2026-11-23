@@ -313,3 +313,16 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 /* ---- tema escuro: inverte a página e desfaz a inversão em fotos, avatares, capas e artes da Loja ---- */
 html[data-theme=dark]{background:#F4F4F8;color-scheme:dark}
 html[data-theme=dark] img,html[data-theme=dark] video,html[data-theme=dark] canvas,html[data-theme=dark] iframe,html[data-theme=dark] [style*="background"],html[data-theme=dark] .ja,html[data-theme=dark] .jgem,html[data-theme=dark] .qr svg{filter:invert(1) hue-rotate(180deg)}
+
+/* ---- configurações do chat: links, spoilers, GIFs, entrada simples, favoritos ---- */
+.lk{color:#4B3F7A;text-decoration:underline;word-break:break-all}
+.lkchip{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;background:rgba(29,29,34,.07);font-size:12px;color:#55555F;vertical-align:middle}
+.spoiler{font:inherit;color:transparent;background:#33333A;border:0;border-radius:5px;padding:0 4px;cursor:pointer;user-select:none}
+.spoiler.open{color:inherit;background:rgba(29,29,34,.1);user-select:auto;cursor:text}
+.attshow{display:inline-block;margin-top:6px}
+.altd{display:block;margin-top:4px;color:#55555F}
+.att.gifstill{position:relative;display:inline-block}.att canvas{max-width:100%;max-height:320px;border-radius:12px;display:block}
+.gifbadge{position:absolute;left:8px;bottom:8px;background:rgba(29,29,34,.72);color:#fff;font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px}
+.cbar.plain .ib{display:none}
+.rt.fav{box-shadow:0 0 0 2px #E8A33D}
+.pf-noemoanim .emoji button,.pf-noemoanim .hov{transition:none!important;animation:none!important}

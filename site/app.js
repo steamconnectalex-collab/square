@@ -50,7 +50,7 @@ function toast(text) {
   const el = document.getElementById('toast');
   el.innerHTML = `<div class="toast" role="status">${esc(text)}</div>`;
   clearTimeout(toast.t);
-  toast.t = setTimeout(() => { el.innerHTML = ''; }, 2400);
+  toast.t = setTimeout(() => { el.innerHTML = ''; }, Math.max(2400, (window.SQ_SET ? Number(window.SQ_SET.P('notif_ms')) || 3 : 3) * 1000));
 }
 
 /* --------------------------------------------------------------- icons */
@@ -699,6 +699,7 @@ async function sb(path, o = {}) {
 const rpc = (name, args) => sb('/rest/v1/rpc/' + name, { method: 'POST', body: args || {} });
 /* ponte para as Configurações (settings.js) */
 window.SQ_API = {
+  syncSend: () => { if (typeof syncSend === 'function') syncSend(); },
   voiceApply: () => { if (typeof voiceApply === 'function') voiceApply(); },
   rpc, sb, toast, displayName, logout: () => logout(),
   me: () => (A && A.me) || null,
@@ -765,8 +766,22 @@ function msgBody(m) {
   if (isSpam(m)) return `<span class="spamn">Mensagem filtrada como possível spam. <button type="button" class="lnk" data-act="spam-show" data-id="${esc(String(m.id))}">Mostrar mesmo assim</button></span>`;
   const me = A && A.me && A.me.user ? A.me.user.toLowerCase() : '';
   let t = m.img && m.text === '📷 Imagem' ? '' : esc(m.text);
+  const SPV2 = (k) => (window.SQ_SET ? window.SQ_SET.P(k) : undefined);
+  // links clicáveis (só http/https) e, se ligado, um selo com o endereço do site
+  t = t.replace(/(https?:\/\/[^\s<]+)/g, (u) => { let host = ''; try { host = new URL(u.replace(/&amp;/g, '&')).hostname.replace(/^www\./, ''); } catch (e) { return u; } return `<a class="lk" href="${u}" target="_blank" rel="noopener noreferrer nofollow">${u}</a>${SPV2('msg_links') !== false && SPV2('msg_attach') !== false ? `<span class="lkchip" title="${esc(host)}">🔗 ${esc(host)}</span>` : ''}`; });
+  // spoiler: ||texto|| — mostra ao clicar, ou sempre (ou se você é dono do servidor, no modo "Em servidores que modero")
+  const spMode = SPV2('spoilers'), srvNow = curServer(), iMod = !!(srvNow && srvNow.owner === myId()) && spMode === 'mod';
+  t = t.replace(/\|\|([^|]{1,500}?)\|\|/g, (x, a) => (spMode === 'always' || iMod ? `<span class="spoiler open">${a}</span>` : `<button type="button" class="spoiler" data-act="spoiler" aria-label="Spoiler: clique para mostrar">${a}</button>`));
   t = t.replace(/(^|[\s(])@([a-zA-Z0-9_]{2,30})/g, (x, a, u) => a + '<span class="mention' + (u.toLowerCase() === me ? ' me' : '') + '">@' + u + '</span>');
-  const img = m.img ? `<a class="att" href="${esc(attUrl(m.img))}" target="_blank" rel="noopener"><img src="${esc(attUrl(m.img))}" alt="Imagem enviada" loading="lazy"></a>` : '';
+  let img = '';
+  if (m.img) {
+    const u = attUrl(m.img), alt = SPV2('img_desc') && m.alt ? m.alt : 'Imagem enviada';
+    const gif = /\.gif(\?|$)/i.test(m.img), still = gif && SPV2('play_gifs') === false;
+    img = SPV2('msg_upload') === false
+      ? `<button type="button" class="lnk attshow" data-act="att-show" data-src="${esc(u)}" data-alt="${esc(alt)}">Mostrar imagem</button>`
+      : `<a class="att${still ? ' gifstill' : ''}" href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="${esc(alt)}" loading="lazy"${still ? ' data-still="1"' : ''}>${still ? '<span class="gifbadge">GIF</span>' : ''}</a>`;
+    if (SPV2('img_desc') && m.alt) img += `<small class="altd">${esc(m.alt)}</small>`;
+  }
   return t + img;
 }
 const msgTime = (iso) => {
@@ -816,6 +831,9 @@ function startLive() {
 function stopAppTimers() { voiceLeave(true); if (A) { clearInterval(A.poll); clearInterval(A.beat); clearInterval(A.tt); A.poll = A.beat = A.tt = null; } rtStop(false); }
 
 const srvIni = (n) => { const w = String(n || '').trim().split(/\s+/).filter(Boolean); return (w.length ? w.map((x) => Array.from(x)[0]).slice(0, 3).join('') : '?'); };
+const favList = () => { try { return JSON.parse(localStorage.getItem('sq.favsrv.' + myId()) || '[]') || []; } catch (e) { return []; } };
+const favSrv = (id) => favList().includes(id);
+const railServers = () => (SPV('fav_servers', false) ? SERVERS.slice().sort((a, b) => Number(favSrv(b.id)) - Number(favSrv(a.id))) : SERVERS);
 const curServer = () => SERVERS.find((s) => s.id === A.server) || SERVERS[0] || null;
 const serverOfChan = (cid) => SERVERS.find((s) => s.text.some((c) => c.id === cid)) || null;
 const curKey = () => ((A.view === 'dm' || A.view === 'server') ? (A.channel || '') : '');
@@ -929,10 +947,18 @@ async function ensureThread(key) {
   finally { if (A === w) w.loading[key] = 0; }
   if (A === w && S.view === 'app' && curKey() === key) { const had = A.unread[key]; paintMsgs(true); markCur(); if (had && !A.unread[key]) render(); }
 }
+/* "Reproduzir GIFs" desligado: mostra só o primeiro quadro (o clique abre o GIF) */
+function freezeGifs(root) {
+  root.querySelectorAll('img[data-still]').forEach((im) => {
+    const go = () => { try { const c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight; c.getContext('2d').drawImage(im, 0, 0); c.className = im.className; c.setAttribute('role', 'img'); c.setAttribute('aria-label', im.alt || 'GIF'); im.replaceWith(c); } catch (e) { /* mantém animado */ } };
+    if (im.complete && im.naturalWidth) go(); else im.addEventListener('load', go, { once: true });
+  });
+}
 function paintMsgs(stick) {
   const el = document.getElementById('msgs'); if (!el) return;
   const near = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
   el.innerHTML = serverMsgsHTML();
+  freezeGifs(el);
   if (stick === true || (stick !== 'keep' && near)) el.scrollTop = el.scrollHeight;
 }
 async function pollTick(force) {
@@ -1040,8 +1066,21 @@ function voiceApply() {
   VC.stream.getAudioTracks().forEach((t) => { t.enabled = !off && (!ptt || !!A.pttDown); });
   Object.keys(VC.peers).forEach((u) => { if (VC.peers[u].audio) VC.peers[u].audio.muted = !!A.deafened; });
 }
+/* sensibilidade do microfone: só transmite quando o volume passa do limite (Personalizado = controle seu; Isolamento = limite fixo; Estúdio = sempre aberto) */
+let VCG = null;
+function vadTick() {
+  if (!VCG || !VC) return;
+  const prof = SPV('input_profile', 'custom'); let thr = 0;
+  if (prof === 'custom') thr = 0.003 + ((100 - Number(SPV('sens', 40))) / 100) * 0.07; else if (prof === 'isolation') thr = 0.02;
+  VCG.an.getByteTimeDomainData(VCG.buf);
+  let sum = 0; for (let i = 0; i < VCG.buf.length; i++) { const v = (VCG.buf[i] - 128) / 128; sum += v * v; }
+  const rms = Math.sqrt(sum / VCG.buf.length), now = Date.now(), hold = SPV('adv_vad', true) ? 700 : 250;
+  if (!thr || rms >= thr) VCG.hold = now + hold;
+  VCG.gate.gain.value = now <= VCG.hold ? 1 : 0;
+}
 async function voiceJoin(ch) {
   if (VC && VC.ch === ch) return;
+  if (VC && SPV('warn_switch', true) && !window.confirm('Você já está em um canal de voz. Sair dele e entrar neste?')) return;
   if (VC) voiceLeave(true);
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof RTCPeerConnection === 'undefined') return toast('Este navegador não permite chamadas de voz.');
   let stream;
@@ -1055,11 +1094,12 @@ async function voiceJoin(ch) {
   try {
     const AC = window.AudioContext || window.webkitAudioContext; ctx = new AC(); if (ctx.resume) ctx.resume().catch(() => {});
     const src = ctx.createMediaStreamSource(raw); gain = ctx.createGain(); gain.gain.value = SPV('in_vol', 100) / 100;
-    const dest = ctx.createMediaStreamDestination(); src.connect(gain); gain.connect(dest); stream = dest.stream;
+    const dest = ctx.createMediaStreamDestination(), gate = ctx.createGain(), an = ctx.createAnalyser(); an.fftSize = 512;
+    src.connect(gain); gain.connect(gate); gate.connect(dest); gain.connect(an); stream = dest.stream; VCG = { gate, an, buf: new Uint8Array(an.fftSize), hold: 0 };
   } catch (e) { try { if (ctx) ctx.close(); } catch (e2) { /* ok */ } ctx = null; gain = null; stream = raw; }
-  VC = { ch, stream, raw, ctx, gain, peers: {}, ping: setInterval(() => { rpc('voice_ping', { p_channel: ch }).catch(() => {}); }, 15000) };
+  VC = { ch, stream, raw, ctx, gain, vad: VCG ? setInterval(vadTick, 80) : 0, peers: {}, ping: setInterval(() => { rpc('voice_ping', { p_channel: ch }).catch(() => {}); }, 15000) };
   voiceApply();
-  if (window.SQ_SET) { window.SQ_SET.fx('join'); window.SQ_SET.entrySound(); }
+  if (window.SQ_SET) { window.SQ_SET.fx('join'); window.SQ_SET.entrySound((SERVERS.find((x) => (x.voice || []).some((c) => c.id === ch)) || {}).id); }
   A.voice = ch;
   const t = await freshToken().catch(() => null);
   if (t) voiceRtJoin(t);
@@ -1125,7 +1165,7 @@ function voiceLeave(quiet) {
   if (window.SQ_SET && !quiet) window.SQ_SET.fx('leave');
   const v = VC; vsend('bye', {});
   VC = null;
-  clearInterval(v.ping);
+  clearInterval(v.ping); clearInterval(v.vad); VCG = null;
   Object.keys(v.peers).forEach((u) => { const p = v.peers[u]; try { p.pc.close(); } catch (e) { /* já fechado */ } if (p.audio) { p.audio.srcObject = null; p.audio.remove(); } });
   v.stream.getTracks().forEach((t) => t.stop());
   if (v.raw && v.raw !== v.stream) v.raw.getTracks().forEach((t) => t.stop());
@@ -1190,7 +1230,7 @@ async function sendTo(key, text, img) {
   if (th && !th.some((x) => x.id === m.id)) th.push(m);
 }
 function syncSend() {
-  const b = document.getElementById('send-btn'); if (b) b.hidden = !A.draft.trim();
+  const b = document.getElementById('send-btn'); if (b) b.hidden = !A.draft.trim() && !SPV('send_btn', false);
 }
 async function shrinkMax(file, max) {
   const bmp = await createImageBitmap(file);
@@ -1200,21 +1240,23 @@ async function shrinkMax(file, max) {
   return new Promise((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error('img'))), 'image/jpeg', 0.82));
 }
 function pickImage() {
-  const f = document.createElement('input'); f.type = 'file'; f.accept = 'image/jpeg,image/png,image/webp';
+  const f = document.createElement('input'); f.type = 'file'; f.accept = 'image/jpeg,image/png,image/webp,image/gif';
   f.addEventListener('change', () => { if (f.files && f.files[0]) sendImage(f.files[0]); });
   f.click();
 }
 async function sendImage(file) {
   const key = A.channel;
   if (!key || A.sending) return;
-  if (!/^image\/(jpeg|png|webp)$/.test(file.type)) return toast('Use uma imagem JPG, PNG ou WebP.');
+  if (!/^image\/(jpeg|png|webp|gif)$/.test(file.type)) return toast('Use uma imagem JPG, PNG, WebP ou GIF.');
+  if (file.type === 'image/gif' && file.size > 3 * 1024 * 1024) return toast('O GIF é muito grande (máximo 3 MB).');
   if (file.size > 15 * 1024 * 1024) return toast('A imagem é muito grande (máximo 15 MB).');
   A.sending = true; toast('Enviando imagem…');
   const caption = A.draft.trim();
   try {
-    const blob = await shrinkMax(file, 1280);
-    const path = myId() + '/' + (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '' + Math.random().toString(16).slice(2)) + '.jpg';
-    await storageCall('POST', path, blob, 'image/jpeg', 'attachments');
+    const isGif = file.type === 'image/gif';
+    const blob = isGif ? file : await shrinkMax(file, 1280);
+    const path = myId() + '/' + (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '' + Math.random().toString(16).slice(2)) + (isGif ? '.gif' : '.jpg');
+    await storageCall('POST', path, blob, isGif ? 'image/gif' : 'image/jpeg', 'attachments');
     await sendTo(key, caption || '📷 Imagem', path);
     if (caption) { A.draft = ''; const i = document.getElementById('msg'); if (i) i.value = ''; syncSend(); }
   } catch (e) { toast(e && e.message === 'upload_failed' ? 'Não foi possível enviar a imagem. Tente outra.' : errText(e)); }
@@ -1301,7 +1343,7 @@ function composerHTML(ok, ph) {
   return `      <div class="comp">
         ${A.emojiOpen ? `<div class="emoji" role="group" aria-label="Escolher emoji">${EMOJIS.map((e) => `<button type="button" class="hov" data-act="emoji" data-ch="${e[0]}" aria-label="Inserir emoji ${e[1]}">${e[0]}</button>`).join('')}</div>` : ''}
         <div class="typing" id="typing" aria-live="polite"></div>
-        <div class="cbar">
+        <div class="cbar${SPV('plain_input', false) ? ' plain' : ''}">
           <button type="button" class="hov plus" data-act="attach" aria-label="Anexar imagem">${ic(D.plus, 19)}</button>
           <input id="msg" type="text" placeholder="${ph}" maxlength="2000" value="${esc(A.draft)}" data-app-bind="draft" autocomplete="off" aria-label="Escreva uma mensagem"${ok ? '' : ' disabled'}>
           <button type="button" class="hov ib" data-act="toast-gift" aria-label="Enviar presente">${ic(D.gift, 19, '#55555F', 1.6)}</button>
@@ -1309,7 +1351,7 @@ function composerHTML(ok, ph) {
           <button type="button" class="hov ib" data-act="toast-soon" data-msg="As figurinhas chegam em breve" aria-label="Escolher figurinha">${ic(D.sticker, 19, '#55555F', 1.6)}</button>
           <button type="button" class="hov ib" data-act="emoji-toggle" aria-label="Escolher emoji" aria-expanded="${A.emojiOpen}">${ic(D.smile, 19, '#55555F', 1.6)}</button>
           <button type="button" class="hov ib" data-act="toast-soon" data-msg="Os apps chegam em breve" aria-label="Apps">${ic(D.apps, 19, '#55555F', 1.6)}</button>
-          <button type="button" class="go" id="send-btn" data-act="send" aria-label="Enviar mensagem"${A.draft.trim() ? '' : ' hidden'}>${ic(D.send, 18, '#FFFFFF', 1.8)}</button>
+          <button type="button" class="go" id="send-btn" data-act="send" aria-label="Enviar mensagem"${A.draft.trim() || SPV('send_btn', false) ? '' : ' hidden'}>${ic(D.send, 18, '#FFFFFF', 1.8)}</button>
         </div>
       </div>`;
 }
@@ -1374,6 +1416,7 @@ function modalHTML() {
         ${p.status ? `<div class="pst">${esc(p.status)}</div>` : ''}
         <p class="pbio${p.bio ? '' : ' none'}">${p.bio ? esc(p.bio) : 'Esta pessoa ainda não escreveu uma bio.'}</p>
         <dl class="pmeta"><div><dt>Membro desde</dt><dd>${esc(since)}</dd></div></dl>
+        ${SPV('dev_mode', false) ? `<button type="button" class="lnk" data-act="copy-id" data-id="${esc(p.id)}">Copiar ID do usuário</button>` : ''}
       </div></div>`;
       const rel = p.me ? 'me' : relOf(p.id), dis = m.busy ? ' disabled' : '';
       foot = rel === 'me' ? '<button type="button" class="mbtn" data-act="edit-profile">Editar perfil</button>'
@@ -1592,7 +1635,7 @@ function runSearch() {
   const q = (A.sq || '').trim(), key = curKey(), w = A;
   if (q.length < 2 || !key) { A.sres = null; return; }
   A.sres = null;
-  sb('/rest/v1/messages?select=id,channel_id,author_id,content,created_at,attachment_path&channel_id=eq.' + key + '&content=ilike.' + esq(q) + '&order=id.desc&limit=30')
+  sb('/rest/v1/messages?select=id,channel_id,author_id,content,created_at,attachment_path&' + (A.view === 'dm' && SPV('search_scope', 'selected') === 'all' ? 'channel_id=in.(' + A.friends.filter((f) => f.dm).map((f) => f.dm).join(',') + ')' : 'channel_id=eq.' + key) + '&content=ilike.' + esq(q) + '&order=id.desc&limit=30')
     .then((rows) => { if (A === w && A.sq.trim() === q) { A.sres = rows; if (A.panel === 'search') render(); } })
     .catch((e) => { if (A === w) { A.sres = []; toast(errText(e)); if (A.panel === 'search') render(); } });
 }
@@ -1668,7 +1711,7 @@ function railHTML() {
   return `<nav class="x-rail" aria-label="Servidores">
   <button type="button" class="rt home${home ? ' on' : ''}" data-act="go-home" aria-label="Mensagens diretas" title="Mensagens diretas">${logoMark(22)}${anyUnread() ? '<i class="udot"></i>' : ''}</button>
   <i class="rsep" aria-hidden="true"></i>
-  ${SERVERS.map((s) => { const on = A.view === 'server' && A.server === s.id; return `<button type="button" class="rt${on ? ' on' : ''}" data-act="srv-open" data-id="${s.id}" aria-label="${esc(s.name)}" aria-pressed="${on}" title="${esc(s.name)}" style="background:${s.tile}">${esc(s.ini)}</button>`; }).join('')}
+  ${railServers().map((s) => { const on = A.view === 'server' && A.server === s.id; return `<button type="button" class="rt${on ? ' on' : ''}${SPV('fav_servers', false) && favSrv(s.id) ? ' fav' : ''}" data-act="srv-open" data-id="${s.id}" aria-label="${esc(s.name)}" aria-pressed="${on}" title="${esc(s.name)}" style="background:${s.tile}">${esc(s.ini)}</button>`; }).join('')}
   <button type="button" class="rt act" data-act="srv-new" aria-label="Criar ou entrar em um servidor" title="Adicionar um servidor">${ic(D.plus, 22, '#1B6B47', 2)}</button>
   <button type="button" class="rt act" data-act="srv-explore" aria-label="Explorar servidores públicos" title="Explorar servidores públicos">${ic(D.compass, 22, '#1B6B47', 1.8)}</button>
   <button type="button" class="rt act" data-act="toast-soon" data-msg="Os apps para celular e computador chegam em breve" aria-label="Baixar apps" title="Baixar apps">${ic(D.download, 22, '#1B6B47', 1.8)}</button>
@@ -1690,7 +1733,7 @@ function srvColHTML(s) {
   const plus = (label, kind) => (s.mine ? `<button type="button" class="hov sq" data-act="modal-open" data-k="chan" data-kind="${kind}" aria-label="${label}" title="${label}">${ic(D.plus, 16, '#55555F', 2)}</button>` : '');
   const sec = (key, label, kind, add) => `<div class="sech"><button type="button" class="sect" data-act="csec" data-k="${key}" aria-expanded="${!cs[key]}">${label}${ic(cs[key] ? D.chevR : D.down, 12, '#55555F', 2.4)}</button>${plus(add, kind)}</div>`;
   const nav = (act, icon, label, extra = '') => `<button type="button" class="cn" data-act="${act}" ${extra}>${ic(icon, 20, '#33333A', 1.6)}<span>${label}</span></button>`;
-  const menu = A.pop && A.pop.k === 'srv' ? `<div class="pop smenu" role="menu"><button type="button" class="pi" data-act="nav" data-k="invite">Convidar pessoas${ic(D.userPlus, 16)}</button>${s.mine ? `<button type="button" class="pi" data-act="modal-open" data-k="chan" data-kind="text">Criar canal${ic(D.plus, 16)}</button><button type="button" class="pi" data-act="bans">Ver banidos${ic(D.shield, 16)}</button>` : ''}</div>` : '';
+  const menu = A.pop && A.pop.k === 'srv' ? `<div class="pop smenu" role="menu"><button type="button" class="pi" data-act="nav" data-k="invite">Convidar pessoas${ic(D.userPlus, 16)}</button>${s.mine ? `<button type="button" class="pi" data-act="modal-open" data-k="chan" data-kind="text">Criar canal${ic(D.plus, 16)}</button><button type="button" class="pi" data-act="bans">Ver banidos${ic(D.shield, 16)}</button>` : ''}${SPV('dev_mode', false) ? `<button type="button" class="pi" data-act="copy-id" data-id="${esc(s.id)}">Copiar ID do servidor${ic(D.hash || D.plus, 16)}</button>` : ''}${SPV('fav_servers', false) ? `<button type="button" class="pi" data-act="fav-srv" data-id="${esc(s.id)}">${favSrv(s.id) ? 'Remover dos favoritos' : 'Favoritar servidor'}${ic(D.pin || D.plus, 16)}</button>` : ''}</div>` : '';
   return `<div class="srvh"><button type="button" class="srvn" data-act="srvmenu" aria-haspopup="true" aria-expanded="${!!menu}"><span>${esc(s.name)}</span>${ic(D.down, 14, '#33333A', 2.2)}</button><button type="button" class="hov sq" data-act="nav" data-k="invite" aria-label="Convidar pessoas" title="Convidar pessoas">${ic(D.userPlus, 18, '#33333A', 1.7)}</button>${menu}</div>
   <div class="cnav">${nav('toast-soon', D.calendar, 'Eventos', 'data-msg="Eventos chegam em breve"')}${nav('open-boost', D.shield, 'Impulsos de servidor')}</div>
   <hr class="chr0">
@@ -1953,6 +1996,10 @@ function appAction(act, el, ev) {
   switch (act) {
     case 'older': loadOlder(); return;
     case 'spam-show': { A.spamOk = A.spamOk || {}; A.spamOk[el.dataset.id] = 1; paintMsgs(true); return; }
+    case 'fav-srv': { const l = favList(), i = l.indexOf(el.dataset.id); if (i >= 0) l.splice(i, 1); else l.push(el.dataset.id); try { localStorage.setItem('sq.favsrv.' + myId(), JSON.stringify(l)); } catch (e) { /* ok */ } toast(i >= 0 ? 'Removido dos favoritos.' : 'Servidor favoritado: fica no topo da lista.'); A.pop = null; render(); return; }
+    case 'spoiler': el.classList.toggle('open'); return;
+    case 'att-show': { const a = document.createElement('a'); a.className = 'att'; a.href = el.dataset.src; a.target = '_blank'; a.rel = 'noopener'; a.innerHTML = '<img loading="lazy">'; a.firstChild.src = el.dataset.src; a.firstChild.alt = el.dataset.alt; el.replaceWith(a); return; }
+    case 'copy-id': { const v = el.dataset.id || ''; (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject()).then(() => toast('ID copiado.')).catch(() => toast('ID: ' + v)); return; }
     case 'retry-thread': { const k = curKey(); A.terr[k] = 0; ensureThread(k); paintMsgs(true); return; }
     case 'reload-world': A.world = 'loading'; render(); loadWorld(); return;
     default: break;

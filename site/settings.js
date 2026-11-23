@@ -61,11 +61,13 @@ const themeIsDark = () => { const t = themeChoice(); return t === 'dark' || (t =
 if (window.matchMedia) { const dq = window.matchMedia('(prefers-color-scheme: dark)'); (dq.addEventListener ? dq.addEventListener.bind(dq, 'change') : dq.addListener.bind(dq))(() => { if (themeChoice() === 'auto') applyAll(); }); }
 function applyAll() {
   if (window.SQ_API && window.SQ_API.voiceApply) window.SQ_API.voiceApply();
+  if (window.SQ_API && window.SQ_API.syncSend) window.SQ_API.syncSend();
   const reduce = !!P('reduce_motion') || (P('sync_motion') && mq && mq.matches);
   root.classList.toggle('pf-reduce', !!reduce);
   root.classList.toggle('pf-compact', P('chat_display') === 'compact');
   root.classList.toggle('pf-noav', !P('show_avatars'));
   root.classList.toggle('pf-noatt', !P('msg_attach'));
+  root.classList.toggle('pf-noemoanim', P('play_emoji') === false);
   root.classList.toggle('pf-nostream-inv', false);
   root.classList.toggle('pf-streamer', !!P('streamer'));
   root.classList.toggle('pf-hide-inv', !!P('streamer') && !!P('s_hide_invite'));
@@ -112,13 +114,15 @@ SET.fx = (name, force) => {
   if (!force && P('fx_' + name) === false) return;
   tone(seq, (Number(P('fx_vol')) || 100) / 100);
 };
-SET.entrySound = () => { const s = TONES[P('join_sound')]; if (s) tone(s, (Number(P('fx_vol')) || 100) / 100); };
+SET.entrySound = (sid) => { if (P('join_server') && P('join_server') !== 'all' && sid && P('join_server') !== sid) return; const s = TONES[P('join_sound')]; if (s) tone(s, (Number(P('fx_vol')) || 100) / 100); };
 SET.tones = TONES;
 SET.notify = (kind, title, body) => {
   if (P('n_mute_all') === false || true) { /* sons ficam em SET.fx */ }
   if (kind === 'message' && !P('n_mute_all') && !(P('streamer') && P('s_mute_sfx'))) tone(FX.message, (Number(P('fx_vol')) || 100) / 100);
   if (P('n_desktop') && document.hidden && !(P('streamer') && P('s_mute_notif')) && 'Notification' in window && Notification.permission === 'granted') {
-    try { new Notification(title, { body: P('n_preview') ? body : 'Nova mensagem', icon: '/favicon.svg', silent: true }); } catch (e) { /* ok */ }
+    const show = () => { if (!document.hidden) return; try { new Notification(title, { body: P('n_preview') ? body : 'Nova mensagem', icon: '/favicon.svg', silent: true }); } catch (e) { /* ok */ } };
+    const dl = Number(P('n_delay')) || 0;
+    if (dl) setTimeout(show, dl * 60000); else show();
   }
 };
 SET.audioConstraints = () => {

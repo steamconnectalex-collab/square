@@ -390,6 +390,18 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   ok('spam suspeito aparece recolhido', !/GANHE/.test(await page.textContent('#msgs .spamn')));
   await page.click('#msgs .spamn [data-act="spam-show"]');
   ok('"Mostrar mesmo assim" revela a mensagem', /GANHE/.test(await page.textContent('#msgs')));
+
+  // spoiler, link e botão de enviar
+  const sp = { id: world.nextMsg++, channel_id: 'srv1c1', author_id: 'u2', content: 'olha ||segredo|| em https://exemplo.com/a', created_at: new Date().toISOString(), edited_at: null };
+  world.messages.push(sp);
+  wsConn.send(JSON.stringify({ topic: 'realtime:sq', event: 'postgres_changes', payload: { data: { type: 'INSERT', record: sp } } }));
+  await page.waitForSelector('#msgs button.spoiler', { timeout: 4000 });
+  ok('spoiler fica escondido e abre ao clicar', await page.evaluate(() => { const b = document.querySelector('#msgs button.spoiler'); const h = !b.classList.contains('open'); b.click(); return h && b.classList.contains('open'); }));
+  ok('link vira link clicável com selo do site', (await page.locator('#msgs a.lk[href="https://exemplo.com/a"] + .lkchip').count()) === 1);
+  await page.evaluate(() => window.SQ_SET.setP('send_btn', true));
+  await page.waitForTimeout(300);
+  ok('botão de enviar sempre visível quando ligado', await page.evaluate(() => !document.getElementById('send-btn').hidden));
+  await page.evaluate(() => window.SQ_SET.setP('send_btn', false));
   wsConn.send(JSON.stringify({ topic: 'realtime:sq', event: 'postgres_changes', payload: { data: { type: 'UPDATE', record: Object.assign({}, row, { content: 'Oi editado', edited_at: new Date().toISOString() }) } } }));
   await page.waitForFunction(() => /Oi editado/.test(document.getElementById('msgs').textContent) && /editada/.test(document.getElementById('msgs').textContent), null, { timeout: 4000 });
   ok('edição chega em tempo real', true);
