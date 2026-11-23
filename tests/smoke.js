@@ -366,6 +366,12 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   ok('esqueleto some quando carrega', (await page.locator('.x-main [aria-busy="true"]').count()) === 0);
   await page.click(`.x-rail [data-act="srv-open"][data-id="${srvId}"]`);
   await page.waitForSelector('#msgs .msg, #msgs .m, #msgs');
+  // tema escuro
+  await page.evaluate(() => window.SQ_SET.setP('theme', 'dark'));
+  ok('tema escuro aplica data-theme e inverte a página', (await page.evaluate(() => document.documentElement.dataset.theme + '|' + document.documentElement.style.filter)).startsWith('dark|invert(1)'));
+  await page.screenshot({ path: OUT + '/dark-app.png' });
+  await page.evaluate(() => window.SQ_SET.setP('theme', 'light'));
+  ok('tema claro remove o filtro', (await page.evaluate(() => document.documentElement.style.filter)) === '');
   // mensagem de outra pessoa chega pelo tempo real (WebSocket)
   await page.waitForFunction(() => true);
   for (let i = 0; i < 40 && !wsIn.some((j) => j.event === 'phx_join'); i++) await page.waitForTimeout(100);

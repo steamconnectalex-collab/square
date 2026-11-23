@@ -69,7 +69,7 @@ page({ id: 'look', label: 'Aparência', title: 'Aparência', kw: 'tema ícone me
     const unlocked = paid();
     const compact = P('chat_display') === 'compact';
     return `${h2('lk-theme', 'Tema')}
-${rd('theme', '', '', [['light', 'Claro', 'O visual da Square.'], ['dark', 'Escuro', 'Em breve.']])}
+${rd('theme', '', '', [['light', 'Claro', 'O visual da Square.'], ['dark', 'Escuro', 'Fundo escuro, mais confortável à noite.'], ['auto', 'Automático', 'Acompanha o tema do seu aparelho.']])}
 ${tg('sync_theme', 'Sincronizar tema em meus dispositivos', '')}
 ${tg('theme_others', 'Aplicar tema aos perfis de outros usuários', '')}
 <p class="srel">Configurações relacionadas</p>

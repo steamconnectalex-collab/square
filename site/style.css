@@ -309,3 +309,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .skbd{flex:1;min-height:0;overflow:hidden;padding:12px 20px;display:flex;flex-direction:column;gap:6px}
 @media (prefers-reduced-motion:reduce){.sk{animation:none}}
 .spamn{display:inline-block;padding:6px 10px;border-radius:10px;background:rgba(235,186,108,.2);color:#6B4A12;font-size:13px}
+
+/* ---- tema escuro: inverte a página e desfaz a inversão em fotos, avatares, capas e artes da Loja ---- */
+html[data-theme=dark]{background:#F4F4F8;color-scheme:dark}
+html[data-theme=dark] img,html[data-theme=dark] video,html[data-theme=dark] canvas,html[data-theme=dark] iframe,html[data-theme=dark] [style*="background"],html[data-theme=dark] .ja,html[data-theme=dark] .jgem,html[data-theme=dark] .qr svg{filter:invert(1) hue-rotate(180deg)}

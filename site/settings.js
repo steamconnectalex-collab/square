@@ -30,7 +30,7 @@ function persist() {
     if (a.rpc && uid) a.rpc('save_my_settings', { p: prefs }).catch(() => { /* fica só no navegador */ });
   }, 900);
 }
-const setP = SET.setP = (k, v) => { prefs[k] = v; persist(); applyAll(); syncControls(); };
+const setP = SET.setP = (k, v) => { if (k === 'theme' && !P('sync_theme')) { try { localStorage.setItem('sq.theme.local', v); } catch (e) { /* ok */ } } prefs[k] = v; persist(); applyAll(); syncControls(); };
 SET.resetKeys = (keys) => { keys.forEach((k) => { delete prefs[k]; }); persist(); applyAll(); syncControls(); };
 
 /* boot: chamado pelo app depois do login */
@@ -48,12 +48,17 @@ SET.forget = () => { uid = ''; prefs = {}; applyAll(); };
 
 /* ---------------------------------------------------------- efeitos reais */
 const root = document.documentElement;
+try { if (localStorage.getItem('sq.theme.last') === 'dark') { root.dataset.theme = 'dark'; root.style.filter = 'invert(1) hue-rotate(180deg)'; } } catch (e) { /* ok */ }
 const mq = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
 const ICON_COLORS = [['#44444C', '#8A8AF0'], ['#1D1D22', '#FFFFFF'], ['#FFFFFF', '#1D1D22'], ['#5B5BD6', '#FFFFFF'], ['#D92D45', '#FFFFFF'], ['#1B6B47', '#FFFFFF'], ['#E8A33D', '#1D1D22'], ['#2A9FD6', '#FFFFFF'], ['#9B5DE5', '#FFFFFF'], ['#F15BB5', '#FFFFFF'], ['#00BBF9', '#1D1D22'], ['#8AC926', '#1D1D22'], ['#FF6B35', '#FFFFFF'], ['#3A0CA3', '#F72585'], ['#06D6A0', '#073B4C'], ['#EF476F', '#FFD166'], ['#264653', '#E9C46A'], ['#6D597A', '#E56B6F'], ['#0B132B', '#5BC0BE'], ['#FFE066', '#1D1D22']];
 SET.ICON_COLORS = ICON_COLORS;
 const iconSvg = (i) => { const c = ICON_COLORS[i] || ICON_COLORS[0]; return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="${c[0]}"/><rect x="18" y="18" width="28" height="28" rx="7" fill="${c[1]}"/></svg>`; };
 SET.iconSvg = iconSvg;
 
+/* tema: claro, escuro ou automático; se "Sincronizar tema" estiver desligado, a escolha vale só neste aparelho */
+const themeChoice = () => { let t = P('theme'); if (!P('sync_theme')) { try { t = localStorage.getItem('sq.theme.local') || t; } catch (e) { /* ok */ } } return t === 'dark' || t === 'auto' ? t : 'light'; };
+const themeIsDark = () => { const t = themeChoice(); return t === 'dark' || (t === 'auto' && !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)); };
+if (window.matchMedia) { const dq = window.matchMedia('(prefers-color-scheme: dark)'); (dq.addEventListener ? dq.addEventListener.bind(dq, 'change') : dq.addListener.bind(dq))(() => { if (themeChoice() === 'auto') applyAll(); }); }
 function applyAll() {
   if (window.SQ_API && window.SQ_API.voiceApply) window.SQ_API.voiceApply();
   const reduce = !!P('reduce_motion') || (P('sync_motion') && mq && mq.matches);
@@ -67,7 +72,10 @@ function applyAll() {
   root.classList.toggle('pf-hide-personal', !!P('streamer') && !!P('s_hide_personal'));
   root.style.setProperty('--chatfs', (Number(P('chat_fs')) || 14.5) + 'px');
   root.style.setProperty('--msgap', (Number(P('group_gap')) || 0) + 'px');
-  const sat = Number(P('saturation')); root.style.filter = sat && sat < 100 ? 'saturate(' + sat / 100 + ')' : '';
+  const sat = Number(P('saturation')); const dark = themeIsDark(); root.dataset.theme = dark ? 'dark' : 'light';
+  try { localStorage.setItem('sq.theme.last', dark ? 'dark' : 'light'); } catch (e) { /* sem armazenamento */ }
+  const tm = document.querySelector('meta[name="theme-color"]'); if (tm) tm.content = dark ? '#0B0B0F' : '#F4F4F8';
+  root.style.filter = [dark ? 'invert(1) hue-rotate(180deg)' : '', sat && sat < 100 ? 'saturate(' + sat / 100 + ')' : ''].filter(Boolean).join(' ');
   const z = Number(P('zoom')); const r = document.getElementById('root'); if (r) r.style.zoom = z && z !== 100 ? String(z / 100) : '';
   root.dataset.side = P('side_density');
   const fav = document.querySelector('link[rel="icon"]');
