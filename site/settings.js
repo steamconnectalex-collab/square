@@ -55,6 +55,7 @@ const iconSvg = (i) => { const c = ICON_COLORS[i] || ICON_COLORS[0]; return `<sv
 SET.iconSvg = iconSvg;
 
 function applyAll() {
+  if (window.SQ_API && window.SQ_API.voiceApply) window.SQ_API.voiceApply();
   const reduce = !!P('reduce_motion') || (P('sync_motion') && mq && mq.matches);
   root.classList.toggle('pf-reduce', !!reduce);
   root.classList.toggle('pf-compact', P('chat_display') === 'compact');

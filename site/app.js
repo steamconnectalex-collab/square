@@ -699,6 +699,7 @@ async function sb(path, o = {}) {
 const rpc = (name, args) => sb('/rest/v1/rpc/' + name, { method: 'POST', body: args || {} });
 /* ponte para as Configurações (settings.js) */
 window.SQ_API = {
+  voiceApply: () => { if (typeof voiceApply === 'function') voiceApply(); },
   rpc, sb, toast, displayName, logout: () => logout(),
   me: () => (A && A.me) || null,
   email: () => (S.session && S.session.user && S.session.user.email) || '',
@@ -734,7 +735,7 @@ const ERRS = {
   not_authenticated: 'Sua sessão expirou. Entre de novo.', network: 'Sem conexão. Verifique sua internet e tente de novo.',
   invalid_name: 'O nome está fora do tamanho permitido.', too_many_servers: 'Você atingiu o limite de servidores.',
   too_many_channels: 'Esse servidor já tem o máximo de canais.', not_owner: 'Só o dono do servidor pode fazer isso.',
-  not_member: 'Você não faz parte deste servidor.', user_not_found: 'Não encontramos ninguém com esse @usuário.', rate_limited: 'Calma! Você está enviando mensagens rápido demais. Espere alguns segundos.', banned: 'Você foi banido deste servidor.', cannot_remove_self: 'Você não pode fazer isso com você mesmo.', voice_full: 'A sala de voz está cheia (máximo de 6 pessoas).', not_member: 'Você não faz parte deste servidor.', you_blocked: 'Você bloqueou essa pessoa. Desbloqueie para adicioná-la.', cannot_add_self: 'Você não pode adicionar a si mesmo.',
+  not_member: 'Você não faz parte deste servidor.', user_not_found: 'Não encontramos ninguém com esse @usuário.', requests_closed: 'Esta pessoa não está aceitando pedidos de amizade de você.', rate_limited: 'Calma! Você está enviando mensagens rápido demais. Espere alguns segundos.', banned: 'Você foi banido deste servidor.', cannot_remove_self: 'Você não pode fazer isso com você mesmo.', voice_full: 'A sala de voz está cheia (máximo de 6 pessoas).', not_member: 'Você não faz parte deste servidor.', you_blocked: 'Você bloqueou essa pessoa. Desbloqueie para adicioná-la.', cannot_add_self: 'Você não pode adicionar a si mesmo.',
   too_many_requests: 'Você já tem pedidos demais esperando resposta.', no_request: 'Esse pedido não existe mais.', not_friends: 'Vocês ainda não são amigos.', invalid_invite: 'Convite inválido ou expirado.',
   'row-level security': 'Você não tem permissão para isso.', 'violates check constraint': 'Algum campo está fora do tamanho permitido.'
 };
@@ -752,7 +753,16 @@ const FIELDS = 'id,author_id,content,created_at,edited_at,attachment_path';
 const mapMsg = (r) => ({ id: r.id, from: r.author_id, text: r.content, at: r.created_at, edited: !!r.edited_at, img: r.attachment_path || '' });
 const attUrl = (path) => C.SUPABASE_URL + '/storage/v1/object/public/attachments/' + path.split('/').map(encodeURIComponent).join('/');
 const mentionsMe = (text) => { const u = A && A.me && A.me.user; return !!u && new RegExp('(^|[^a-z0-9_])@' + u.replace(/[^a-z0-9_.]/gi, '') + '(?![a-z0-9_])', 'i').test(text || ''); };
+/* filtro de spam (regra simples): 2+ links ou link encurtado; "all" vale para todos, "unknown" só para quem não é amigo */
+function isSpam(m) {
+  const lvl = window.SQ_SET ? window.SQ_SET.P('spam') : 'unknown';
+  if (lvl === 'none' || !m || m.from === myId() || (A.spamOk && A.spamOk[m.id])) return false;
+  if (lvl === 'unknown' && relOf(m.from) === 'friend') return false;
+  const t = String(m.text || ''), links = t.match(/https?:\/\/\S+|www\.\S+/gi) || [];
+  return links.length >= 2 || /(?:bit\.ly|tinyurl\.com|cutt\.ly|is\.gd|t\.co)\//i.test(t);
+}
 function msgBody(m) {
+  if (isSpam(m)) return `<span class="spamn">Mensagem filtrada como possível spam. <button type="button" class="lnk" data-act="spam-show" data-id="${esc(String(m.id))}">Mostrar mesmo assim</button></span>`;
   const me = A && A.me && A.me.user ? A.me.user.toLowerCase() : '';
   let t = m.img && m.text === '📷 Imagem' ? '' : esc(m.text);
   t = t.replace(/(^|[\s(])@([a-zA-Z0-9_]{2,30})/g, (x, a, u) => a + '<span class="mention' + (u.toLowerCase() === me ? ' me' : '') + '">@' + u + '</span>');
@@ -1026,7 +1036,8 @@ async function loadVoice() {
 function voiceApply() {
   if (!VC) return;
   const off = A.muted || A.deafened;
-  VC.stream.getAudioTracks().forEach((t) => { t.enabled = !off; });
+  const ptt = !!(window.SQ_SET && window.SQ_SET.P('ptt'));
+  VC.stream.getAudioTracks().forEach((t) => { t.enabled = !off && (!ptt || !!A.pttDown); });
   Object.keys(VC.peers).forEach((u) => { if (VC.peers[u].audio) VC.peers[u].audio.muted = !!A.deafened; });
 }
 async function voiceJoin(ch) {
@@ -1941,6 +1952,7 @@ function appAction(act, el, ev) {
   // ações que só mexem no que já está na tela (assim as animações rodam sem recarregar tudo)
   switch (act) {
     case 'older': loadOlder(); return;
+    case 'spam-show': { A.spamOk = A.spamOk || {}; A.spamOk[el.dataset.id] = 1; paintMsgs(true); return; }
     case 'retry-thread': { const k = curKey(); A.terr[k] = 0; ensureThread(k); paintMsgs(true); return; }
     case 'reload-world': A.world = 'loading'; render(); loadWorld(); return;
     default: break;
@@ -2081,6 +2093,13 @@ addEventListener('hashchange', route);
 document.addEventListener('visibilitychange', () => { if (!document.hidden && S.view === 'login' && S.qr && S.qr.state === 'ready') qrTick(); });
 
 /* --------------------------------------------------------------- boot */
+/* Apertar para Falar: segure Ctrl direito enquanto estiver numa sala de voz */
+(function ptt() {
+  const set = (v, e) => { if (!A || !!A.pttDown === v) return; A.pttDown = v; voiceApply(); const el = document.querySelector('.x-ptt'); if (el) el.classList.toggle('on', v); };
+  window.addEventListener('keydown', (e) => { if (e.code === 'ControlRight') set(true); });
+  window.addEventListener('keyup', (e) => { if (e.code === 'ControlRight') set(false); });
+  window.addEventListener('blur', () => set(false));
+})();
 (async function boot() {
   S.session = store.get('sq.session'); S.profile = store.get('sq.profile');
   if (S.session) {

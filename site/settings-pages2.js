@@ -26,7 +26,7 @@ ${rd('input_profile', 'Perfil de entrada', '', [['isolation', 'Isolamento de Voz
 ${range('sens', 'Sensibilidade de entrada', 'Controla quanto som a Square transmite do seu microfone.', { min: 0, max: 100, cls: 'sens' })}
 ${sel('noise', 'Supressão de ruído', 'Reduz o ruído de fundo do seu microfone. Fornecido pelo seu navegador.', [['standard', 'Padrão do navegador'], ['off', 'Desativada']])}
 ${tg('echo', 'Cancelamento de eco', '')}
-${tg('ptt', 'Apertar para Falar (limitado)', '')}
+${tg('ptt', 'Apertar para Falar', 'Com isto ligado, seu microfone só transmite enquanto você segura a tecla Ctrl direita.')}
 ${expand('vadv', 'Mostrar Configurações de Voz Avançadas', 'Controle automático do microfone, Detecção de voz avançada e Aviso de Troca de Canal de Voz', `${tg('auto_gain', 'Controle automático do microfone', '')}${tg('adv_vad', 'Detecção de voz avançada', '')}${tg('warn_switch', 'Aviso de Troca de Canal de Voz', '')}`)}
 ${hr()}
 ${h2('vc-stream', 'Transmissão')}

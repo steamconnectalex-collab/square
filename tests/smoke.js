@@ -376,6 +376,14 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   wsConn.send(JSON.stringify({ topic: 'realtime:sq', event: 'postgres_changes', payload: { data: { type: 'INSERT', record: row } } }));
   await page.waitForFunction(() => /Oi do outro lado/.test(document.getElementById('msgs').textContent), null, { timeout: 4000 });
   ok('mensagem de outro usuário chega na hora (tempo real)', true);
+  // filtro de spam: 2+ links de quem não é amigo ficam recolhidos
+  const spam = { id: world.nextMsg++, channel_id: 'srv1c1', author_id: 'u2', content: 'GANHE http://a.example/x http://b.example/y', created_at: new Date().toISOString(), edited_at: null };
+  world.messages.push(spam);
+  wsConn.send(JSON.stringify({ topic: 'realtime:sq', event: 'postgres_changes', payload: { data: { type: 'INSERT', record: spam } } }));
+  await page.waitForSelector('#msgs .spamn', { timeout: 4000 });
+  ok('spam suspeito aparece recolhido', !/GANHE/.test(await page.textContent('#msgs .spamn')));
+  await page.click('#msgs .spamn [data-act="spam-show"]');
+  ok('"Mostrar mesmo assim" revela a mensagem', /GANHE/.test(await page.textContent('#msgs')));
   wsConn.send(JSON.stringify({ topic: 'realtime:sq', event: 'postgres_changes', payload: { data: { type: 'UPDATE', record: Object.assign({}, row, { content: 'Oi editado', edited_at: new Date().toISOString() }) } } }));
   await page.waitForFunction(() => /Oi editado/.test(document.getElementById('msgs').textContent) && /editada/.test(document.getElementById('msgs').textContent), null, { timeout: 4000 });
   ok('edição chega em tempo real', true);
