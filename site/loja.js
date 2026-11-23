@@ -74,9 +74,9 @@ const byId = (id) => ALL.find((x) => x.id === id);
 /* ------------------------------------------------------------ arte (só CSS) */
 function art(it, big) {
   const st = `--a:${it.a[0]};--b:${it.a[1]};--c:${it.a[2] || it.a[0]}`;
-  const k = big ? ' big' : '';
+  const k = big === 'ov' ? ' ov' : big ? ' big' : '';
   switch (it.t) {
-    case 'decor': return `<span class="ja d${k}" style="${st}"><i class="av"></i><i class="rg"></i><i class="sp s1"></i><i class="sp s2"></i></span>`;
+    case 'decor': return `<span class="ja d${k}" style="${st}">${big === 'ov' ? '' : '<i class="av"></i>'}<i class="rg"></i><i class="sp s1"></i><i class="sp s2"></i></span>`;
     case 'plate': return `<span class="ja p${k}" style="${st}"><i class="av"></i><i class="ln"></i><i class="gl"></i></span>`;
     case 'effect': return `<span class="ja e${k}" style="${st}"><i class="cd"></i><i class="gl"></i><i class="sp s1"></i><i class="sp s2"></i></span>`;
     case 'frame': return `<span class="ja f${k}" style="${st}"><i class="cd"></i><i class="br"></i></span>`;

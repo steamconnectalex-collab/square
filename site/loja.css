@@ -127,6 +127,10 @@
 .ja.c .cn.c2{left:56%;top:56%;width:50px;height:50px;opacity:.7;background:linear-gradient(145deg,var(--b),var(--c))}
 .ja.b .gm{width:64px;height:64px;background:linear-gradient(145deg,var(--a),var(--b));clip-path:polygon(50% 0,100% 28%,100% 72%,50% 100%,0 72%,0 28%);box-shadow:0 6px 14px rgba(29,29,34,.2)}
 .ja.big{min-height:220px}
+.ja.d.ov{overflow:visible;min-height:0}
+.ja.d.ov .rg{left:0;top:0;width:100%;height:100%;max-width:none;transform:none;border-width:var(--bw,8px)}
+.ja.d.ov .sp{width:var(--sp,9px);height:var(--sp,9px)}
+.ja.d.ov .sp.s1{left:-2%;top:12%}.ja.d.ov .sp.s2{right:-2%;bottom:10%;left:auto;top:auto;width:calc(var(--sp,9px) - 2px);height:calc(var(--sp,9px) - 2px)}
 .ja.big .av{max-width:150px}.ja.big .rg{max-width:200px}
 
 /* janela de um item */

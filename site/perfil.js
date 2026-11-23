@@ -125,8 +125,11 @@ const PLUS_FX = [{ id: 'fx1', n: 'Cubo Neon', t: 'effect', a: ['#9D8CCF', '#E897
 
 function shopItems(kind) { const S = shop(); if (!S) return []; return S.catalog.filter((x) => x.t === kind).slice(0, kind === 'frame' ? 18 : 12); }
 function previewOf(kind, it) {
-  const S = shop(), art = it && S ? S.art(it, true) : '';
-  if (kind === 'decor') return `<div class="mpv big">${it ? `<span class="mpd">${avatarBox(120)}${art}</span>` : avatarBox(130)}</div><div class="mpsm">${[44, 36, 44, 36].map((s, i) => `<span>${avatarBox(s)}${i > 1 ? '<i class="pon"></i>' : ''}</span>`).join('')}</div>`;
+  const S = shop();
+  if (kind === 'decor') {
+    const dec = (px) => { const o = Math.round(px * 1.28); return `<span class="mpd" style="width:${o}px;height:${o}px;--bw:${Math.max(2, Math.round(px * 0.075))}px;--sp:${Math.max(5, Math.round(px * 0.09))}px">${avatarBox(px)}${it ? S.art(it, 'ov') : ''}</span>`; };
+    return `<div class="mpv big">${dec(112)}</div><div class="mpsm">${[44, 36, 44, 36].map((s, i) => `<span class="mps">${dec(s)}${i > 1 ? '<i class="pon"></i>' : ''}</span>`).join('')}</div>`;
+  }
   if (kind === 'plate') return `<div class="mplist">${['', '', 'me', '', ''].map((v) => (v ? `<div class="mprow me">${avatarBox(26)}<b>${esc(P.name || 'você')}</b>${it ? `<span class="mpl">${S.art(it)}</span>` : ''}</div>` : '<div class="mprow"><i></i><i class="b"></i></div>')).join('')}</div>`;
   return `<div class="mpcard"><div class="mpbn" style="background:${esc(P.accent)}"></div>${avatarBox(64, 'ring')}<b>${esc(P.name || 'você')}</b><small>${esc(me().user || '')}</small><span class="mpb">Botão exemplo</span>${it ? `<span class="mpfx">${S.art(it, true)}</span>` : ''}</div>`;
 }
