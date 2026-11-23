@@ -294,3 +294,17 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .exrow .tx{flex:1 1 auto;min-width:0}
 .exrow .tx b{display:block;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .exrow .tx small,.exin{font-size:11.5px;color:var(--soft)}
+
+/* ---- esqueleto de carregamento (skeleton UI) ---- */
+.sk{display:block;flex:none;border-radius:8px;background:linear-gradient(100deg,rgba(29,29,34,.06) 30%,rgba(29,29,34,.13) 48%,rgba(29,29,34,.06) 66%);background-size:300% 100%;animation:skm 1.5s ease-in-out infinite}
+.sk.c{border-radius:50%}.sk.p{border-radius:999px}
+@keyframes skm{from{background-position:100% 0}to{background-position:0 0}}
+.skrow{display:flex;align-items:center;gap:10px;padding:6px 4px}
+.skcol{display:flex;flex-direction:column;gap:7px;flex:1;min-width:0}
+.skmsg{display:flex;gap:12px;padding:8px 0}
+.skbox{display:flex;flex-direction:column;gap:6px;padding:6px 0;width:100%}
+.skfill{flex:1}
+.skmain{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.skhd{flex:none;display:flex;align-items:center;gap:12px;padding:14px 20px}
+.skbd{flex:1;min-height:0;overflow:hidden;padding:12px 20px;display:flex;flex-direction:column;gap:6px}
+@media (prefers-reduced-motion:reduce){.sk{animation:none}}

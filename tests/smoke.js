@@ -171,6 +171,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
     const url = new URL(req.url());
     let body = {}; try { body = req.postData() ? JSON.parse(req.postData()) : {}; } catch (e) { body = {}; }
     const p = url.pathname.replace('/functions/v1/auth', '');
+    if (world.slow && req.method() === 'GET' && /\/rest\/v1\/(messages|profiles|servers)/.test(url.pathname)) await new Promise((r) => setTimeout(r, world.slow));
     calls.push([req.method(), p, body]);
     const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' };
     const send = (status, data) => route.fulfill({ status, headers: cors, contentType: 'application/json', body: JSON.stringify(data) });
@@ -354,6 +355,17 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await page.waitForFunction(() => /antiga 0(?!\d)/.test(document.getElementById('msgs').textContent), null, { timeout: 4000 });
   ok('"ver mais antigas" carrega o resto do histórico e o botão some', (await page.locator('#msgs .older').count()) === 0);
   const srvId = (world.servers.find((x) => x.owner_id === 'u1') || world.servers[0]).id;
+  // esqueleto de carregamento: com a rede lenta aparece enquanto o app abre
+  world.slow = 1500;
+  await page.reload();
+  await page.waitForSelector('.x-main .sk', { timeout: 3000 });
+  ok('esqueleto aparece enquanto o app carrega', (await page.locator('.x-main [aria-busy="true"] .sk').count()) > 3 && (await page.locator('.x-cs .sk').count()) > 3);
+  await page.screenshot({ path: OUT + '/sk-app.png' });
+  world.slow = 0;
+  await page.waitForFunction(() => !document.querySelector('.x-main [aria-busy="true"]') && document.querySelector('.x-main'), null, { timeout: 8000 });
+  ok('esqueleto some quando carrega', (await page.locator('.x-main [aria-busy="true"]').count()) === 0);
+  await page.click(`.x-rail [data-act="srv-open"][data-id="${srvId}"]`);
+  await page.waitForSelector('#msgs .msg, #msgs .m, #msgs');
   // mensagem de outra pessoa chega pelo tempo real (WebSocket)
   await page.waitForFunction(() => true);
   for (let i = 0; i < 40 && !wsIn.some((j) => j.event === 'phx_join'); i++) await page.waitForTimeout(100);

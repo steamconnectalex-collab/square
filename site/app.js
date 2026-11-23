@@ -451,7 +451,7 @@ function passDoneView() {
 function approveView() {
   const a = S.ap || {};
   let inner;
-  if (a.state === 'loading') inner = '<div class="spin" role="status" aria-label="Carregando"></div>';
+  if (a.state === 'loading') inner = '<div role="status" aria-busy="true" aria-label="Carregando" style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:8px 0"><i class="sk c" style="width:56px;height:56px"></i><i class="sk" style="height:16px;width:220px"></i><i class="sk" style="height:11px;width:260px"></i><i class="sk" style="height:11px;width:200px"></i><i class="sk p" style="height:44px;width:100%;margin-top:10px"></i></div>';
   else if (a.state === 'ask') {
     inner = `<div class="head"><span class="ico">${ic(D.at, 26, '#44444C', 1.6)}</span>
       <h1 class="ttl">Entrar em outro dispositivo?</h1>
@@ -508,7 +508,7 @@ function qrBoxHTML() {
   if (q.state === 'ready') {
     try { inner = qrSvg(q.url) + `<div class="qrlogo" aria-hidden="true"><span>${logoMark(16)}</span></div>`; } catch (e) { q.state = 'error'; }
   }
-  if (q.state === 'loading') inner = '<div class="spin" role="status" aria-label="Gerando código"></div>';
+  if (q.state === 'loading') inner = '<i class="sk" role="status" aria-label="Gerando código" style="width:100%;height:100%;border-radius:14px"></i>';
   else if (q.state !== 'ready') {
     const msg = q.state === 'denied' ? 'Login recusado no outro dispositivo.' : q.state === 'error' ? 'Não foi possível gerar o código.' : 'Este código expirou.';
     inner = `<div class="qrover"><span>${msg}</span><button type="button" data-act="qr-new">Gerar novo código</button></div>`;
@@ -1265,7 +1265,7 @@ function membersListHTML() {
 function serverMsgsHTML() {
   const dm = A.view === 'dm', srv = dm ? null : curServer(), key = A.channel, me = myId();
   if ((!srv && !dm) || !key) return '<div class="fill"></div><div class="empty">Este servidor ainda não tem canais de texto.</div>';
-  if (!A.loaded[key]) return `<div class="fill"></div><div class="empty">${A.terr[key] ? 'Não foi possível carregar as mensagens. <button type="button" class="lnk" data-act="retry-thread">Tentar de novo</button>' : 'Carregando mensagens…'}</div>`;
+  if (!A.loaded[key]) return A.terr[key] ? '<div class="fill"></div><div class="empty">Não foi possível carregar as mensagens. <button type="button" class="lnk" data-act="retry-thread">Tentar de novo</button></div>' : `<div class="skbox skfill" role="status" aria-busy="true" aria-label="Carregando mensagens">${skMsgs(6)}</div>`;
   const th = (A.threads[key] || []).filter((m) => !A.blocked.has(m.from));
   const intro = A.more[key] ? '' : (srv ? welcomeHTML(srv, srv.text.find((c) => c.id === key)) : dmIntroHTML(dmPeer(key)));
   const acts = (m) => {
@@ -1328,7 +1328,7 @@ function modalHTML() {
     if (md === 'join') title = 'Entrar em um servidor';
     if (md === 'join') body = head + mField('mf-code', 'Código ou link do convite', 'code', m.code, { ph: 'Cole aqui o código', max: 200 });
     else if (md === 'explore') {
-      body = head + (m.list == null ? '<p class="mnote">Carregando…</p>' : m.list.length ? `<div class="mus-list">${m.list.map((x) => `<div class="exrow"><span class="stl sm" style="background:${tileFor(x.id)}">${esc(String(x.name).charAt(0).toUpperCase())}</span><span class="tx"><b>${esc(x.name)}</b><small>${x.members} ${x.members === 1 ? 'membro' : 'membros'}</small></span>${x.joined ? '<small class="exin">Você já está</small>' : `<button type="button" class="mbtn sm" data-act="explore-join" data-id="${esc(x.id)}"${m.busy ? ' disabled' : ''}>Entrar</button>`}</div>`).join('')}</div>` : '<p class="mnote">Ainda não há servidores públicos. Crie o primeiro: marque "Servidor público" ao criar.</p>');
+      body = head + (m.list == null ? skWrap(skRows(4, 40), 'Carregando servidores') : m.list.length ? `<div class="mus-list">${m.list.map((x) => `<div class="exrow"><span class="stl sm" style="background:${tileFor(x.id)}">${esc(String(x.name).charAt(0).toUpperCase())}</span><span class="tx"><b>${esc(x.name)}</b><small>${x.members} ${x.members === 1 ? 'membro' : 'membros'}</small></span>${x.joined ? '<small class="exin">Você já está</small>' : `<button type="button" class="mbtn sm" data-act="explore-join" data-id="${esc(x.id)}"${m.busy ? ' disabled' : ''}>Entrar</button>`}</div>`).join('')}</div>` : '<p class="mnote">Ainda não há servidores públicos. Crie o primeiro: marque "Servidor público" ao criar.</p>');
     } else {
       body = head + mField('mf-name', 'Nome do servidor', 'name', m.name, { ph: 'Ex.: Meus amigos', max: 40, hint: 'Você será o dono. Já vem com os canais Geral e Sala principal.' })
         + `<div class="mf"><button type="button" class="mtog${m.pub ? ' on' : ''}" data-act="m-pub" aria-pressed="${!!m.pub}"><i></i><span>Servidor público (aparece em Explorar)</span></button><small>Qualquer pessoa logada poderá entrar. Por enquanto só dá para escolher isso ao criar.</small></div>`;
@@ -1380,7 +1380,7 @@ function modalHTML() {
     body = `<p class="mnote">${m.k === 'ban' ? 'Banir' : 'Expulsar'} ${esc(m.name)}? ${m.k === 'ban' ? 'A pessoa sai do servidor e não consegue voltar por convite, até você desbanir.' : 'A pessoa sai do servidor, mas pode voltar com um novo convite.'}</p>`;
   } else if (m.type === 'bans') {
     title = 'Pessoas banidas';
-    body = m.items == null ? '<p class="mnote">Carregando…</p>' : m.items.length ? `<div class="banlist">${m.items.map((b) => `<div class="banrow"><span><b>${esc(b.display_name || 'Pessoa')}</b>${b.username ? ' <small>@' + esc(b.username) + '</small>' : ''}</span><button type="button" class="mbtn sm ghost" data-act="unban" data-id="${b.user_id}"${m.busy ? ' disabled' : ''}>Desbanir</button></div>`).join('')}</div>` : '<p class="mnote">Ninguém foi banido deste servidor.</p>';
+    body = m.items == null ? skWrap(skRows(3, 34), 'Carregando') : m.items.length ? `<div class="banlist">${m.items.map((b) => `<div class="banrow"><span><b>${esc(b.display_name || 'Pessoa')}</b>${b.username ? ' <small>@' + esc(b.username) + '</small>' : ''}</span><button type="button" class="mbtn sm ghost" data-act="unban" data-id="${b.user_id}"${m.busy ? ' disabled' : ''}>Desbanir</button></div>`).join('')}</div>` : '<p class="mnote">Ninguém foi banido deste servidor.</p>';
     foot = '<button type="button" class="mbtn ghost" data-act="modal-close">Fechar</button>';
   } else if (m.type === 'block') {
     title = 'Bloquear pessoa'; label = 'Bloquear';
@@ -1574,7 +1574,7 @@ function searchPanelHTML() {
 }
 function mentionsPanelHTML() {
   const rs = A.mres;
-  return rs == null ? '<div class="it"><span>Carregando…</span></div>' : rs.length ? rs.map(resRow).join('') : '<div class="it"><span>Ninguém mencionou você ainda.</span></div>';
+  return rs == null ? skWrap(skRows(4, 34), 'Carregando') : rs.length ? rs.map(resRow).join('') : '<div class="it"><span>Ninguém mencionou você ainda.</span></div>';
 }
 let sqTimer = null;
 function runSearch() {
@@ -1743,7 +1743,7 @@ function ubarHTML() {
 function leftHTML() {
   const srv = A.view === 'server' ? curServer() : null;
   return `<div class="x-left${A.drawer ? ' open' : ''}">
-  <div class="x-lt">${railHTML()}<aside class="x-col" aria-label="${srv ? 'Canais do servidor' : 'Mensagens diretas'}"><div class="x-cs" id="sscroll">${srv ? srvColHTML(srv) : dmColHTML()}</div></aside></div>
+  <div class="x-lt">${railHTML()}<aside class="x-col" aria-label="${srv ? 'Canais do servidor' : 'Mensagens diretas'}"><div class="x-cs" id="sscroll">${A.world === 'loading' ? skWrap(`<div style="padding:12px 10px">${skRows(7, 32)}</div>`) : srv ? srvColHTML(srv) : dmColHTML()}</div></aside></div>
   <div class="x-ubw">${ubarHTML()}</div></div>${A.drawer ? '<button type="button" class="x-bk" data-act="drawer" aria-label="Fechar menu"></button>' : ''}`;
 }
 function titlebarHTML() {
@@ -1845,6 +1845,14 @@ function srvNewHTML(m) {
   return `<div class="mback" data-act="modal-bg"><div class="modal sn${compact ? ' compact' : ''}" role="dialog" aria-modal="true" aria-label="Criar servidor">${compact ? '' : `<div class="sn-art">${ILLUS}</div>`}<div class="sn-c">${x}${inner}</div></div></div>`;
 }
 
+
+/* ---- esqueletos (skeleton UI): blocos cinza com brilho enquanto carrega ---- */
+const SKW = [[62, 88], [40, 74], [52, 92], [30, 60], [70, 84]];
+const skRows = (n, av) => Array.from({ length: n }, (_, i) => `<div class="skrow"><i class="sk c" style="width:${av || 34}px;height:${av || 34}px"></i><span class="skcol"><i class="sk" style="height:11px;width:${SKW[i % 5][0]}%"></i><i class="sk" style="height:9px;width:${SKW[i % 5][1] * 0.6}%"></i></span></div>`).join('');
+const skMsgs = (n) => Array.from({ length: n }, (_, i) => `<div class="skmsg"><i class="sk c" style="width:38px;height:38px"></i><span class="skcol"><i class="sk" style="height:11px;width:${24 + (i * 13) % 20}%"></i><i class="sk" style="height:10px;width:${SKW[i % 5][1]}%"></i>${i % 2 ? `<i class="sk" style="height:10px;width:${SKW[(i + 2) % 5][0]}%"></i>` : ''}</span></div>`).join('');
+const skWrap = (inner, label) => `<div role="status" aria-busy="true" aria-label="${label || 'Carregando'}">${inner}</div>`;
+const skMain = () => skWrap(`<div class="skmain"><div class="skhd"><i class="sk c" style="width:40px;height:40px"></i><i class="sk" style="height:14px;width:180px"></i></div><div class="skbd">${skMsgs(7)}</div></div>`, 'Carregando');
+
 function appView() {
   if (window.SQ_SET && window.SQ_SET.def.in_vol === undefined) window.SQ_SET.def.in_vol = 100;
   const panel = A.panel ? PANELS[A.panel] : null;
@@ -1854,7 +1862,7 @@ function appView() {
   markCur();
   const ready = A.world === 'ready', v = A.view;
   let page;
-  if (A.world === 'loading') page = '<div class="x-load"><div class="spin" role="status" aria-label="Carregando"></div></div>';
+  if (A.world === 'loading') page = skMain();
   else if (A.world === 'error') page = `<div class="x-load"><div class="hempty">${esc(A.werr)}</div><div class="hcta"><button type="button" class="mbtn" data-act="reload-world">Tentar de novo</button></div></div>`;
   else if (v === 'server' && SERVERS.length) page = serverPageHTML();
   else if (v === 'dm') page = dmPageHTML();
