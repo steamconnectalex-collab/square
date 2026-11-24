@@ -151,9 +151,11 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
     }
     if (path === 'messages') {
       const ch = (q.get('channel_id') || '').replace('eq.', '');
-      if (m === 'POST') { const row = { id: world.nextMsg++, channel_id: body.channel_id, author_id: 'u1', content: body.content, created_at: new Date().toISOString(), edited_at: null, attachment_path: body.attachment_path || null }; world.messages.push(row); return send(201, [row]); }
+      if (m === 'POST') { const row = { id: world.nextMsg++, channel_id: body.channel_id, author_id: 'u1', content: body.content, created_at: new Date().toISOString(), edited_at: null, attachment_path: body.attachment_path || null, thread_of: body.thread_of || null }; world.messages.push(row); return send(201, [row]); }
       if (m === 'GET') {
         let rows = world.messages.filter((r) => !ch || r.channel_id === ch);
+        const tof = q.get('thread_of') || '';
+        if (tof === 'is.null') rows = rows.filter((r) => !r.thread_of); else if (/^eq\./.test(tof)) rows = rows.filter((r) => String(r.thread_of) === tof.slice(3)); else if (/^in\.\(/.test(tof)) { const ids = tof.slice(4, -1).split(','); rows = rows.filter((r) => r.thread_of && ids.includes(String(r.thread_of))); }
         const ilk = q.get('content'); if (ilk && /^ilike\./.test(ilk)) { const needle = ilk.slice(6).replace(/\*/g, '').toLowerCase(); rows = rows.filter((r) => (r.content || '').toLowerCase().includes(needle)); }
         const neq = (q.get('author_id') || '').match(/^neq\.(.+)/); if (neq) rows = rows.filter((r) => r.author_id !== neq[1]);
         const gt = (q.get('id') || '').match(/^gt\.(-?\d+)/); if (gt) rows = rows.filter((r) => r.id > +gt[1]);
@@ -624,6 +626,16 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await page.click('#msgs .rxc.on');
   await page.waitForFunction(() => !document.querySelector('#msgs .rxc'), null, { timeout: 5000 });
   ok('clicar de novo na reação a remove', true);
+  // tópicos
+  await page.locator('#msgs [data-act="thread-open"]').first().click({ force: true });
+  await page.waitForSelector('.modal #th-r');
+  await page.fill('#th-r', 'Resposta no tópico');
+  await page.press('#th-r', 'Enter');
+  await page.waitForSelector('.modal .thr', { timeout: 5000 });
+  ok('tópico: resposta gravada com thread_of e mostrada na janela', /Resposta no tópico/.test(await page.textContent('.modal .thlist')) && world.messages.some((x) => x.content === 'Resposta no tópico' && x.thread_of));
+  await page.click('.modal [data-act="modal-close"]');
+  await page.waitForSelector('#msgs .tcb', { timeout: 8000 });
+  ok('tópico: a resposta não aparece no chat principal, só o contador', !/Resposta no tópico/.test(await page.textContent('#msgs')) && /1 resposta/.test(await page.textContent('#msgs .tcb')));
   // eventos
   await page.click('[data-act="events"]');
   await page.waitForSelector('.modal [data-act="event-new"]');

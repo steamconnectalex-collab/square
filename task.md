@@ -2,7 +2,7 @@
 
 > **Para a IA:** este arquivo é a fonte da verdade sobre o projeto. Leia tudo antes de começar e atualize **na hora** em que algo acontecer (regras completas em `agents.md`). Não duplique tarefas: procure aqui antes de adicionar.
 >
-> Última atualização: 2026-11-23 (decoração de avatar, skeleton UI)
+> Última atualização: 2026-11-24 (tópicos, correção da descrição de imagem)
 
 ---
 
@@ -100,7 +100,7 @@ Fluxo de acesso: Home → "Entrar" → login (com painel de QR Code) → "Regist
 
 - **Etapa C (2026-11-24, em andamento):** feito — migração `0019_conta_privacidade_dm.sql` aplicada; função `auth` publicada na versão 6 (trocar e-mail, desativar/excluir conta, 2 etapas com códigos de recuperação); site passou a ler bio/status/cor/"membro desde" pela função `profiles_full` (respeita a privacidade do perfil). telas de Conta ligadas (trocar e-mail com código, 2 etapas com QR e 8 códigos de recuperação, desativar e excluir conta) e login com código de 2 etapas (testes 175 OK). Também feito: DMs com membros de servidor (permissões por servidor, "Solicitações de mensagens" com Aceitar/Recusar, "Enviar mensagem" no cartão de não-amigos) e texto alternativo de imagem (pergunta ao enviar quando "Mostrar descrições" está ligado). Testes 177 OK. Avisos de amigos ligados (ficou online, aniversário de amizade, perfil atualizado; checados a cada 60 s). GIF já é aceito no bucket `attachments`. Em Dados e privacidade há um aviso honesto: sem anúncios/análise hoje, as opções ficam guardadas como escolha. **Etapa C concluída** (falta só conferir ao vivo com contas reais: 2 etapas, e-mail, privacidade do perfil e DMs). Próximo: Etapa D.
 
-- **Etapa D (2026-11-24, em andamento):** feito — **reações em mensagens** (migração `0020_reacoes.sql`: tabela `message_reactions` + função `toggle_reaction`, testada no banco; no site: botão de carinha ao passar o mouse, 8 emojis, contadores, atualiza a cada 4 s; respeita "Reações" em Configurações). Testes 179 OK. **Figurinhas** (24 figurinhas de emoji grandes, animação conforme a configuração) e **Eventos de servidor** (migração `0021_eventos.sql` testada no banco: só o dono cria/exclui, membros veem e marcam "Tenho interesse"; aviso 15 min antes respeitando "Eventos" em Notificações). Testes 182 OK. **Falta na D:** tópicos, Impulso, Inventário, privacidade nas atividades, Central da Família, filtro de conteúdo sensível (provável pendência externa), GIF (seletor), e a seção "Pendências externas" no fim deste arquivo.
+- **Etapa D (2026-11-24, em andamento):** feito — **reações em mensagens** (migração `0020_reacoes.sql`: tabela `message_reactions` + função `toggle_reaction`, testada no banco; no site: botão de carinha ao passar o mouse, 8 emojis, contadores, atualiza a cada 4 s; respeita "Reações" em Configurações). Testes 179 OK. **Figurinhas** (24 figurinhas de emoji grandes, animação conforme a configuração) e **Eventos de servidor** (migração `0021_eventos.sql` testada no banco: só o dono cria/exclui, membros veem e marcam "Tenho interesse"; aviso 15 min antes respeitando "Eventos" em Notificações). Testes 182 OK. **Tópicos (respostas em fio):** migração `0022_topicos_e_alt.sql` aplicada (coluna `messages.thread_of`; só um nível; a resposta precisa ser no mesmo canal; testado no banco). No site: botão de responder em tópico ao passar o mouse, "N respostas em tópico" sob a mensagem, janela com o fio (atualiza a cada 3 s e em tempo real); as respostas não aparecem no chat principal. Também corrigido: a descrição de imagem (`attachment_alt`) não tinha permissão de gravação. Testes 184 OK. **Falta na D:** Impulso, Inventário, privacidade nas atividades, Central da Família, filtro de conteúdo sensível (provável pendência externa), GIF (seletor), e a seção "Pendências externas" no fim deste arquivo.
 
 ## Como publicar o site
 
@@ -168,6 +168,9 @@ Combinado com a pessoa em 2026-11-23: o que precisa de conta em aplicativo exter
 
 ### 2026-11-22
 - **Feito:** Loja, Missões, Plus, editor de perfil, limpeza de código morto, testes (152 OK). A pasta tinha trabalho sem commit de uma sessão travada (limpeza do `app.js`, `loja.js` sem estilo e com erro de carregamento): corrigi, estilizei e liguei. **Problema achado:** índice negativo no `loja.js` (`>>` em vez de `>>>`) impedia o arquivo de carregar. Próximo passo: ver acima.
+
+### 2026-11-24
+- **Feito:** Etapa C completa (conta, 2 etapas, DMs por servidor), reações, figurinhas, eventos, tópicos (migrações 0019 a 0022; função `auth` v6). Testes 184 OK. **Pendente da pessoa:** conferir ao vivo com contas reais (2 etapas, troca de e-mail, privacidade do perfil, DMs, tópicos). **Próximo passo:** resto da Etapa D (Impulso, Inventário, privacidade nas atividades, Central da Família); o que depender de serviço externo está em "Pendências externas".
 
 ### 2026-11-23
 - **Feito:** decoração de avatar corrigida; skeleton UI; permissões de amizade (migração 0018), filtro de spam e Apertar para Falar. Testes 164 OK. **Próximo passo:** a pessoa conferir no ar; decidir sobre tema escuro, trocar e-mail, 2 etapas e excluir conta (precisam de backend novo).

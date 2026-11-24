@@ -343,3 +343,10 @@ html.pf-reduce .stk.an,html.pf-reduce .stk.hv:hover{animation:none}
 
 .evlist{display:flex;flex-direction:column;gap:10px}.evrow{display:flex;gap:10px;justify-content:space-between;align-items:flex-start;padding:10px;border-radius:12px;background:rgba(29,29,34,.04)}
 .evtx{min-width:0}.evtx b{display:block}.evtx small{display:block;color:#62626D}.evtx p{margin:4px 0;font-size:13.5px;word-break:break-word}.evb{display:flex;flex-direction:column;gap:6px;flex:none}
+/* tópicos */
+.tcb{display:inline-block;margin-top:6px;padding:2px 0;border:0;background:none;color:#5A4A9A;font-size:12.5px;font-weight:700;cursor:pointer}
+.tcb:hover{text-decoration:underline}
+.thp{padding:10px 12px;margin-bottom:10px;border-radius:12px;background:rgba(157,140,207,.14);font-size:14px;overflow-wrap:anywhere}
+.thlist{max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.thr{padding:6px 10px;border-left:3px solid rgba(157,140,207,.5);font-size:14px;overflow-wrap:anywhere}
+.thr small{color:#62626D}

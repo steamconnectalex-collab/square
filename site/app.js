@@ -752,7 +752,7 @@ const ERRS = {
   invalid_name: 'O nome está fora do tamanho permitido.', too_many_servers: 'Você atingiu o limite de servidores.',
   too_many_channels: 'Esse servidor já tem o máximo de canais.', not_owner: 'Só o dono do servidor pode fazer isso.',
   not_member: 'Você não faz parte deste servidor.', user_not_found: 'Não encontramos ninguém com esse @usuário.', requests_closed: 'Esta pessoa não está aceitando pedidos de amizade de você.', rate_limited: 'Calma! Você está enviando mensagens rápido demais. Espere alguns segundos.', banned: 'Você foi banido deste servidor.', cannot_remove_self: 'Você não pode fazer isso com você mesmo.', voice_full: 'A sala de voz está cheia (máximo de 6 pessoas).', not_member: 'Você não faz parte deste servidor.', you_blocked: 'Você bloqueou essa pessoa. Desbloqueie para adicioná-la.', cannot_add_self: 'Você não pode adicionar a si mesmo.',
-  too_many_requests: 'Você já tem pedidos demais esperando resposta.', no_request: 'Esse pedido não existe mais.', not_friends: 'Vocês ainda não são amigos.', not_owner: 'Só o dono do servidor faz isso.', past_date: 'A data do evento precisa ser no futuro.', too_many_events: 'Este servidor já tem eventos demais marcados.', dm_closed: 'Esta pessoa não está aceitando mensagens diretas de você.', invalid_invite: 'Convite inválido ou expirado.',
+  too_many_requests: 'Você já tem pedidos demais esperando resposta.', no_request: 'Esse pedido não existe mais.', not_friends: 'Vocês ainda não são amigos.', not_owner: 'Só o dono do servidor faz isso.', past_date: 'A data do evento precisa ser no futuro.', too_many_events: 'Este servidor já tem eventos demais marcados.', invalid_thread: 'Não dá para responder a essa mensagem.', dm_closed: 'Esta pessoa não está aceitando mensagens diretas de você.', invalid_invite: 'Convite inválido ou expirado.',
   'row-level security': 'Você não tem permissão para isso.', 'violates check constraint': 'Algum campo está fora do tamanho permitido.'
 };
 function errText(e) {
@@ -765,8 +765,8 @@ function errText(e) {
 let SERVERS = [];
 let A = null;
 const ONLINE_MS = 150000;
-const FIELDS = 'id,author_id,content,created_at,edited_at,attachment_path,attachment_alt';
-const mapMsg = (r) => ({ id: r.id, from: r.author_id, text: r.content, at: r.created_at, edited: !!r.edited_at, img: r.attachment_path || '', alt: r.attachment_alt || '' });
+const FIELDS = 'id,author_id,content,created_at,edited_at,attachment_path,attachment_alt,thread_of';
+const mapMsg = (r) => ({ id: r.id, from: r.author_id, text: r.content, at: r.created_at, edited: !!r.edited_at, img: r.attachment_path || '', alt: r.attachment_alt || '', thread: r.thread_of || null });
 const attUrl = (path) => C.SUPABASE_URL + '/storage/v1/object/public/attachments/' + path.split('/').map(encodeURIComponent).join('/');
 const mentionsMe = (text) => { const u = A && A.me && A.me.user; return !!u && new RegExp('(^|[^a-z0-9_])@' + u.replace(/[^a-z0-9_.]/gi, '') + '(?![a-z0-9_])', 'i').test(text || ''); };
 /* filtro de spam (regra simples): 2+ links ou link encurtado; "all" vale para todos, "unknown" só para quem não é amigo */
@@ -828,7 +828,7 @@ function initApp() {
     owner: uid, world: 'loading', werr: '', me: null, server: null, channel: null, voice: null, muted: false, deafened: false,
     panel: null, showMembers: true, onlineOpen: true, offlineOpen: true, draft: '', search: '', emojiOpen: false, menu: false,
     view: 'friends', ftab: 'all', af: { user: '', note: '', busy: false }, pop: null, drawer: false, csec: { text: false, voice: false }, devs: null, plan: 'free', gq: '', entered: false,
-    threads: {}, rx: {}, rxPick: null, loaded: {}, loading: {}, more: {}, terr: {}, modal: null, poll: null, beat: null, tt: null, typing: {}, pollN: 0, friends: [], incoming: [], outgoing: [], known: {}, dmByUser: {}, dmUser: {}, blocked: new Set(), unread: {}, vrost: {}
+    threads: {}, rx: {}, tc: {}, rxPick: null, loaded: {}, loading: {}, more: {}, terr: {}, modal: null, poll: null, beat: null, tt: null, typing: {}, pollN: 0, friends: [], incoming: [], outgoing: [], known: {}, dmByUser: {}, dmUser: {}, blocked: new Set(), unread: {}, vrost: {}
   };
   startLive(); loadWorld(); openJoin();
   if (window.SQ_SET) window.SQ_SET.boot(uid);
@@ -841,7 +841,7 @@ function startLive() {
   A.poll = setInterval(pollTick, 3000);
   A.beat = setInterval(() => beat(false), 60000);
   A.tt = setInterval(updateTyping, 1500);
-  A.rxT = setInterval(() => { if (!document.hidden) loadRx(curKey()); }, 4000);
+  A.rxT = setInterval(() => { if (!document.hidden) loadRx(curKey()); loadTc(curKey()); }, 4000);
   rtStart();
   beat(true);
 }
@@ -1001,7 +1001,7 @@ async function ensureThread(key) {
   if (!key || A.loaded[key] || A.loading[key] || A.terr[key]) return;
   const w = A; A.loading[key] = 1;
   try {
-    const rows = await sb(`/rest/v1/messages?select=${FIELDS}&channel_id=eq.${key}&order=id.desc&limit=50`);
+    const rows = await sb(`/rest/v1/messages?select=${FIELDS}&channel_id=eq.${key}&thread_of=is.null&order=id.desc&limit=50`);
     if (A !== w) return;
     w.more[key] = rows.length === 50;
     w.threads[key] = rows.reverse().map(mapMsg);
@@ -1051,6 +1051,44 @@ async function toggleRx(id, emoji) {
   catch (e) { if (A === w) { toast(errText(e)); } }
   if (A === w) loadRx(key);
 }
+/* ----- tópicos (respostas em fio) ----- */
+async function loadTc(key) {
+  if (!A || !key || !A.loaded[key] || A.tcBusy) return;
+  const ids = (A.threads[key] || []).slice(-100).map((m) => m.id); if (!ids.length) return;
+  const w = A; A.tcBusy = true;
+  try {
+    const rows = await sb('/rest/v1/messages?select=thread_of&thread_of=in.(' + ids.join(',') + ')&limit=1000');
+    if (A !== w) return;
+    const cnt = {}; rows.forEach((r) => { cnt[r.thread_of] = (cnt[r.thread_of] || 0) + 1; });
+    const before = JSON.stringify(ids.map((i) => w.tc[i] || 0)); ids.forEach((i) => { if (cnt[i]) w.tc[i] = cnt[i]; else delete w.tc[i]; });
+    if (before !== JSON.stringify(ids.map((i) => w.tc[i] || 0)) && curKey() === key) paintMsgs('keep');
+  } catch (e) { /* tenta de novo */ }
+  finally { if (A === w) w.tcBusy = false; }
+}
+function threadListHTML(m) {
+  if (m.items == null) return skWrap(skRows(2, 40), 'Carregando');
+  if (!m.items.length) return '<p class="mnote">Ainda não há respostas. Escreva a primeira.</p>';
+  const srv = curServer(), key = m.key;
+  return m.items.filter((x) => !A.blocked.has(x.from)).map((x) => {
+    const p = x.from === myId() ? null : srv ? srv.byId[x.from] : dmPeer(key), nm = x.from === myId() ? 'Você' : p ? p.name : 'Ex-membro';
+    return `<div class="thr"><b>${esc(nm)}</b> <small>${esc(msgTime(x.at))}</small><div>${msgBody(x)}</div></div>`;
+  }).join('');
+}
+async function loadReplies(m) {
+  try {
+    const rows = await sb('/rest/v1/messages?select=' + FIELDS + '&thread_of=eq.' + m.parent.id + '&order=id.asc&limit=200');
+    if (A.modal !== m) return;
+    const old = m.items ? m.items.length : -1; m.items = rows.map(mapMsg);
+    const l = document.getElementById('thlist');
+    if (l && old !== -1) { const down = l.scrollHeight - l.scrollTop - l.clientHeight < 40; l.innerHTML = threadListHTML(m); if (down) l.scrollTop = l.scrollHeight; } else render();
+  } catch (e) { if (A.modal === m && m.items == null) { m.items = []; m.err = errText(e); render(); } }
+}
+function openThread(id) {
+  const key = curKey(), par = (A.threads[key] || []).find((x) => String(x.id) === String(id)); if (!par) return;
+  const m = A.modal = { type: 'thread', key, parent: par, items: null, reply: '', err: '', busy: false };
+  render(); loadReplies(m);
+  const iv = setInterval(() => { if (A.modal !== m) return clearInterval(iv); if (!document.hidden) loadReplies(m); }, 3000);
+}
 function paintMsgs(stick) {
   const el = document.getElementById('msgs'); if (!el) return;
   const near = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
@@ -1065,7 +1103,7 @@ async function pollTick(force) {
   const th = A.threads[key], last = th.length ? th[th.length - 1].id : 0;
   const w = A; A.polling = true;
   try {
-    const rows = await sb(`/rest/v1/messages?select=${FIELDS}&channel_id=eq.${key}&id=gt.${last}&order=id.asc&limit=100`);
+    const rows = await sb(`/rest/v1/messages?select=${FIELDS}&channel_id=eq.${key}&thread_of=is.null&id=gt.${last}&order=id.asc&limit=100`);
     if (A !== w) return;
     const cur = w.threads[key];
     const add = rows.map(mapMsg).filter((m) => !cur.some((x) => x.id === m.id));
@@ -1078,7 +1116,7 @@ async function loadOlder() {
   if (!th || !th.length || A.older) return;
   A.older = true;
   try {
-    const rows = await sb(`/rest/v1/messages?select=${FIELDS}&channel_id=eq.${key}&id=lt.${th[0].id}&order=id.desc&limit=50`);
+    const rows = await sb(`/rest/v1/messages?select=${FIELDS}&channel_id=eq.${key}&thread_of=is.null&id=lt.${th[0].id}&order=id.desc&limit=50`);
     A.more[key] = rows.length === 50;
     A.threads[key] = rows.reverse().map(mapMsg).concat(A.threads[key]);
     const el = document.getElementById('msgs'), h = el ? el.scrollHeight : 0;
@@ -1286,6 +1324,7 @@ function rtChange(d) {
   }
   if (d.type === 'INSERT') {
     const ch = r.channel_id, th = A.threads[ch];
+    if (r.thread_of) { if (r.author_id !== myId()) { loadTc(ch); const tm = A.modal; if (tm && tm.type === 'thread' && String(tm.parent.id) === String(r.thread_of)) loadReplies(tm); } return; }
     if (r.author_id !== myId() && !serverOfChan(ch) && !A.dmUser[ch]) { reloadSoon(); return; }
     if (r.author_id !== myId() && A.dmUser[ch] && !A.blocked.has(r.author_id) && (curKey() !== ch || document.hidden) && !(A.me && A.me.presence === 'dnd')) { const f = dmPeer(ch); toast('Nova mensagem de ' + (f ? f.name : 'um amigo')); if (window.SQ_SET) window.SQ_SET.notify('message', 'Nova mensagem de ' + (f ? f.name : 'um amigo'), String(r.content || '').slice(0, 120)); A.unread[ch] = 1; if (!th) reloadSoon(); else render(); }
     if (r.author_id !== myId() && serverOfChan(ch) && mentionsMe(r.content) && !A.blocked.has(r.author_id) && !(A.me && A.me.presence === 'dnd')) { const f = findPerson(r.author_id); toast((f ? f.name : 'Alguém') + ' mencionou você'); if (window.SQ_SET) window.SQ_SET.notify('message', (f ? f.name : 'Alguém') + ' mencionou você', String(r.content || '').slice(0, 120)); }
@@ -1424,19 +1463,21 @@ function serverMsgsHTML() {
   const acts = (m) => {
     const mine = m.from === me;
     const rbtn = SPV('msg_react', true) ? `<button type="button" class="hov" data-act="rx-pick" data-id="${m.id}" aria-label="Adicionar reação">${ic(D.smile || D.plus, 14, '#55555F', 1.8)}</button>` : '';
-    if (!mine && !(srv && srv.owner === me)) return rbtn ? `<span class="mact">${rbtn}</span>` : '';
-    return `<span class="mact">${rbtn}${mine ? `<button type="button" class="hov" data-act="msg-edit" data-id="${m.id}" aria-label="Editar mensagem">${ic(D.edit, 14, '#55555F', 1.8)}</button>` : ''}<button type="button" class="hov" data-act="msg-del" data-id="${m.id}" aria-label="Apagar mensagem">${ic(D.close, 14, '#55555F', 1.8)}</button></span>`;
+    const tbtn = `<button type="button" class="hov" data-act="thread-open" data-id="${m.id}" aria-label="Responder em tópico">${ic(D.dm, 14, '#55555F', 1.8)}</button>`;
+    if (!mine && !(srv && srv.owner === me)) return `<span class="mact">${rbtn}${tbtn}</span>`;
+    return `<span class="mact">${rbtn}${tbtn}${mine ? `<button type="button" class="hov" data-act="msg-edit" data-id="${m.id}" aria-label="Editar mensagem">${ic(D.edit, 14, '#55555F', 1.8)}</button>` : ''}<button type="button" class="hov" data-act="msg-del" data-id="${m.id}" aria-label="Apagar mensagem">${ic(D.close, 14, '#55555F', 1.8)}</button></span>`;
   };
+  const tcb = (m) => { const n = A.tc[m.id]; return n ? `<button type="button" class="tcb" data-act="thread-open" data-id="${m.id}">${n} ${n === 1 ? 'resposta' : 'respostas'} em tópico</button>` : ''; };
   return '<div class="fill"></div>'
     + (A.more[key] ? '<button type="button" class="lnk older" data-act="older">Ver mensagens mais antigas</button>' : '')
     + intro
     + (th.length || intro ? '' : '<div class="empty">Nenhuma mensagem ainda. Seja o primeiro a escrever.</div>')
     + th.map((m) => {
       const ed = m.edited ? ' <small class="ed">(editada)</small>' : '';
-      if (m.from === me) return `<div class="mout">${acts(m)}<div class="bub"><span class="sr">Você: </span>${msgBody(m)}${ed}${rxHTML(m)}</div></div>`;
+      if (m.from === me) return `<div class="mout">${acts(m)}<div class="bub"><span class="sr">Você: </span>${msgBody(m)}${ed}${rxHTML(m)}${tcb(m)}</div></div>`;
       const p = srv ? srv.byId[m.from] : dmPeer(key), nm = p ? p.name : 'Ex-membro';
       return `<div class="min"><div class="col"><button type="button" class="av40" data-act="profile" data-id="${m.from}" aria-label="Ver perfil de ${esc(nm)}" style="background:${p ? p.g : G.slate}">${esc(p ? p.ini : '')}</button><small>${esc(msgTime(m.at))}</small></div>
-        <div class="bub"><button type="button" class="an" data-act="profile" data-id="${m.from}">${esc(nm)}</button>${msgBody(m)}${ed}${rxHTML(m)}</div>${acts(m)}</div>`;
+        <div class="bub"><button type="button" class="an" data-act="profile" data-id="${m.from}">${esc(nm)}</button>${msgBody(m)}${ed}${rxHTML(m)}${tcb(m)}</div>${acts(m)}</div>`;
     }).join('');
 }
 
@@ -1549,6 +1590,10 @@ function modalHTML() {
       body = m.items == null ? skWrap(skRows(3, 44), 'Carregando') : m.items.length ? `<div class="evlist">${m.items.map((e) => `<div class="evrow"><div class="evtx"><b>${esc(e.title)}</b><small>${esc(fmt(e.starts_at))}${e.place ? ' · ' + esc(e.place) : ''}</small>${e.description ? `<p>${esc(e.description)}</p>` : ''}<small>${e.n} ${e.n === 1 ? 'pessoa interessada' : 'pessoas interessadas'}</small></div><div class="evb"><button type="button" class="mbtn${e.mine ? ' ghost' : ''}" data-act="event-int" data-id="${e.id}" aria-pressed="${e.mine}">${e.mine ? 'Tenho interesse ✓' : 'Tenho interesse'}</button>${srv && srv.mine ? `<button type="button" class="mbtn ghost" data-act="event-del" data-id="${e.id}">Excluir</button>` : ''}</div></div>`).join('')}</div>` : '<p class="mnote">Nenhum evento marcado por enquanto.</p>';
       foot = `<button type="button" class="mbtn ghost" data-act="modal-close">Fechar</button>${srv && srv.mine ? '<button type="button" class="mbtn" data-act="event-new">Criar evento</button>' : ''}`;
     }
+  } else if (m.type === 'thread') {
+    title = 'Tópico'; label = 'Responder';
+    const srv = curServer(), pp = m.parent.from === myId() ? null : srv ? srv.byId[m.parent.from] : dmPeer(m.key);
+    body = `<div class="thp"><b>${esc(m.parent.from === myId() ? 'Você' : pp ? pp.name : 'Ex-membro')}</b><div>${msgBody(m.parent)}</div></div><div id="thlist" class="thlist" aria-live="polite">${threadListHTML(m)}</div>` + mField('th-r', 'Sua resposta', 'reply', m.reply, { ph: 'Responder neste tópico', max: 2000 });
   } else if (m.type === 'block') {
     title = 'Bloquear pessoa'; label = 'Bloquear';
     body = `<p class="mnote">Bloquear ${esc(m.name)}? Vocês deixam de ser amigos e você não verá as mensagens dela nos servidores. Você pode desbloquear depois, no perfil dela.</p>`;
@@ -1645,6 +1690,14 @@ async function modalSubmit() {
   if (m.type === 'mod') {
     const s = curServer();
     return run(async () => { await rpc(m.k === 'ban' ? 'ban_member' : 'kick_member', { p_server: s.id, p_user: m.id }); await loadWorld(() => {}); A.modal = null; render(); toast(m.k === 'ban' ? 'Pessoa banida' : 'Pessoa expulsa'); });
+  }
+  if (m.type === 'thread') {
+    const text = m.reply.trim();
+    if (!text) return modalErr('Escreva a resposta.');
+    return run(async () => {
+      const rows = await sb('/rest/v1/messages?select=' + FIELDS, { method: 'POST', body: { channel_id: m.key, content: text, thread_of: m.parent.id }, prefer: 'return=representation' });
+      if (A.modal === m) { m.items = (m.items || []).concat(mapMsg(rows[0])); m.reply = ''; m.busy = false; render(); focusModal(); const l = document.getElementById('thlist'); if (l) l.scrollTop = l.scrollHeight; loadTc(m.key); }
+    });
   }
   if (m.type === 'events') {
     const s = curServer(); if (!s) return;
@@ -1746,6 +1799,7 @@ function modalAct(act, el, ev) {
     case 'fr-unblock': friendAct('unblock', el.dataset.id); return true;
     case 'fr-block': { const p = findPerson(el.dataset.id); if (p) { A.modal = { type: 'block', id: p.id, name: p.name, err: '', busy: false }; render(); focusModal(); } return true; }
     case 'msg-edit': openMsgModal('edit', el); return true;
+    case 'thread-open': openThread(el.dataset.id); return true;
     case 'rx-pick': A.rxPick = A.rxPick === el.dataset.id || String(A.rxPick) === el.dataset.id ? null : (isNaN(el.dataset.id) ? el.dataset.id : Number(el.dataset.id)); paintMsgs('keep'); return true;
     case 'rx': toggleRx(el.dataset.id, el.dataset.e); return true;
     case 'msg-del': openMsgModal('del', el); return true;
