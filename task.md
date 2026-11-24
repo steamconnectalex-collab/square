@@ -100,7 +100,7 @@ Fluxo de acesso: Home → "Entrar" → login (com painel de QR Code) → "Regist
 
 - **Etapa C (2026-11-24, em andamento):** feito — migração `0019_conta_privacidade_dm.sql` aplicada; função `auth` publicada na versão 6 (trocar e-mail, desativar/excluir conta, 2 etapas com códigos de recuperação); site passou a ler bio/status/cor/"membro desde" pela função `profiles_full` (respeita a privacidade do perfil). telas de Conta ligadas (trocar e-mail com código, 2 etapas com QR e 8 códigos de recuperação, desativar e excluir conta) e login com código de 2 etapas (testes 175 OK). Também feito: DMs com membros de servidor (permissões por servidor, "Solicitações de mensagens" com Aceitar/Recusar, "Enviar mensagem" no cartão de não-amigos) e texto alternativo de imagem (pergunta ao enviar quando "Mostrar descrições" está ligado). Testes 177 OK. Avisos de amigos ligados (ficou online, aniversário de amizade, perfil atualizado; checados a cada 60 s). GIF já é aceito no bucket `attachments`. Em Dados e privacidade há um aviso honesto: sem anúncios/análise hoje, as opções ficam guardadas como escolha. **Etapa C concluída** (falta só conferir ao vivo com contas reais: 2 etapas, e-mail, privacidade do perfil e DMs). Próximo: Etapa D.
 
-- **Etapa D (2026-11-24, em andamento):** feito — **reações em mensagens** (migração `0020_reacoes.sql`: tabela `message_reactions` + função `toggle_reaction`, testada no banco; no site: botão de carinha ao passar o mouse, 8 emojis, contadores, atualiza a cada 4 s; respeita "Reações" em Configurações). Testes 179 OK. **Falta na D:** figurinhas, eventos, tópicos, Impulso, Inventário, privacidade nas atividades, Central da Família, filtro de conteúdo sensível (provável pendência externa), GIF (seletor), e a seção "Pendências externas" no fim deste arquivo.
+- **Etapa D (2026-11-24, em andamento):** feito — **reações em mensagens** (migração `0020_reacoes.sql`: tabela `message_reactions` + função `toggle_reaction`, testada no banco; no site: botão de carinha ao passar o mouse, 8 emojis, contadores, atualiza a cada 4 s; respeita "Reações" em Configurações). Testes 179 OK. **Figurinhas** (24 figurinhas de emoji grandes, animação conforme a configuração) e **Eventos de servidor** (migração `0021_eventos.sql` testada no banco: só o dono cria/exclui, membros veem e marcam "Tenho interesse"; aviso 15 min antes respeitando "Eventos" em Notificações). Testes 182 OK. **Falta na D:** tópicos, Impulso, Inventário, privacidade nas atividades, Central da Família, filtro de conteúdo sensível (provável pendência externa), GIF (seletor), e a seção "Pendências externas" no fim deste arquivo.
 
 ## Como publicar o site
 
@@ -127,6 +127,20 @@ Fluxo de acesso: Home → "Entrar" → login (com painel de QR Code) → "Regist
 (2026-11-22) Pessoa conferir Loja/Perfil no ar. Depois: decidir onde (ou se) voltam música, destaques e notícias; sistema de planos/Pontos/compras para liberar itens da Loja; remover do Supabase as tabelas de música se não voltarem.
 
 Pessoa conferir o novo menu principal no ar (desktop e celular) e dizer onde ficam música, servidores destaque, fixados e notícias. Pendente da pessoa: testar com duas contas reais (amizade, conversa privada, tempo real, foto, imagem, voz, banir) e os passos do painel (Vercel ↔ GitHub, senhas vazadas, domínio no Resend). Depois: GIFs/presentes, configurações, painel inicial com dados reais, servidor TURN se a voz falhar.
+
+## Pendências externas (fazer por último — exigem conta/serviço fora da Square)
+
+Combinado com a pessoa em 2026-11-23: o que precisa de conta em aplicativo externo fica aqui.
+- [ ] **Pagamentos, planos (Square Plus), Pontos, Impulso pago, Assinaturas, Cobrança, compra de itens da Loja e presentes:** precisa de um processador de pagamento (ex.: Stripe, Mercado Pago) e conta de empresa.
+- [ ] **Filtro de conteúdo sensível em imagens:** precisa de um serviço de moderação de imagem (ex.: Google Vision SafeSearch, AWS Rekognition).
+- [ ] **Seletor de GIFs:** precisa de chave de um serviço (ex.: Tenor/Giphy) e liberar no CSP.
+- [ ] **Apps conectados (Spotify, Twitch, YouTube, Steam etc.):** precisa registrar app de desenvolvedor em cada serviço (OAuth).
+- [ ] **Telefone / verificação por SMS:** precisa de serviço de SMS (ex.: Twilio).
+- [ ] **Servidor TURN para voz:** serviço externo (ex.: Twilio/Cloudflare TURN) se alguém não conseguir ouvir.
+- [ ] **E-mail com domínio próprio (Resend):** verificar domínio para enviar a qualquer pessoa.
+- [ ] **Proteção contra senhas vazadas (Supabase, plano Pro).**
+- [ ] **Outros idiomas:** precisa de traduções revisadas (pode ser feito por mim, mas a revisão é humana).
+- [ ] **Revisão jurídica dos Termos/Privacidade e e-mail de contato.**
 
 ---
 

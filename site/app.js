@@ -690,6 +690,7 @@ const PANELS = {
   search: { title: 'Buscar mensagens', items: [] },
   help: { title: 'Central de ajuda', items: [{ t: 'Como criar um servidor', s: 'Clique no “+” da barra lateral e escolha “Criar o meu”.' }, { t: 'Como convidar amigos', s: 'Dentro do servidor, clique em “Convidar” e envie o link.' }, { t: 'Atalhos do teclado', s: 'Enter envia a mensagem que você escreveu.' }] }
 };
+const STICKERS = [['🐱', 'gato'], ['🐶', 'cachorro'], ['🦊', 'raposa'], ['🐼', 'panda'], ['🐸', 'sapo'], ['🦄', 'unicórnio'], ['🐙', 'polvo'], ['🦖', 'dinossauro'], ['🍕', 'pizza'], ['🍩', 'rosquinha'], ['🍉', 'melancia'], ['☕', 'café'], ['🎸', 'guitarra'], ['🚀', 'foguete'], ['🌈', 'arco-íris'], ['⭐', 'estrela'], ['💜', 'coração roxo'], ['🔥', 'fogo'], ['👋', 'oi'], ['🎉', 'festa'], ['😎', 'legal'], ['🥳', 'comemorando'], ['😴', 'dormindo'], ['🤯', 'mente explodindo']];
 const EMOJIS = [['😀', 'Sorriso'], ['😂', 'Rindo'], ['👍', 'Joia'], ['🔥', 'Fogo'], ['🎮', 'Controle'], ['🎉', 'Festa'], ['❤️', 'Coração'], ['😮', 'Surpresa']];
 
 /* ----------------------------------------------------- acesso ao banco */
@@ -751,7 +752,7 @@ const ERRS = {
   invalid_name: 'O nome está fora do tamanho permitido.', too_many_servers: 'Você atingiu o limite de servidores.',
   too_many_channels: 'Esse servidor já tem o máximo de canais.', not_owner: 'Só o dono do servidor pode fazer isso.',
   not_member: 'Você não faz parte deste servidor.', user_not_found: 'Não encontramos ninguém com esse @usuário.', requests_closed: 'Esta pessoa não está aceitando pedidos de amizade de você.', rate_limited: 'Calma! Você está enviando mensagens rápido demais. Espere alguns segundos.', banned: 'Você foi banido deste servidor.', cannot_remove_self: 'Você não pode fazer isso com você mesmo.', voice_full: 'A sala de voz está cheia (máximo de 6 pessoas).', not_member: 'Você não faz parte deste servidor.', you_blocked: 'Você bloqueou essa pessoa. Desbloqueie para adicioná-la.', cannot_add_self: 'Você não pode adicionar a si mesmo.',
-  too_many_requests: 'Você já tem pedidos demais esperando resposta.', no_request: 'Esse pedido não existe mais.', not_friends: 'Vocês ainda não são amigos.', dm_closed: 'Esta pessoa não está aceitando mensagens diretas de você.', invalid_invite: 'Convite inválido ou expirado.',
+  too_many_requests: 'Você já tem pedidos demais esperando resposta.', no_request: 'Esse pedido não existe mais.', not_friends: 'Vocês ainda não são amigos.', not_owner: 'Só o dono do servidor faz isso.', past_date: 'A data do evento precisa ser no futuro.', too_many_events: 'Este servidor já tem eventos demais marcados.', dm_closed: 'Esta pessoa não está aceitando mensagens diretas de você.', invalid_invite: 'Convite inválido ou expirado.',
   'row-level security': 'Você não tem permissão para isso.', 'violates check constraint': 'Algum campo está fora do tamanho permitido.'
 };
 function errText(e) {
@@ -777,6 +778,7 @@ function isSpam(m) {
   return links.length >= 2 || /(?:bit\.ly|tinyurl\.com|cutt\.ly|is\.gd|t\.co)\//i.test(t);
 }
 function msgBody(m) {
+  if (/^::sticker::/.test(m.text || '')) { const st = SPV('stickers', 'always'); return `<span class="stk ${st === 'never' ? 'still' : st === 'hover' ? 'hv' : 'an'}" role="img" aria-label="Figurinha">${esc(m.text.slice(11))}</span>`; }
   if (isSpam(m)) return `<span class="spamn">Mensagem filtrada como possível spam. <button type="button" class="lnk" data-act="spam-show" data-id="${esc(String(m.id))}">Mostrar mesmo assim</button></span>`;
   const me = A && A.me && A.me.user ? A.me.user.toLowerCase() : '';
   let t = m.img && m.text === '📷 Imagem' ? '' : esc(m.text);
@@ -966,6 +968,20 @@ function friendNotes(prev) {
     if (hit.length) { store.set(key, day); const y = today.getFullYear() - new Date(hit[0].fsince).getFullYear(); note('Você e ' + hit[0].name + ' fazem ' + y + (y === 1 ? ' ano' : ' anos') + ' de amizade hoje!'); }
   }
 }
+const evSeen = new Set();
+async function eventNotes() {
+  if (!SPV('n_event', true) || (A && A.me && A.me.presence === 'dnd')) return;
+  try {
+    const now = Date.now(), evs = await sb('/rest/v1/server_events?select=id,title,starts_at&starts_at=gte.' + encodeURIComponent(new Date(now - 60000).toISOString()) + '&starts_at=lte.' + encodeURIComponent(new Date(now + 900000).toISOString()));
+    const mine = evs.length ? await sb('/rest/v1/event_interest?select=event_id&user_id=eq.' + myId() + '&event_id=in.(' + evs.map((e) => e.id).join(',') + ')') : [];
+    mine.forEach((i) => {
+      if (evSeen.has(i.event_id)) return; evSeen.add(i.event_id);
+      const e = evs.find((x) => x.id === i.event_id); if (!e) return;
+      const msg = 'O evento "' + e.title + '" começa em breve';
+      toast(msg); if (window.SQ_SET) window.SQ_SET.notify('event', msg, '');
+    });
+  } catch (e) { /* tenta no próximo ciclo */ }
+}
 async function beat(first) {
   if (S.view !== 'app' || !A || document.hidden) return;
   const w = A;
@@ -975,7 +991,7 @@ async function beat(first) {
     if (!first && A === w && w.world === 'ready') {
       const prev = {}; (w.friends || []).forEach((f) => { prev[f.id] = { on: f.on, upd: f.upd }; });
       await loadWorld(refilter);
-      if (A === w) friendNotes(prev);
+      if (A === w) { friendNotes(prev); eventNotes(); }
     }
   } catch (e) { /* tenta de novo no próximo ciclo */ }
 }
@@ -1426,6 +1442,7 @@ function serverMsgsHTML() {
 
 function composerHTML(ok, ph) {
   return `      <div class="comp">
+        ${A.stickerOpen ? `<div class="emoji stkp" role="group" aria-label="Escolher figurinha">${STICKERS.map((e) => `<button type="button" class="hov" data-act="sticker" data-ch="${e[0]}" aria-label="Enviar figurinha ${e[1]}">${e[0]}</button>`).join('')}</div>` : ''}
         ${A.emojiOpen ? `<div class="emoji" role="group" aria-label="Escolher emoji">${EMOJIS.map((e) => `<button type="button" class="hov" data-act="emoji" data-ch="${e[0]}" aria-label="Inserir emoji ${e[1]}">${e[0]}</button>`).join('')}</div>` : ''}
         <div class="typing" id="typing" aria-live="polite"></div>
         <div class="cbar${SPV('plain_input', false) ? ' plain' : ''}">
@@ -1433,7 +1450,7 @@ function composerHTML(ok, ph) {
           <input id="msg" type="text" placeholder="${ph}" maxlength="2000" value="${esc(A.draft)}" data-app-bind="draft" autocomplete="off" aria-label="Escreva uma mensagem"${ok ? '' : ' disabled'}>
           <button type="button" class="hov ib" data-act="toast-gift" aria-label="Enviar presente">${ic(D.gift, 19, '#55555F', 1.6)}</button>
           <button type="button" class="hov ib" data-act="toast-gif" aria-label="Escolher GIF"><span class="gif">GIF</span></button>
-          <button type="button" class="hov ib" data-act="toast-soon" data-msg="As figurinhas chegam em breve" aria-label="Escolher figurinha">${ic(D.sticker, 19, '#55555F', 1.6)}</button>
+          <button type="button" class="hov ib" data-act="sticker-toggle" aria-label="Escolher figurinha" aria-expanded="${!!A.stickerOpen}">${ic(D.sticker, 19, '#55555F', 1.6)}</button>
           <button type="button" class="hov ib" data-act="emoji-toggle" aria-label="Escolher emoji" aria-expanded="${A.emojiOpen}">${ic(D.smile, 19, '#55555F', 1.6)}</button>
           <button type="button" class="hov ib" data-act="toast-soon" data-msg="Os apps chegam em breve" aria-label="Apps">${ic(D.apps, 19, '#55555F', 1.6)}</button>
           <button type="button" class="go" id="send-btn" data-act="send" aria-label="Enviar mensagem"${A.draft.trim() || SPV('send_btn', false) ? '' : ' hidden'}>${ic(D.send, 18, '#FFFFFF', 1.8)}</button>
@@ -1521,16 +1538,37 @@ function modalHTML() {
     title = 'Pessoas banidas';
     body = m.items == null ? skWrap(skRows(3, 34), 'Carregando') : m.items.length ? `<div class="banlist">${m.items.map((b) => `<div class="banrow"><span><b>${esc(b.display_name || 'Pessoa')}</b>${b.username ? ' <small>@' + esc(b.username) + '</small>' : ''}</span><button type="button" class="mbtn sm ghost" data-act="unban" data-id="${b.user_id}"${m.busy ? ' disabled' : ''}>Desbanir</button></div>`).join('')}</div>` : '<p class="mnote">Ninguém foi banido deste servidor.</p>';
     foot = '<button type="button" class="mbtn ghost" data-act="modal-close">Fechar</button>';
+  } else if (m.type === 'events') {
+    const srv = curServer();
+    if (m.view === 'new') {
+      title = 'Criar evento'; label = 'Criar evento';
+      body = mField('ev-t', 'Nome do evento', 'evTitle', m.evTitle, { ph: 'Ex.: Noite de jogos', max: 80 }) + mField('ev-p', 'Local (opcional)', 'evPlace', m.evPlace, { ph: 'Ex.: Canal de voz Geral', max: 80 }) + `<div class="mf"><label for="ev-d">Data e hora</label><input id="ev-d" data-mf type="datetime-local" data-app-bind="m:evWhen" value="${esc(m.evWhen)}"></div>` + mField('ev-x', 'Descrição (opcional)', 'evDesc', m.evDesc, { area: true, max: 500 });
+    } else {
+      title = 'Eventos do servidor';
+      const fmt = (d) => new Date(d).toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+      body = m.items == null ? skWrap(skRows(3, 44), 'Carregando') : m.items.length ? `<div class="evlist">${m.items.map((e) => `<div class="evrow"><div class="evtx"><b>${esc(e.title)}</b><small>${esc(fmt(e.starts_at))}${e.place ? ' · ' + esc(e.place) : ''}</small>${e.description ? `<p>${esc(e.description)}</p>` : ''}<small>${e.n} ${e.n === 1 ? 'pessoa interessada' : 'pessoas interessadas'}</small></div><div class="evb"><button type="button" class="mbtn${e.mine ? ' ghost' : ''}" data-act="event-int" data-id="${e.id}" aria-pressed="${e.mine}">${e.mine ? 'Tenho interesse ✓' : 'Tenho interesse'}</button>${srv && srv.mine ? `<button type="button" class="mbtn ghost" data-act="event-del" data-id="${e.id}">Excluir</button>` : ''}</div></div>`).join('')}</div>` : '<p class="mnote">Nenhum evento marcado por enquanto.</p>';
+      foot = `<button type="button" class="mbtn ghost" data-act="modal-close">Fechar</button>${srv && srv.mine ? '<button type="button" class="mbtn" data-act="event-new">Criar evento</button>' : ''}`;
+    }
   } else if (m.type === 'block') {
     title = 'Bloquear pessoa'; label = 'Bloquear';
     body = `<p class="mnote">Bloquear ${esc(m.name)}? Vocês deixam de ser amigos e você não verá as mensagens dela nos servidores. Você pode desbloquear depois, no perfil dela.</p>`;
   }
-  const showSubmit = !(m.type === 'invite' || m.type === 'profile' || m.type === 'bans' || (m.type === 'srv' && m.mode === 'explore'));
+  const showSubmit = !((m.type === 'events' && m.view !== 'new') || m.type === 'invite' || m.type === 'profile' || m.type === 'bans' || (m.type === 'srv' && m.mode === 'explore'));
   return `<div class="mback" data-act="modal-bg"><div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}">
     <header class="mhead"><h2>${esc(title)}</h2><button type="button" class="hov sq" data-act="modal-close" aria-label="Fechar">${ic(D.close, 16, '#55555F', 1.8)}</button></header>
     <div class="mbody">${body}${m.err ? `<div class="merr" role="alert">${esc(m.err)}</div>` : ''}</div>
     <footer class="mfoot">${showSubmit ? `<button type="button" class="mbtn ghost" data-act="modal-close">Cancelar</button><button type="button" class="mbtn${m.type === 'del' || m.type === 'block' || m.type === 'mod' ? ' danger' : ''}" data-act="modal-submit"${m.busy ? ' disabled' : ''}>${m.busy ? 'Aguarde…' : label}</button>` : foot}</footer>
   </div></div>`;
+}
+async function loadEvents(m) {
+  const s = curServer(); if (!s) return;
+  try {
+    const evs = await sb('/rest/v1/server_events?select=id,title,description,place,starts_at&server_id=eq.' + s.id + '&starts_at=gte.' + encodeURIComponent(new Date(Date.now() - 3600000).toISOString()) + '&order=starts_at.asc&limit=25');
+    const ints = evs.length ? await sb('/rest/v1/event_interest?select=event_id,user_id&event_id=in.(' + evs.map((e) => e.id).join(',') + ')') : [];
+    if (A.modal !== m) return;
+    m.items = evs.map((e) => { const l = ints.filter((i) => i.event_id === e.id); return Object.assign({}, e, { n: l.length, mine: l.some((i) => i.user_id === myId()) }); });
+  } catch (e) { if (A.modal !== m) return; m.items = []; m.err = errText(e); }
+  render();
 }
 function focusModal() { setTimeout(() => { const f = document.querySelector('.modal [data-mf]'); if (f) f.focus(); }, 0); }
 async function storageCall(method, path, body, type, bucket) {
@@ -1607,6 +1645,14 @@ async function modalSubmit() {
   if (m.type === 'mod') {
     const s = curServer();
     return run(async () => { await rpc(m.k === 'ban' ? 'ban_member' : 'kick_member', { p_server: s.id, p_user: m.id }); await loadWorld(() => {}); A.modal = null; render(); toast(m.k === 'ban' ? 'Pessoa banida' : 'Pessoa expulsa'); });
+  }
+  if (m.type === 'events') {
+    const s = curServer(); if (!s) return;
+    const when = m.evWhen ? new Date(m.evWhen) : null;
+    if (m.evTitle.trim().length < 2) return modalErr('Dê um nome ao evento (de 2 a 80 letras).');
+    if (!when || isNaN(when)) return modalErr('Escolha a data e a hora do evento.');
+    if (when.getTime() < Date.now() - 300000) return modalErr('A data do evento precisa ser no futuro.');
+    return run(async () => { await rpc('create_event', { p_server: s.id, p_title: m.evTitle.trim(), p_description: m.evDesc.trim(), p_place: m.evPlace.trim(), p_starts: when.toISOString() }); if (A.modal === m) { m.view = 'list'; m.busy = false; m.items = null; render(); loadEvents(m); toast('Evento criado'); } });
   }
   if (m.type === 'block') {
     return run(async () => { await rpc('block_user', { p_other: m.id }); await loadWorld(() => {}); A.modal = null; render(); toast('Pessoa bloqueada'); });
@@ -1691,6 +1737,10 @@ function modalAct(act, el, ev) {
     case 'dm-open': friendAct('dm', el.dataset.id, '', true); return true;
     case 'dmreq': { const w = A, ok = el.dataset.ok === '1', ch = el.dataset.ch; rpc('respond_dm_request', { p_channel: ch, p_accept: ok }).then(async () => { if (ok) { await loadWorld(() => {}); } else { if (A.channel === ch) { A.view = 'friends'; A.channel = null; } await loadWorld(() => {}); } if (A === w) { render(); toast(ok ? 'Solicitação aceita' : 'Solicitação recusada'); } }).catch((e) => toast(errText(e))); return true; }
     case 'mod': { const p = findPerson(el.dataset.id); if (p) { A.modal = { type: 'mod', k: el.dataset.k, id: p.id, name: p.name, err: '', busy: false }; render(); } return true; }
+    case 'events': { if (!curServer()) { toast('Abra um servidor para ver os eventos.'); return true; } const m = A.modal = { type: 'events', view: 'list', items: null, err: '', busy: false, evTitle: '', evPlace: '', evDesc: '', evWhen: '' }; render(); loadEvents(m); return true; }
+    case 'event-new': if (A.modal) { A.modal.view = 'new'; A.modal.err = ''; render(); focusModal(); } return true;
+    case 'event-int': { const m = A.modal, id = el.dataset.id; rpc('toggle_event_interest', { p_event: id }).then(() => loadEvents(m)).catch((e) => toast(errText(e))); return true; }
+    case 'event-del': { const m = A.modal, id = el.dataset.id; rpc('delete_event', { p_event: id }).then(() => { toast('Evento excluído'); loadEvents(m); }).catch((e) => toast(errText(e))); return true; }
     case 'bans': { const s = curServer(); if (!s) return true; const m = A.modal = { type: 'bans', items: null, err: '', busy: false }; render(); rpc('list_bans', { p_server: s.id }).then((r) => { if (A.modal === m) { m.items = r || []; render(); } }).catch((e) => { if (A.modal === m) { m.items = []; m.err = errText(e); render(); } }); return true; }
     case 'unban': { const m = A.modal, s = curServer(); if (!m || !s) return true; m.busy = true; render(); rpc('unban_member', { p_server: s.id, p_user: el.dataset.id }).then(() => { m.items = (m.items || []).filter((b) => b.user_id !== el.dataset.id); m.busy = false; render(); toast('Pessoa desbanida'); }).catch((e) => { m.busy = false; m.err = errText(e); render(); }); return true; }
     case 'fr-unblock': friendAct('unblock', el.dataset.id); return true;
@@ -1824,7 +1874,7 @@ function srvColHTML(s) {
   const nav = (act, icon, label, extra = '') => `<button type="button" class="cn" data-act="${act}" ${extra}>${ic(icon, 20, '#33333A', 1.6)}<span>${label}</span></button>`;
   const menu = A.pop && A.pop.k === 'srv' ? `<div class="pop smenu" role="menu"><button type="button" class="pi" data-act="nav" data-k="invite">Convidar pessoas${ic(D.userPlus, 16)}</button>${s.mine ? `<button type="button" class="pi" data-act="modal-open" data-k="chan" data-kind="text">Criar canal${ic(D.plus, 16)}</button><button type="button" class="pi" data-act="bans">Ver banidos${ic(D.shield, 16)}</button>` : ''}${SPV('dev_mode', false) ? `<button type="button" class="pi" data-act="copy-id" data-id="${esc(s.id)}">Copiar ID do servidor${ic(D.hash || D.plus, 16)}</button>` : ''}${SPV('fav_servers', false) ? `<button type="button" class="pi" data-act="fav-srv" data-id="${esc(s.id)}">${favSrv(s.id) ? 'Remover dos favoritos' : 'Favoritar servidor'}${ic(D.pin || D.plus, 16)}</button>` : ''}</div>` : '';
   return `<div class="srvh"><button type="button" class="srvn" data-act="srvmenu" aria-haspopup="true" aria-expanded="${!!menu}"><span>${esc(s.name)}</span>${ic(D.down, 14, '#33333A', 2.2)}</button><button type="button" class="hov sq" data-act="nav" data-k="invite" aria-label="Convidar pessoas" title="Convidar pessoas">${ic(D.userPlus, 18, '#33333A', 1.7)}</button>${menu}</div>
-  <div class="cnav">${nav('toast-soon', D.calendar, 'Eventos', 'data-msg="Eventos chegam em breve"')}${nav('open-boost', D.shield, 'Impulsos de servidor')}</div>
+  <div class="cnav">${nav('events', D.calendar, 'Eventos')}${nav('open-boost', D.shield, 'Impulsos de servidor')}</div>
   <hr class="chr0">
   ${sec('text', 'Canais de Texto', 'text', 'Adicionar canal de texto')}
   ${cs.text ? '' : s.text.map((c) => { const on = A.channel === c.id; return `<div class="chr${on ? ' on' : ''}"><button type="button" class="chn" data-act="chan" data-id="${c.id}" aria-current="${on}">${ic(D.hash, 18, '#55555F', 1.9)}<span>${esc(c.name)}</span></button><span class="chx"><button type="button" class="hov" data-act="nav" data-k="invite" aria-label="Convidar pessoas" title="Convidar pessoas">${ic(D.userPlus, 15, '#33333A', 1.8)}</button><button type="button" class="hov" data-act="toast-soon" data-msg="As configurações do canal chegam em breve" aria-label="Editar canal" title="Editar canal">${ic(D.gear, 15, '#33333A', 1.7)}</button></span></div>`; }).join('')}
@@ -2094,6 +2144,7 @@ function appAction(act, el, ev) {
     default: break;
   }
   if (act !== 'emoji-toggle' && act !== 'emoji') A.emojiOpen = false;
+  if (act !== 'sticker-toggle' && act !== 'sticker') A.stickerOpen = false;
   switch (act) {
     case 'chan': A.channel = el.dataset.id; A.draft = ''; break;
     case 'vjoin': voiceJoin(el.dataset.id); return;
@@ -2105,7 +2156,9 @@ function appAction(act, el, ev) {
     case 'close-panel': A.panel = null; break;
     case 'otoggle': A.onlineOpen = !A.onlineOpen; break;
     case 'ftoggle': A.offlineOpen = !A.offlineOpen; break;
-    case 'emoji-toggle': A.emojiOpen = !A.emojiOpen; break;
+    case 'emoji-toggle': A.emojiOpen = !A.emojiOpen; A.stickerOpen = false; break;
+    case 'sticker-toggle': A.stickerOpen = !A.stickerOpen; A.emojiOpen = false; break;
+    case 'sticker': { A.stickerOpen = false; const key = A.channel; if (!key) return; render(); sendTo(key, '::sticker::' + el.dataset.ch).then(() => { if (curKey() === key) paintMsgs(true); }).catch((e) => toast(errText(e))); return; }
     case 'emoji': A.draft += el.dataset.ch; A.emojiOpen = false; render(); { const m = document.getElementById('msg'); if (m) m.focus(); } return;
     case 'send': doSend(); return;
     case 'srv-open': { selectServer(el.dataset.id); render({ scroll: true }); return; }

@@ -333,3 +333,13 @@ html[data-theme=dark] img,html[data-theme=dark] video,html[data-theme=dark] canv
 .rxc.on{border-color:#7B6BB5;background:rgba(157,140,207,.2)}
 .rxp{display:inline-flex;flex-wrap:wrap;gap:2px;padding:2px 4px;border-radius:13px;background:#fff;border:1px solid rgba(29,29,34,.14)}
 .rxp .hov{width:28px;height:28px;border-radius:8px;font-size:16px}
+
+.stk{display:inline-block;font-size:64px;line-height:1.1}
+.stk.an{animation:stkb 2.4s ease-in-out infinite}.stk.hv:hover{animation:stkb 1s ease-in-out}
+@keyframes stkb{0%,100%{transform:translateY(0) rotate(0)}30%{transform:translateY(-8px) rotate(-6deg)}60%{transform:translateY(0) rotate(5deg)}}
+@media (prefers-reduced-motion:reduce){.stk.an,.stk.hv:hover{animation:none}}
+html.pf-reduce .stk.an,html.pf-reduce .stk.hv:hover{animation:none}
+.stkp{grid-template-columns:repeat(8,44px)}.stkp .hov{font-size:28px;height:44px}
+
+.evlist{display:flex;flex-direction:column;gap:10px}.evrow{display:flex;gap:10px;justify-content:space-between;align-items:flex-start;padding:10px;border-radius:12px;background:rgba(29,29,34,.04)}
+.evtx{min-width:0}.evtx b{display:block}.evtx small{display:block;color:#62626D}.evtx p{margin:4px 0;font-size:13.5px;word-break:break-word}.evb{display:flex;flex-direction:column;gap:6px;flex:none}

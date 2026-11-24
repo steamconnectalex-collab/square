@@ -1,0 +1,4 @@
+-- Eventos de servidor (aplicada no Supabase em 2026-11-24)
+-- Tabelas server_events e event_interest; funções create_event (só o dono), delete_event (só o dono), toggle_event_interest (membros).
+-- O SQL completo foi aplicado pela ferramenta do Supabase; resumo das regras: título 2-80, descrição até 500, local até 80,
+-- data não pode ser passada, máximo 25 eventos futuros por servidor; só membros leem.

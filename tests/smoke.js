@@ -33,7 +33,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   let qrPolls = 0;
   const storageCalls = [];
   // ---- banco simulado (servidores, canais, membros, mensagens, perfis) ----
-  const world = { rx: [], rxCalls: [], settings: {}, saved: [], usernameCalls: [], servers: [], channels: [], members: [], messages: [], nextMsg: 1, nextId: 1, friendships: [], dms: [], blocks: [], voice: [], bans: [], favs: [], pins: [], plan: 'free', publicCalls: [], pls: [], ptracks: [], nextPl: 1, nextPt: 1, moves: [],
+  const world = { events: [], interest: [], rx: [], rxCalls: [], settings: {}, saved: [], usernameCalls: [], servers: [], channels: [], members: [], messages: [], nextMsg: 1, nextId: 1, friendships: [], dms: [], blocks: [], voice: [], bans: [], favs: [], pins: [], plan: 'free', publicCalls: [], pls: [], ptracks: [], nextPl: 1, nextPt: 1, moves: [],
     profiles: [
       { id: 'u1', username: 'tester', display_name: 'Tester Um', bio: '', status_text: '', accent: '#9D8CCF', last_seen: null, created_at: '2026-11-16T10:00:00Z' },
       { id: 'u3', username: 'pedro', display_name: 'Pedro Alves', bio: '', status_text: '', accent: '#6FB3A0', last_seen: null, created_at: '2026-11-12T10:00:00Z' },
@@ -100,6 +100,8 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
       if (fn === 'voice_join') { world.voice = [{ channel_id: body.p_channel, user_id: 'u1', seen_at: new Date().toISOString() }]; return send(204, null); }
       if (fn === 'voice_ping') return send(204, null);
       if (fn === 'voice_leave') { world.voice = []; return send(204, null); }
+      if (fn === 'create_event') { world.events.push({ id: 'ev' + (world.events.length + 1), title: body.p_title, description: body.p_description, place: body.p_place, starts_at: body.p_starts }); return send(200, 'ev1'); }
+      if (fn === 'toggle_event_interest') { const i = world.interest.findIndex((x) => x.event_id === body.p_event); if (i >= 0) { world.interest.splice(i, 1); return send(200, false); } world.interest.push({ event_id: body.p_event, user_id: 'u1' }); return send(200, true); }
       if (fn === 'toggle_reaction') { const i = world.rx.findIndex((r) => r.message_id === body.p_message && r.emoji === body.p_emoji && r.user_id === 'u1'); world.rxCalls.push([body.p_message, body.p_emoji]); if (i >= 0) { world.rx.splice(i, 1); return send(200, false); } world.rx.push({ message_id: body.p_message, user_id: 'u1', emoji: body.p_emoji }); return send(200, true); }
       if (fn === 'respond_dm_request') { const d = world.dms.find((x) => x.id === body.p_channel); world.dmResp = [body.p_channel, body.p_accept]; if (d) { if (body.p_accept) d.req = false; else world.dms.splice(world.dms.indexOf(d), 1); } return send(204, null); }
       if (fn === 'open_dm') {
@@ -139,6 +141,8 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
     if (path === 'blocks') return send(200, world.blocks);
     if (path === 'voice_members') return send(200, world.voice);
     if (path === 'message_reactions') return send(200, world.rx);
+    if (path === 'server_events') return send(200, world.events);
+    if (path === 'event_interest') return send(200, world.interest);
     if (path === 'dm_members') return send(200, world.dms.flatMap((d) => [{ channel_id: d.id, user_id: 'u1', state: d.req ? 'request' : 'active' }, { channel_id: d.id, user_id: d.user, state: 'active' }]));
     if (path === 'server_members') return send(200, world.members);
     if (path === 'profiles') {
@@ -620,6 +624,24 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await page.click('#msgs .rxc.on');
   await page.waitForFunction(() => !document.querySelector('#msgs .rxc'), null, { timeout: 5000 });
   ok('clicar de novo na reação a remove', true);
+  // eventos
+  await page.click('[data-act="events"]');
+  await page.waitForSelector('.modal [data-act="event-new"]');
+  await page.click('[data-act="event-new"]');
+  await page.fill('#ev-t', 'Noite de jogos');
+  await page.fill('#ev-d', new Date(Date.now() + 86400000 - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16));
+  await page.click('.modal [data-act="modal-submit"]');
+  await page.waitForSelector('.evrow', { timeout: 5000 });
+  ok('criar evento: aparece na lista', /Noite de jogos/.test(await page.textContent('.evrow')) && world.events.length === 1);
+  await page.click('[data-act="event-int"]');
+  await page.waitForFunction(() => /1 pessoa interessada/.test(document.querySelector('.evrow').textContent), null, { timeout: 5000 });
+  ok('"Tenho interesse" conta uma pessoa', true);
+  await page.click('.modal [data-act="modal-close"]');
+  // figurinhas
+  await page.click('[data-act="sticker-toggle"]');
+  await page.click('.stkp [data-act="sticker"][data-ch="🦊"]');
+  await page.waitForSelector('#msgs .stk', { timeout: 5000 });
+  ok('figurinha enviada aparece grande no chat', (await page.textContent('#msgs .stk')).includes('🦊') && world.messages.some((m) => m.content === '::sticker::🦊'));
   // etapa 7: voz
   const vch = world.channels.find((c) => c.kind === 'voice').id;
   await page.click('[data-act="vjoin"]');
