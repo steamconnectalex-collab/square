@@ -355,3 +355,5 @@
 @media (prefers-reduced-motion:reduce){
   .rt,.rt::before,.x-left{transition:none}
 }
+
+.dmrq{display:flex;align-items:center;gap:2px}.dmrq .dmr{flex:1;min-width:0}.dmrq small{display:block;font-size:11.5px;color:var(--muted)}.dmrb{display:flex;gap:2px;flex:none}

@@ -100,6 +100,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
       if (fn === 'voice_join') { world.voice = [{ channel_id: body.p_channel, user_id: 'u1', seen_at: new Date().toISOString() }]; return send(204, null); }
       if (fn === 'voice_ping') return send(204, null);
       if (fn === 'voice_leave') { world.voice = []; return send(204, null); }
+      if (fn === 'respond_dm_request') { const d = world.dms.find((x) => x.id === body.p_channel); world.dmResp = [body.p_channel, body.p_accept]; if (d) { if (body.p_accept) d.req = false; else world.dms.splice(world.dms.indexOf(d), 1); } return send(204, null); }
       if (fn === 'open_dm') {
         let d = world.dms.find((x) => x.user === body.p_other);
         if (!d) { d = { id: 'dm' + world.nextId++, user: body.p_other }; world.dms.push(d); }
@@ -136,7 +137,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
     if (path === 'friendships') return send(200, world.friendships);
     if (path === 'blocks') return send(200, world.blocks);
     if (path === 'voice_members') return send(200, world.voice);
-    if (path === 'dm_members') return send(200, world.dms.flatMap((d) => [{ channel_id: d.id, user_id: 'u1' }, { channel_id: d.id, user_id: d.user }]));
+    if (path === 'dm_members') return send(200, world.dms.flatMap((d) => [{ channel_id: d.id, user_id: 'u1', state: d.req ? 'request' : 'active' }, { channel_id: d.id, user_id: d.user, state: 'active' }]));
     if (path === 'server_members') return send(200, world.members);
     if (path === 'profiles') {
       if (m === 'PATCH') { Object.assign(world.profiles[0], body); return send(204, null); }
@@ -805,6 +806,17 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   ok('Square Plus: pagamento avisa que ainda não existe', /ainda não/.test(await page.textContent('#toast')));
   await page.keyboard.press('Escape');
   ok('Esc fecha as Configurações', (await page.locator('#setroot .set').count()) === 0);
+
+  // solicitação de mensagem de quem não é amigo
+  world.profiles.push({ id: 'u9', username: 'estranho', display_name: 'Estranho Nove', bio: '', status_text: '', accent: '#9D8CCF', last_seen: null, created_at: '2026-11-10T10:00:00Z' });
+  world.dms.push({ id: 'dmreq', user: 'u9', req: true });
+  await page.evaluate(() => window.SQ_API.reload());
+  await page.click('.x-rail .rt.home').catch(() => {});
+  await page.waitForSelector('.dmrq', { timeout: 6000 });
+  ok('solicitação de mensagem aparece em "Solicitações de mensagens"', /Solicitações de mensagens/.test(await page.textContent('.x-col')) && /Estranho Nove/.test(await page.textContent('.dmrq')));
+  await page.click('.dmrq [data-act="dmreq"][data-ok="1"]');
+  await page.waitForFunction(() => !document.querySelector('.dmrq') && /Estranho Nove/.test(document.querySelector('.x-col').textContent), null, { timeout: 6000 });
+  ok('aceitar a solicitação chama o banco e move a conversa para a lista', world.dmResp && world.dmResp[0] === 'dmreq' && world.dmResp[1] === true);
 
   // 5. logout
   await page.click('.x-ub [data-act="settings"]');

@@ -14,7 +14,7 @@ Object.assign(SET.def, {
   profile_share: 'all', share_profile_update: true,
   // permissões de mensagens
   sx_dm_friends: 'blur', sx_dm_others: 'block', sx_server: 'blur', gr_dm_friends: 'blur', gr_dm_others: 'block', gr_server: 'blur',
-  age_cmds: false, ios_age: false, spam: 'all', dm_scope: 'all', dm_allow: true, dm_requests: true, fr_all: true, fr_fof: true, fr_server: true,
+  age_cmds: false, ios_age: false, spam: 'all', dm_scope: 'all', dm_over: {}, dm_allow: true, dm_requests: true, fr_all: true, fr_fof: true, fr_server: true,
   // notificações
   n_desktop: false, n_stream: true, n_anniv: true, n_friend_online: true, n_event: true, n_friend_profile: true, n_mute_all: false, n_badge: true, e_tips: true, e_rec: true, n_delay: 'never', n_preview: true,
   // voz e vídeo
@@ -57,6 +57,18 @@ const mask = (e) => { const i = String(e).indexOf('@'); return i < 0 ? '••�
 const acct = (label, val, btn, act) => `<div class="srow acct"><b class="sal">${esc(label)}</b><span class="sav">${val}</span>${btn ? `<button type="button" class="sbtn" data-sa="${act}">${esc(btn)}</button>` : ''}</div>`;
 const chevRow = (label, val, act) => `<button type="button" class="srow chevrow" data-sa="${act}"><b class="sal">${esc(label)}</b><span class="sav">${val}</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#33333A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>`;
 const shield = '<span class="sicb"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1D1D22" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6z"/><circle cx="12" cy="10" r="2"/><path d="M8.5 16c.8-1.6 2-2.3 3.5-2.3s2.7.7 3.5 2.3"/></svg></span>';
+
+const dmOver = () => Object.assign({}, P('dm_over') || {});
+function dmScopeToggles(dis) {
+  const sc = P('dm_scope') || 'all';
+  if (sc === 'all' || !servers().some((x) => x.id === sc)) {
+    return `${tg('dm_allow', 'Mensagens Diretas', 'Permitir DMs de outros membros dos meus servidores')}
+${tg('dm_requests', 'Solicitações de mensagens', 'Filtrar mensagens de membros do servidor que você talvez não conheça. <a class="lnk" href="/privacidade" target="_blank" rel="noopener">Saiba mais</a>', { dis })}`;
+  }
+  const o = dmOver()[sc] || {}, allow = o.allow === undefined ? P('dm_allow') !== false : !!o.allow, req = o.req === undefined ? P('dm_requests') !== false : !!o.req;
+  const sw = (f, on, label, desc, d) => `<div class="srow"><div class="stx"><b>${label}</b><small>${desc}</small></div><button type="button" class="stg${on ? ' on' : ''}" role="switch" aria-checked="${on}" aria-label="${label}" data-sa="dm-over" data-f="${f}"${d ? ' disabled' : ''}><i></i></button></div>`;
+  return `${sw('allow', allow, 'Mensagens Diretas', 'Permitir DMs de membros deste servidor (vale só para ele)')}${sw('req', req, 'Solicitações de mensagens', 'Filtrar mensagens de membros deste servidor que você talvez não conheça.', dis)}`;
+}
 const check = '<span class="sicb ok"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1B6B47" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.5"/></svg></span>';
 
 page({ id: 'account', label: 'Conta', title: 'Conta', kw: 'usuário email telefone senha excluir desativar idade',
@@ -108,6 +120,7 @@ Object.assign(SET.acts, {
   devices: () => SET.modal({ title: 'Dispositivos conectados', body: '<div class="sdev"><b>Este dispositivo</b><small>Sessão atual, ativa agora</small></div><p class="sgd">Se você entrou em outros aparelhos e quer encerrar essas sessões, use o botão abaixo. A sessão atual continua.</p>', actions: [{ label: 'Fechar', act: 'modal-close' }, { label: 'Sair dos outros dispositivos', act: 'logout-others', cls: 'dangersolid' }] }),
   'logout-others': async () => { try { const r = await api().authFetch('/auth/v1/logout?scope=others', { method: 'POST' }); if (!r.ok) throw new Error('x'); SET.modal(null); toast('Os outros dispositivos foram desconectados'); } catch (e) { toast('Não deu certo. Tente de novo.'); } },
   'acc-ok': () => toast('Sua conta está em dia. Nenhuma violação registrada.'),
+  'dm-over': (t) => { const sc = P('dm_scope'), all = dmOver(), cur = Object.assign({}, all[sc] || {}); const base = t.dataset.f === 'allow' ? P('dm_allow') !== false : P('dm_requests') !== false; const was = cur[t.dataset.f] === undefined ? base : !!cur[t.dataset.f]; cur[t.dataset.f] = !was; all[sc] = cur; SET.setP('dm_over', all); SET.redraw(); },
   family: () => toast(SOON),
   /* ---- trocar e-mail ---- */
   'ed-email': () => SET.modal({ title: 'Mudar e-mail', body: '<label class="sgl" for="em-new">Novo e-mail</label><input id="em-new" class="sinp" type="email" autocomplete="off"><label class="sgl" for="em-pw">Sua senha atual</label><input id="em-pw" class="sinp" type="password" autocomplete="current-password"><small class="sgd">Enviamos um código para o novo endereço para confirmar que ele é seu.</small><p class="smerr" id="em-err" role="alert"></p>', actions: [{ label: 'Cancelar', act: 'modal-close' }, { label: 'Enviar código', act: 'em-send', cls: 'primary' }] }),
@@ -246,8 +259,7 @@ ${rd('spam', 'Filtrar automaticamente mensagens de spam suspeitas', 'A Square po
 ${hr()}
 ${h2('pm-dm', 'Permissões de mensagens diretas (DM)')}
 <div class="sgrp"><select class="ssel" data-k="dm_scope" aria-label="Servidor"><option value="all">Todos os servidores</option>${servers().map((s) => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('')}</select></div>
-${tg('dm_allow', 'Mensagens Diretas', 'Permitir DMs de outros membros dos meus servidores')}
-${tg('dm_requests', 'Solicitações de mensagens', 'Filtrar mensagens de membros do servidor que você talvez não conheça. <a class="lnk" href="/privacidade" target="_blank" rel="noopener">Saiba mais</a>', { dis })}
+${dmScopeToggles(dis)}
 ${ageBanner('Solicitações de mensagens só podem ser desativadas se você estiver no grupo de idade adulto. <a class="lnk" href="#" data-sa="age">Saiba mais</a>')}
 ${hr()}
 ${h2('pm-fr', 'Permissões de pedido de amizade', 'Controle quem pode enviar pedidos de amizade e como eles aparecem.')}
@@ -294,6 +306,7 @@ SET.onToggle = (k, v) => {
     Notification.requestPermission().then((r) => { if (r !== 'granted') { SET.setP('n_desktop', false); toast('Permita as notificações para este site no navegador.'); } });
   }
   if (k === 'streamer') toast(v ? 'Modo streamer ligado' : 'Modo streamer desligado');
+  if (k === 'dm_scope') SET.redraw();
   if (k === 'lang') return;
 };
 

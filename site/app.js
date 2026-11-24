@@ -751,7 +751,7 @@ const ERRS = {
   invalid_name: 'O nome está fora do tamanho permitido.', too_many_servers: 'Você atingiu o limite de servidores.',
   too_many_channels: 'Esse servidor já tem o máximo de canais.', not_owner: 'Só o dono do servidor pode fazer isso.',
   not_member: 'Você não faz parte deste servidor.', user_not_found: 'Não encontramos ninguém com esse @usuário.', requests_closed: 'Esta pessoa não está aceitando pedidos de amizade de você.', rate_limited: 'Calma! Você está enviando mensagens rápido demais. Espere alguns segundos.', banned: 'Você foi banido deste servidor.', cannot_remove_self: 'Você não pode fazer isso com você mesmo.', voice_full: 'A sala de voz está cheia (máximo de 6 pessoas).', not_member: 'Você não faz parte deste servidor.', you_blocked: 'Você bloqueou essa pessoa. Desbloqueie para adicioná-la.', cannot_add_self: 'Você não pode adicionar a si mesmo.',
-  too_many_requests: 'Você já tem pedidos demais esperando resposta.', no_request: 'Esse pedido não existe mais.', not_friends: 'Vocês ainda não são amigos.', invalid_invite: 'Convite inválido ou expirado.',
+  too_many_requests: 'Você já tem pedidos demais esperando resposta.', no_request: 'Esse pedido não existe mais.', not_friends: 'Vocês ainda não são amigos.', dm_closed: 'Esta pessoa não está aceitando mensagens diretas de você.', invalid_invite: 'Convite inválido ou expirado.',
   'row-level security': 'Você não tem permissão para isso.', 'violates check constraint': 'Algum campo está fora do tamanho permitido.'
 };
 function errText(e) {
@@ -764,8 +764,8 @@ function errText(e) {
 let SERVERS = [];
 let A = null;
 const ONLINE_MS = 150000;
-const FIELDS = 'id,author_id,content,created_at,edited_at,attachment_path';
-const mapMsg = (r) => ({ id: r.id, from: r.author_id, text: r.content, at: r.created_at, edited: !!r.edited_at, img: r.attachment_path || '' });
+const FIELDS = 'id,author_id,content,created_at,edited_at,attachment_path,attachment_alt';
+const mapMsg = (r) => ({ id: r.id, from: r.author_id, text: r.content, at: r.created_at, edited: !!r.edited_at, img: r.attachment_path || '', alt: r.attachment_alt || '' });
 const attUrl = (path) => C.SUPABASE_URL + '/storage/v1/object/public/attachments/' + path.split('/').map(encodeURIComponent).join('/');
 const mentionsMe = (text) => { const u = A && A.me && A.me.user; return !!u && new RegExp('(^|[^a-z0-9_])@' + u.replace(/[^a-z0-9_.]/gi, '') + '(?![a-z0-9_])', 'i').test(text || ''); };
 /* filtro de spam (regra simples): 2+ links ou link encurtado; "all" vale para todos, "unknown" só para quem não é amigo */
@@ -874,11 +874,11 @@ async function loadWorld(paint) {
       sb('/rest/v1/server_members?select=server_id,user_id,role'),
       sb('/rest/v1/friendships?select=user_a,user_b,requester,status,note'),
       sb('/rest/v1/channels?select=id&kind=eq.dm'),
-      sb('/rest/v1/dm_members?select=channel_id,user_id'),
+      sb('/rest/v1/dm_members?select=channel_id,user_id,state'),
       sb('/rest/v1/blocks?select=blocked')
     ]);
     const other = (f) => (f.user_a === myId() ? f.user_b : f.user_a);
-    const ids = Array.from(new Set(mem.map((m) => m.user_id).concat(fr.map(other), blk.map((b) => b.blocked), [myId()])));
+    const ids = Array.from(new Set(mem.map((m) => m.user_id).concat(fr.map(other), blk.map((b) => b.blocked), dmm.map((m) => m.user_id), [myId()])));
     const [profsBase, profsFull] = await Promise.all([
       sb('/rest/v1/profiles?select=id,username,display_name,avatar_path,last_seen,presence,deactivated_at,profile_updated_at&id=in.(' + ids.join(',') + ')'),
       sb('/rest/v1/rpc/profiles_full', { method: 'POST', body: { p_ids: ids.slice(0, 200) } }).catch(() => [])
@@ -906,6 +906,13 @@ async function loadWorld(paint) {
     w.unread = unread;
     loadVoice();
     w.friends = fr.filter((f) => f.status === 'accepted').map((f) => known[other(f)]).filter(Boolean).map((p) => Object.assign({}, p, { dm: dmByUser[p.id] || '' })).sort(byName);
+    const isFr = new Set(w.friends.map((f) => f.id));
+    w.dmReq = []; w.dmOther = [];
+    dmc.forEach((c) => {
+      const mine = dmm.find((x) => x.channel_id === c.id && x.user_id === myId()), o = dmUser[c.id], pp = o && known[o];
+      if (!mine || !pp || isFr.has(o)) return;
+      if (mine.state === 'request') w.dmReq.push(Object.assign({}, pp, { dm: c.id })); else w.dmOther.push(Object.assign({}, pp, { dm: c.id }));
+    });
     w.incoming = fr.filter((f) => f.status === 'pending' && f.requester !== myId() && known[other(f)]).map((f) => Object.assign({}, known[other(f)], { note: f.note || '' }));
     w.outgoing = fr.filter((f) => f.status === 'pending' && f.requester === myId()).map((f) => known[other(f)]).filter(Boolean);
     SERVERS = srv.map((s) => {
@@ -1241,9 +1248,10 @@ function updateTyping() {
   const names = Object.keys(A.typing).filter((k) => k.startsWith(key + '|') && now - A.typing[k].t < 5000).map((k) => A.typing[k].name);
   el.textContent = !names.length ? '' : names.length === 1 ? names[0] + ' está digitando…' : names.length === 2 ? names[0] + ' e ' + names[1] + ' estão digitando…' : 'Várias pessoas estão digitando…';
 }
-async function sendTo(key, text, img) {
+async function sendTo(key, text, img, alt) {
   const body = { channel_id: key, content: text };
   if (img) body.attachment_path = img;
+  if (img && alt) body.attachment_alt = alt;
   const rows = await sb('/rest/v1/messages?select=' + FIELDS, { method: 'POST', body, prefer: 'return=representation' });
   const m = mapMsg(rows[0]), th = A.threads[key];
   if (th && !th.some((x) => x.id === m.id)) th.push(m);
@@ -1276,7 +1284,9 @@ async function sendImage(file) {
     const blob = isGif ? file : await shrinkMax(file, 1280);
     const path = myId() + '/' + (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '' + Math.random().toString(16).slice(2)) + (isGif ? '.gif' : '.jpg');
     await storageCall('POST', path, blob, isGif ? 'image/gif' : 'image/jpeg', 'attachments');
-    await sendTo(key, caption || '📷 Imagem', path);
+    let alt = '';
+    if (SPV('img_desc', false)) { try { alt = (window.prompt('Descreva a imagem para quem usa leitor de tela (opcional):', '') || '').trim().slice(0, 300); } catch (e) { alt = ''; } }
+    await sendTo(key, caption || '📷 Imagem', path, alt);
     if (caption) { A.draft = ''; const i = document.getElementById('msg'); if (i) i.value = ''; syncSend(); }
   } catch (e) { toast(e && e.message === 'upload_failed' ? 'Não foi possível enviar a imagem. Tente outra.' : errText(e)); }
   A.sending = false;
@@ -1442,8 +1452,8 @@ function modalHTML() {
         : rel === 'friend' ? `<button type="button" class="mbtn ghost" data-act="fr-remove" data-id="${p.id}"${dis}>Remover amigo</button><button type="button" class="mbtn" data-act="dm" data-id="${p.id}"${dis}>Enviar mensagem</button>`
         : rel === 'incoming' ? `<button type="button" class="mbtn ghost" data-act="fr-decline" data-id="${p.id}"${dis}>Recusar</button><button type="button" class="mbtn" data-act="fr-accept" data-id="${p.id}"${dis}>Aceitar pedido</button>`
         : rel === 'blocked' ? `<button type="button" class="mbtn" data-act="fr-unblock" data-id="${p.id}"${dis}>Desbloquear</button>`
-        : rel === 'outgoing' ? `<button type="button" class="mbtn ghost" data-act="fr-remove" data-id="${p.id}"${dis}>Cancelar pedido</button>`
-        : `<button type="button" class="mbtn" data-act="fr-add" data-user="${esc(p.user)}"${dis}>Adicionar amigo</button>`;
+        : rel === 'outgoing' ? `<button type="button" class="mbtn ghost" data-act="fr-remove" data-id="${p.id}"${dis}>Cancelar pedido</button><button type="button" class="mbtn" data-act="dm" data-id="${p.id}"${dis}>Enviar mensagem</button>`
+        : `<button type="button" class="mbtn ghost" data-act="dm" data-id="${p.id}"${dis}>Enviar mensagem</button><button type="button" class="mbtn" data-act="fr-add" data-user="${esc(p.user)}"${dis}>Adicionar amigo</button>`;
       const sv = A.view === 'server' ? curServer() : null;
       if (sv && sv.mine && !p.me && sv.byId[p.id]) foot = `<button type="button" class="blink" data-act="mod" data-k="kick" data-id="${p.id}"${dis}>Expulsar</button><button type="button" class="blink" data-act="mod" data-k="ban" data-id="${p.id}"${dis}>Banir</button>` + foot;
       if (rel !== 'me' && rel !== 'blocked') foot = `<button type="button" class="blink" data-act="fr-block" data-id="${p.id}"${dis}>Bloquear</button>` + foot;
@@ -1623,6 +1633,7 @@ function modalAct(act, el, ev) {
     case 'fr-remove': friendAct('remove', el.dataset.id); return true;
     case 'dm': friendAct('dm', el.dataset.id); return true;
     case 'dm-open': friendAct('dm', el.dataset.id, '', true); return true;
+    case 'dmreq': { const w = A, ok = el.dataset.ok === '1', ch = el.dataset.ch; rpc('respond_dm_request', { p_channel: ch, p_accept: ok }).then(async () => { if (ok) { await loadWorld(() => {}); } else { if (A.channel === ch) { A.view = 'friends'; A.channel = null; } await loadWorld(() => {}); } if (A === w) { render(); toast(ok ? 'Solicitação aceita' : 'Solicitação recusada'); } }).catch((e) => toast(errText(e))); return true; }
     case 'mod': { const p = findPerson(el.dataset.id); if (p) { A.modal = { type: 'mod', k: el.dataset.k, id: p.id, name: p.name, err: '', busy: false }; render(); } return true; }
     case 'bans': { const s = curServer(); if (!s) return true; const m = A.modal = { type: 'bans', items: null, err: '', busy: false }; render(); rpc('list_bans', { p_server: s.id }).then((r) => { if (A.modal === m) { m.items = r || []; render(); } }).catch((e) => { if (A.modal === m) { m.items = []; m.err = errText(e); render(); } }); return true; }
     case 'unban': { const m = A.modal, s = curServer(); if (!m || !s) return true; m.busy = true; render(); rpc('unban_member', { p_server: s.id, p_user: el.dataset.id }).then(() => { m.items = (m.items || []).filter((b) => b.user_id !== el.dataset.id); m.busy = false; render(); toast('Pessoa desbanida'); }).catch((e) => { m.busy = false; m.err = errText(e); render(); }); return true; }
@@ -1745,7 +1756,8 @@ function dmColHTML() {
   <hr class="chr0">
   <div class="dmh"><span>Mensagens diretas</span><button type="button" class="hov sq" data-act="add-tab" aria-label="Criar mensagem direta" title="Criar mensagem direta">${ic(D.plus, 16, '#55555F', 2)}</button></div>
   <button type="button" class="dmr${v === 'official' ? ' on' : ''}" data-act="go-official" aria-current="${v === 'official'}"><span class="xav sm sqo">${logoMark(16)}</span><span class="tx"><b>Square <u class="ofi">${ic(D.check, 10, '#fff', 3.2)}OFICIAL</u></b><small>Mensagem Oficial da Square</small></span></button>
-  ${A.friends.filter((f) => f.dm).map(row).join('')}`;
+  ${A.friends.filter((f) => f.dm).concat(A.dmOther || []).map(row).join('')}
+  ${(A.dmReq || []).length ? `<div class="dmh"><span>Solicitações de mensagens (${A.dmReq.length})</span></div>${A.dmReq.map((f) => `<div class="dmrq"><button type="button" class="dmr${v === 'dm' && f.dm === A.channel ? ' on' : ''}" data-act="dm-open" data-id="${f.id}">${xAv(f, 'sm')}<span class="tx"><b>${esc(f.name)}</b><small>quer te enviar mensagem</small></span></button><span class="dmrb"><button type="button" class="hov sq" data-act="dmreq" data-ch="${f.dm}" data-ok="1" aria-label="Aceitar solicitação de ${esc(f.name)}" title="Aceitar">${ic(D.check, 16, '#1B6B47', 2.4)}</button><button type="button" class="hov sq" data-act="dmreq" data-ch="${f.dm}" data-ok="0" aria-label="Recusar solicitação de ${esc(f.name)}" title="Recusar">${ic(D.x || D.close || D.plus, 16, '#B3261E', 2.4)}</button></span></div>`).join('')}` : ''}`;
 }
 function srvColHTML(s) {
   const cs = A.csec;
