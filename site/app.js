@@ -826,7 +826,7 @@ function initApp() {
     owner: uid, world: 'loading', werr: '', me: null, server: null, channel: null, voice: null, muted: false, deafened: false,
     panel: null, showMembers: true, onlineOpen: true, offlineOpen: true, draft: '', search: '', emojiOpen: false, menu: false,
     view: 'friends', ftab: 'all', af: { user: '', note: '', busy: false }, pop: null, drawer: false, csec: { text: false, voice: false }, devs: null, plan: 'free', gq: '', entered: false,
-    threads: {}, loaded: {}, loading: {}, more: {}, terr: {}, modal: null, poll: null, beat: null, tt: null, typing: {}, pollN: 0, friends: [], incoming: [], outgoing: [], known: {}, dmByUser: {}, dmUser: {}, blocked: new Set(), unread: {}, vrost: {}
+    threads: {}, rx: {}, rxPick: null, loaded: {}, loading: {}, more: {}, terr: {}, modal: null, poll: null, beat: null, tt: null, typing: {}, pollN: 0, friends: [], incoming: [], outgoing: [], known: {}, dmByUser: {}, dmUser: {}, blocked: new Set(), unread: {}, vrost: {}
   };
   startLive(); loadWorld(); openJoin();
   if (window.SQ_SET) window.SQ_SET.boot(uid);
@@ -839,10 +839,11 @@ function startLive() {
   A.poll = setInterval(pollTick, 3000);
   A.beat = setInterval(() => beat(false), 60000);
   A.tt = setInterval(updateTyping, 1500);
+  A.rxT = setInterval(() => { if (!document.hidden) loadRx(curKey()); }, 4000);
   rtStart();
   beat(true);
 }
-function stopAppTimers() { voiceLeave(true); if (A) { clearInterval(A.poll); clearInterval(A.beat); clearInterval(A.tt); A.poll = A.beat = A.tt = null; } rtStop(false); }
+function stopAppTimers() { voiceLeave(true); if (A) { clearInterval(A.poll); clearInterval(A.beat); clearInterval(A.tt); clearInterval(A.rxT); A.poll = A.beat = A.tt = A.rxT = null; } rtStop(false); }
 
 const srvIni = (n) => { const w = String(n || '').trim().split(/\s+/).filter(Boolean); return (w.length ? w.map((x) => Array.from(x)[0]).slice(0, 3).join('') : '?'); };
 const favList = () => { try { return JSON.parse(localStorage.getItem('sq.favsrv.' + myId()) || '[]') || []; } catch (e) { return []; } };
@@ -999,6 +1000,40 @@ function freezeGifs(root) {
     const go = () => { try { const c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight; c.getContext('2d').drawImage(im, 0, 0); c.className = im.className; c.setAttribute('role', 'img'); c.setAttribute('aria-label', im.alt || 'GIF'); im.replaceWith(c); } catch (e) { /* mantém animado */ } };
     if (im.complete && im.naturalWidth) go(); else im.addEventListener('load', go, { once: true });
   });
+}
+/* ----- reações ----- */
+async function loadRx(key) {
+  if (!A || !key || !A.loaded[key] || A.rxBusy || !SPV('msg_react', true)) return;
+  const ids = (A.threads[key] || []).slice(-100).map((m) => m.id); if (!ids.length) return;
+  const w = A; A.rxBusy = true;
+  try {
+    const rows = await sb('/rest/v1/message_reactions?select=message_id,user_id,emoji&message_id=in.(' + ids.join(',') + ')');
+    if (A !== w) return;
+    const by = {}; rows.forEach((r) => { ((by[r.message_id] = by[r.message_id] || {})[r.emoji] = (by[r.message_id][r.emoji] || [])).push(r.user_id); });
+    const before = JSON.stringify(ids.map((i) => w.rx[i] || null));
+    ids.forEach((i) => { if (by[i]) w.rx[i] = by[i]; else delete w.rx[i]; });
+    if (before !== JSON.stringify(ids.map((i) => w.rx[i] || null)) && curKey() === key) paintMsgs('keep');
+  } catch (e) { /* tenta de novo */ }
+  finally { if (A === w) w.rxBusy = false; }
+}
+function rxHTML(m) {
+  if (!SPV('msg_react', true)) return '';
+  const r = A.rx[m.id] || {}, me = myId();
+  const chips = Object.keys(r).map((e) => { const on = r[e].includes(me); return `<button type="button" class="rxc${on ? ' on' : ''}" data-act="rx" data-id="${m.id}" data-e="${esc(e)}" aria-pressed="${on}" aria-label="${esc(e)} ${r[e].length} ${r[e].length === 1 ? 'reação' : 'reações'}">${esc(e)} <b>${r[e].length}</b></button>`; }).join('');
+  const pick = A.rxPick === m.id ? `<span class="rxp" role="group" aria-label="Escolher reação">${EMOJIS.map((e) => `<button type="button" class="hov" data-act="rx" data-id="${m.id}" data-e="${e[0]}" aria-label="Reagir com ${e[1]}">${e[0]}</button>`).join('')}</span>` : '';
+  return chips || pick ? `<div class="rxs">${chips}${pick}</div>` : '';
+}
+async function toggleRx(id, emoji) {
+  const key = curKey(), w = A;
+  A.rxPick = null;
+  const cur = A.rx[id] = A.rx[id] || {}, me = myId(), list = cur[emoji] || [];
+  const was = list.includes(me);
+  if (was) { cur[emoji] = list.filter((u) => u !== me); if (!cur[emoji].length) delete cur[emoji]; } else cur[emoji] = list.concat(me);
+  if (!Object.keys(cur).length) delete A.rx[id];
+  paintMsgs('keep');
+  try { await rpc('toggle_reaction', { p_message: Number(id), p_emoji: emoji }); }
+  catch (e) { if (A === w) { toast(errText(e)); } }
+  if (A === w) loadRx(key);
 }
 function paintMsgs(stick) {
   const el = document.getElementById('msgs'); if (!el) return;
@@ -1372,8 +1407,9 @@ function serverMsgsHTML() {
   const intro = A.more[key] ? '' : (srv ? welcomeHTML(srv, srv.text.find((c) => c.id === key)) : dmIntroHTML(dmPeer(key)));
   const acts = (m) => {
     const mine = m.from === me;
-    if (!mine && !(srv && srv.owner === me)) return '';
-    return `<span class="mact">${mine ? `<button type="button" class="hov" data-act="msg-edit" data-id="${m.id}" aria-label="Editar mensagem">${ic(D.edit, 14, '#55555F', 1.8)}</button>` : ''}<button type="button" class="hov" data-act="msg-del" data-id="${m.id}" aria-label="Apagar mensagem">${ic(D.close, 14, '#55555F', 1.8)}</button></span>`;
+    const rbtn = SPV('msg_react', true) ? `<button type="button" class="hov" data-act="rx-pick" data-id="${m.id}" aria-label="Adicionar reação">${ic(D.smile || D.plus, 14, '#55555F', 1.8)}</button>` : '';
+    if (!mine && !(srv && srv.owner === me)) return rbtn ? `<span class="mact">${rbtn}</span>` : '';
+    return `<span class="mact">${rbtn}${mine ? `<button type="button" class="hov" data-act="msg-edit" data-id="${m.id}" aria-label="Editar mensagem">${ic(D.edit, 14, '#55555F', 1.8)}</button>` : ''}<button type="button" class="hov" data-act="msg-del" data-id="${m.id}" aria-label="Apagar mensagem">${ic(D.close, 14, '#55555F', 1.8)}</button></span>`;
   };
   return '<div class="fill"></div>'
     + (A.more[key] ? '<button type="button" class="lnk older" data-act="older">Ver mensagens mais antigas</button>' : '')
@@ -1381,10 +1417,10 @@ function serverMsgsHTML() {
     + (th.length || intro ? '' : '<div class="empty">Nenhuma mensagem ainda. Seja o primeiro a escrever.</div>')
     + th.map((m) => {
       const ed = m.edited ? ' <small class="ed">(editada)</small>' : '';
-      if (m.from === me) return `<div class="mout">${acts(m)}<div class="bub"><span class="sr">Você: </span>${msgBody(m)}${ed}</div></div>`;
+      if (m.from === me) return `<div class="mout">${acts(m)}<div class="bub"><span class="sr">Você: </span>${msgBody(m)}${ed}${rxHTML(m)}</div></div>`;
       const p = srv ? srv.byId[m.from] : dmPeer(key), nm = p ? p.name : 'Ex-membro';
       return `<div class="min"><div class="col"><button type="button" class="av40" data-act="profile" data-id="${m.from}" aria-label="Ver perfil de ${esc(nm)}" style="background:${p ? p.g : G.slate}">${esc(p ? p.ini : '')}</button><small>${esc(msgTime(m.at))}</small></div>
-        <div class="bub"><button type="button" class="an" data-act="profile" data-id="${m.from}">${esc(nm)}</button>${msgBody(m)}${ed}</div>${acts(m)}</div>`;
+        <div class="bub"><button type="button" class="an" data-act="profile" data-id="${m.from}">${esc(nm)}</button>${msgBody(m)}${ed}${rxHTML(m)}</div>${acts(m)}</div>`;
     }).join('');
 }
 
@@ -1660,6 +1696,8 @@ function modalAct(act, el, ev) {
     case 'fr-unblock': friendAct('unblock', el.dataset.id); return true;
     case 'fr-block': { const p = findPerson(el.dataset.id); if (p) { A.modal = { type: 'block', id: p.id, name: p.name, err: '', busy: false }; render(); focusModal(); } return true; }
     case 'msg-edit': openMsgModal('edit', el); return true;
+    case 'rx-pick': A.rxPick = A.rxPick === el.dataset.id || String(A.rxPick) === el.dataset.id ? null : (isNaN(el.dataset.id) ? el.dataset.id : Number(el.dataset.id)); paintMsgs('keep'); return true;
+    case 'rx': toggleRx(el.dataset.id, el.dataset.e); return true;
     case 'msg-del': openMsgModal('del', el); return true;
     default: return false;
   }

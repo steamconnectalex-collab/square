@@ -326,3 +326,10 @@ html[data-theme=dark] img,html[data-theme=dark] video,html[data-theme=dark] canv
 .cbar.plain .ib{display:none}
 .rt.fav{box-shadow:0 0 0 2px #E8A33D}
 .pf-noemoanim .emoji button,.pf-noemoanim .hov{transition:none!important;animation:none!important}
+
+.rxs{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.rxc{display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 8px;border-radius:13px;border:1px solid rgba(29,29,34,.14);background:rgba(255,255,255,.7);font-size:13px;line-height:1}
+.rxc b{font-size:12px;font-weight:700;color:#44444C}
+.rxc.on{border-color:#7B6BB5;background:rgba(157,140,207,.2)}
+.rxp{display:inline-flex;flex-wrap:wrap;gap:2px;padding:2px 4px;border-radius:13px;background:#fff;border:1px solid rgba(29,29,34,.14)}
+.rxp .hov{width:28px;height:28px;border-radius:8px;font-size:16px}
