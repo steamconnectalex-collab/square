@@ -1,6 +1,7 @@
 // Square — backend de acesso à conta (Edge Function "auth")
 // Rotas (todas POST, exceto /health): signup, verify, resend, login, forgot, reset,
-// qr/create, qr/info, qr/approve, qr/poll
+// qr/create, qr/info, qr/approve, qr/poll, email/change/request, email/change/confirm,
+// account/deactivate, account/delete, mfa/recovery, mfa/disable
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { MailError, mailConfigured, sendCodeMail } from "./mail.ts";
 
@@ -14,7 +15,7 @@ const RESEND_COOLDOWN_MS = 30_000;
 const MAX_ATTEMPTS = 5;
 const QR_TTL_S = 120;
 
-type Purpose = "signup" | "reset";
+type Purpose = "signup" | "reset" | "change";
 
 class HttpError extends Error {
   constructor(public status: number, public code: string, message: string, public extra: Record<string, unknown> = {}) {
@@ -140,6 +141,30 @@ async function sessionPayload(email: string, userId: string) {
     user: { id: userId, email },
     profile: await profileOf(userId),
   };
+}
+
+// ---------- verificação em duas etapas (TOTP do Supabase Auth) ----------
+async function totpFactor(userId: string) {
+  const { data } = await admin.auth.admin.mfa.listFactors({ userId });
+  return (data?.factors ?? []).find((f) => f.factor_type === "totp" && f.status === "verified") ?? null;
+}
+// cliente que age "como o usuário" (precisa do access_token dele) para o desafio/validação do código de 6 dígitos
+async function mfaVerify(session: { access_token: string; refresh_token: string }, factorId: string, code: string) {
+  const uc = createClient(SUPABASE_URL, ANON_KEY, opts);
+  const { error: se } = await uc.auth.setSession({ access_token: session.access_token, refresh_token: session.refresh_token });
+  if (se) throw se;
+  const ch = await uc.auth.mfa.challenge({ factorId });
+  if (ch.error || !ch.data) throw new HttpError(400, "wrong_totp", "Não foi possível validar o código. Tente de novo.");
+  const v = await uc.auth.mfa.verify({ factorId, challengeId: ch.data.id, code: String(code).replace(/\D/g, "") });
+  if (v.error || !v.data) throw new HttpError(400, "wrong_totp", "Esse código do aplicativo não confere. Confira o horário do celular e tente de novo.");
+  return v.data;
+}
+const reactivate = (userId: string) => admin.from("profiles").update({ deactivated_at: null }).eq("id", userId).not("deactivated_at", "is", null);
+const RECOVERY_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+function recoveryCode() {
+  const b = crypto.getRandomValues(new Uint8Array(10));
+  let c = ""; for (const x of b) c += RECOVERY_ALPHABET[x & 31];
+  return c.slice(0, 5) + "-" + c.slice(5);
 }
 
 // ---------- códigos por e-mail ----------
@@ -291,9 +316,30 @@ async function login(body: Record<string, unknown>, ip: string) {
     }
     throw bad();
   }
-  const s = data.session;
+  let s = data.session;
+  const factor = await totpFactor(data.user.id);
+  let mfaOff = false;
+  if (factor) {
+    const rec = normCode(body.recovery_code), totp = String(body.code ?? "").replace(/\D/g, "");
+    if (!rec && totp.length !== 6) return { ok: true, mfa_required: true };
+    await limit(`mfa:${data.user.id}`, 8, 600, "Muitas tentativas de código. Aguarde alguns minutos.");
+    if (rec) {
+      const hash = await hmac(`mfa-rec|${data.user.id}|${rec}`);
+      const { data: used } = await admin.from("mfa_recovery").update({ used_at: new Date().toISOString() }).eq("user_id", data.user.id)
+        .eq("code_hash", hash).is("used_at", null).select("code_hash").maybeSingle();
+      if (!used) throw new HttpError(400, "wrong_recovery", "Esse código de recuperação não vale (já foi usado ou está errado).");
+      await admin.auth.admin.mfa.deleteFactor({ id: factor.id, userId: data.user.id }); // usar o código de recuperação desliga a verificação
+      await admin.from("mfa_recovery").delete().eq("user_id", data.user.id);
+      mfaOff = true;
+    } else {
+      const v = await mfaVerify(s, factor.id, totp);
+      s = { ...s, access_token: v.access_token, refresh_token: v.refresh_token, expires_in: v.expires_in, expires_at: Math.floor(Date.now() / 1000) + v.expires_in, token_type: v.token_type } as typeof s;
+    }
+  }
+  await reactivate(data.user.id);
   return {
     ok: true,
+    ...(mfaOff ? { mfa_disabled: true } : {}),
     session: { access_token: s.access_token, refresh_token: s.refresh_token, expires_in: s.expires_in, expires_at: s.expires_at, token_type: s.token_type },
     user: { id: data.user.id, email },
     profile: await profileOf(data.user.id),
@@ -324,6 +370,8 @@ async function reset(body: Record<string, unknown>, ip: string) {
     throw error;
   }
   await admin.rpc("revoke_user_sessions", { p_user: user.id }); // derruba sessões antigas
+  if (await totpFactor(user.id)) return { ok: true, mfa_required: true }; // com 2 etapas: entra pelo login normal (senha nova + código)
+  await reactivate(user.id);
   return { ok: true, ...(await sessionPayload(email, user.id)) };
 }
 
@@ -398,7 +446,91 @@ async function qrPoll(body: Record<string, unknown>, ip: string) {
   if (!claimed?.approved_by) return { ok: true, status: "expired" };
   const { data: u, error } = await admin.auth.admin.getUserById(claimed.approved_by);
   if (error || !u.user?.email) throw new Error("usuário do QR não encontrado");
+  await reactivate(u.user.id);
   return { ok: true, status: "approved", ...(await sessionPayload(u.user.email, u.user.id)) };
+}
+
+// ---------- conta: e-mail, desativar, excluir, 2 etapas ----------
+async function checkPasswordOf(email: string, password: unknown) {
+  const { data, error } = await anonClient().auth.signInWithPassword({ email, password: String(password ?? "") });
+  if (error || !data.session) throw new HttpError(401, "invalid_credentials", "Senha incorreta.");
+}
+async function emailChangeRequest(req: Request, body: Record<string, unknown>, ip: string) {
+  const user = await requireUser(req);
+  await limit(`echange:${user.id}`, 6, 3600, "Muitas tentativas. Tente de novo mais tarde.");
+  await checkPasswordOf(user.email!, body.password);
+  const next = normEmail(body.new_email);
+  if (next === (user.email ?? "").toLowerCase()) throw new HttpError(400, "same_email", "Esse já é o e-mail da sua conta.");
+  const existing = await findUser(next);
+  if (existing) throw new HttpError(409, "email_taken", "Já existe uma conta com esse e-mail.");
+  await issueCode(next, "change");
+  return { ok: true, email: next };
+}
+async function emailChangeConfirm(req: Request, body: Record<string, unknown>) {
+  const user = await requireUser(req);
+  const next = normEmail(body.new_email);
+  await limit(`echange:c:${user.id}`, 20, 600);
+  await checkCode(next, "change", body.code);
+  if (await findUser(next)) throw new HttpError(409, "email_taken", "Já existe uma conta com esse e-mail.");
+  const { error } = await admin.auth.admin.updateUserById(user.id, { email: next, email_confirm: true });
+  if (error) throw error;
+  return { ok: true, email: next };
+}
+async function accountDeactivate(req: Request, body: Record<string, unknown>) {
+  const user = await requireUser(req);
+  await limit(`acct:${user.id}`, 8, 3600);
+  await checkPasswordOf(user.email!, body.password);
+  const { error } = await admin.from("profiles").update({ deactivated_at: new Date().toISOString(), presence: "invisible" }).eq("id", user.id);
+  if (error) throw error;
+  await admin.rpc("revoke_user_sessions", { p_user: user.id });
+  return { ok: true };
+}
+async function accountDelete(req: Request, body: Record<string, unknown>) {
+  const user = await requireUser(req);
+  await limit(`acct:${user.id}`, 8, 3600);
+  await checkPasswordOf(user.email!, body.password);
+  if (String(body.confirm ?? "").trim().toUpperCase() !== "EXCLUIR") throw new HttpError(400, "confirm_required", 'Digite EXCLUIR para confirmar.');
+  const { error: pe } = await admin.rpc("purge_user_data", { p_user: user.id });
+  if (pe) throw pe;
+  for (const bucket of ["avatars", "attachments"]) {
+    const { data: files } = await admin.storage.from(bucket).list(user.id, { limit: 1000 });
+    if (files?.length) await admin.storage.from(bucket).remove(files.map((f) => `${user.id}/${f.name}`));
+  }
+  const { error } = await admin.auth.admin.deleteUser(user.id);
+  if (error) throw error;
+  return { ok: true };
+}
+// gera 8 códigos de recuperação (aparecem uma única vez); precisa já ter a verificação em duas etapas ligada
+async function mfaRecovery(req: Request) {
+  const user = await requireUser(req);
+  if (!(await totpFactor(user.id))) throw new HttpError(400, "no_mfa", "Ligue a verificação em duas etapas primeiro.");
+  await limit(`mfarec:${user.id}`, 5, 3600);
+  const codes = Array.from({ length: 8 }, recoveryCode);
+  await admin.from("mfa_recovery").delete().eq("user_id", user.id);
+  const rows = await Promise.all(codes.map(async (c) => ({ user_id: user.id, code_hash: await hmac(`mfa-rec|${user.id}|${normCode(c)}`) })));
+  const { error } = await admin.from("mfa_recovery").insert(rows);
+  if (error) throw error;
+  return { ok: true, codes };
+}
+// desligar: exige a senha e um código válido do aplicativo (ou de recuperação)
+async function mfaDisable(req: Request, body: Record<string, unknown>) {
+  const user = await requireUser(req);
+  await limit(`mfa:${user.id}`, 8, 600, "Muitas tentativas de código. Aguarde alguns minutos.");
+  const { data: sg, error: se } = await anonClient().auth.signInWithPassword({ email: user.email!, password: String(body.password ?? "") });
+  if (se || !sg.session) throw new HttpError(401, "invalid_credentials", "Senha incorreta.");
+  const factor = await totpFactor(user.id);
+  if (!factor) return { ok: true };
+  const rec = normCode(body.recovery_code);
+  if (rec) {
+    const { data: used } = await admin.from("mfa_recovery").update({ used_at: new Date().toISOString() }).eq("user_id", user.id)
+      .eq("code_hash", await hmac(`mfa-rec|${user.id}|${rec}`)).is("used_at", null).select("code_hash").maybeSingle();
+    if (!used) throw new HttpError(400, "wrong_recovery", "Esse código de recuperação não vale (já foi usado ou está errado).");
+  } else {
+    await mfaVerify(sg.session, factor.id, String(body.code ?? ""));
+  }
+  await admin.auth.admin.mfa.deleteFactor({ id: factor.id, userId: user.id });
+  await admin.from("mfa_recovery").delete().eq("user_id", user.id);
+  return { ok: true };
 }
 
 // ---------- servidor ----------
@@ -447,6 +579,12 @@ Deno.serve(async (req) => {
       case "/qr/info": out = await qrInfo(body); break;
       case "/qr/approve": out = await qrApprove(req, body); break;
       case "/qr/poll": out = await qrPoll(body, ip); break;
+      case "/email/change/request": out = await emailChangeRequest(req, body, ip); break;
+      case "/email/change/confirm": out = await emailChangeConfirm(req, body); break;
+      case "/account/deactivate": out = await accountDeactivate(req, body); break;
+      case "/account/delete": out = await accountDelete(req, body); break;
+      case "/mfa/recovery": out = await mfaRecovery(req); break;
+      case "/mfa/disable": out = await mfaDisable(req, body); break;
       default: throw new HttpError(404, "not_found", "Rota não encontrada.");
     }
     return json(out, 200, cors);

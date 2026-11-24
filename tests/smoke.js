@@ -43,6 +43,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
     const path = url.pathname.replace('/rest/v1/', ''), q = url.searchParams, m = req.method();
     if (path.startsWith('rpc/')) {
       const fn = path.slice(4);
+      if (fn === 'profiles_full') return send(200, world.profiles.filter((x) => (body.p_ids || []).includes(x.id)).map((x) => ({ id: x.id, bio: x.bio || '', status_text: x.status_text || '', accent: x.accent || '#9D8CCF', created_at: x.created_at || null, profile_updated_at: null })));
       if (fn === 'create_server') {
         const id = 'srv' + world.nextId++;
         world.servers.push({ id, name: body.p_name, owner_id: 'u1', created_at: new Date().toISOString() });

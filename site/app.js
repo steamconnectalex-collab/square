@@ -865,7 +865,12 @@ async function loadWorld(paint) {
     ]);
     const other = (f) => (f.user_a === myId() ? f.user_b : f.user_a);
     const ids = Array.from(new Set(mem.map((m) => m.user_id).concat(fr.map(other), blk.map((b) => b.blocked), [myId()])));
-    const profs = await sb('/rest/v1/profiles?select=id,username,display_name,bio,status_text,avatar_path,accent,last_seen,presence,created_at&id=in.(' + ids.join(',') + ')');
+    const [profsBase, profsFull] = await Promise.all([
+      sb('/rest/v1/profiles?select=id,username,display_name,avatar_path,last_seen,presence,deactivated_at,profile_updated_at&id=in.(' + ids.join(',') + ')'),
+      sb('/rest/v1/rpc/profiles_full', { method: 'POST', body: { p_ids: ids.slice(0, 200) } }).catch(() => [])
+    ]);
+    const fullBy = {}; (profsFull || []).forEach((x) => { fullBy[x.id] = x; });
+    const profs = profsBase.map((p) => Object.assign({ bio: '', status_text: '', accent: '#9D8CCF', created_at: null }, p, fullBy[p.id] || {}));
     if (A !== w) return;
     const P = {}; profs.forEach((p) => { P[p.id] = p; });
     w.me = person(P[myId()] || { display_name: displayName(), username: S.profile && S.profile.username }, myId(), '');

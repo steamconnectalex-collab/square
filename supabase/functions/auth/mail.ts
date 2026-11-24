@@ -65,7 +65,7 @@ function layout(o: {
 </body></html>`;
 }
 
-export async function sendCodeMail(o: { to: string; purpose: "signup" | "reset"; code: string; link?: string }) {
+export async function sendCodeMail(o: { to: string; purpose: "signup" | "reset" | "change"; code: string; link?: string }) {
   const key = apiKey();
   if (!key) throw new MailError("not_configured", "RESEND_API_KEY não definido");
   const name = brand();
@@ -82,6 +82,17 @@ export async function sendCodeMail(o: { to: string; purpose: "signup" | "reset";
       outro: "Se você não criou uma conta, é só ignorar este e-mail. Nunca compartilhe este código com ninguém.",
     });
     text = `Confirme seu e-mail na ${name}\n\nSeu código de verificação: ${o.code}\n\nEle vale por 15 minutos. Se você não criou uma conta, ignore este e-mail.`;
+  } else if (o.purpose === "change") {
+    subject = `${o.code} confirma seu novo e-mail na ${name}`;
+    html = layout({
+      preheader: `Código para confirmar o novo e-mail: ${o.code}`,
+      title: "Confirme seu novo e-mail",
+      intro: `Alguém pediu para usar este endereço como e-mail da conta na ${name}. Digite o código abaixo na tela de configurações. O código vale por 15 minutos.`,
+      codeLabel: "Código de verificação",
+      code: o.code,
+      outro: "Se não foi você, ignore este e-mail: nada muda na conta. Nunca compartilhe este código com ninguém.",
+    });
+    text = `Confirme seu novo e-mail na ${name}\n\nSeu código de verificação: ${o.code}\n\nEle vale por 15 minutos. Se não foi você, ignore este e-mail.`;
   } else {
     subject = `Redefina sua senha da ${name}`;
     html = layout({
