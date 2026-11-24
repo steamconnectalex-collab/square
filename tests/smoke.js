@@ -182,6 +182,10 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
       case '/qr/poll': qrPolls++; return send(200, { ok: true, status: 'pending' });
       case '/login':
         if (body.password === 'errada123') return send(401, { ok: false, error: 'invalid_credentials', message: 'E-mail, nome de usuário ou senha incorretos.' });
+        if (body.identifier === 'mfa@exemplo.com') {
+          if (!body.code && !body.recovery_code) return send(200, { ok: true, mfa_required: true });
+          if (body.code !== '123456') return send(400, { ok: false, error: 'wrong_totp', message: 'Esse código do aplicativo não confere.' });
+        }
         if (body.identifier === 'novo@exemplo.com') return send(403, { ok: false, error: 'unverified', message: 'x', email: 'novo@exemplo.com' });
         return send(200, { ok: true, session, user: { id: 'u1', email: 'teste@exemplo.com' }, profile: { username: 'tester', display_name: 'Tester Um' } });
       case '/signup':
@@ -193,12 +197,16 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
         return send(200, { ok: true, session, user: { id: 'u1', email: body.email }, profile: { username: 'tester', display_name: 'Tester Um' } });
       case '/forgot': return send(200, { ok: true });
       case '/reset': return send(200, { ok: true, session, user: { id: 'u1', email: body.email }, profile: { username: 'tester', display_name: 'Tester Um' } });
+      case '/email/change/request': return send(200, { ok: true, email: body.new_email });
+      case '/email/change/confirm': return send(200, { ok: true, email: body.new_email });
+      case '/account/deactivate': return send(401, { ok: false, error: 'invalid_credentials', message: 'Senha incorreta.' });
       case '/qr/info': return send(200, { ok: true, device: 'Chrome no Windows' });
       case '/qr/approve': return send(200, { ok: true, status: 'approved' });
       default:
         if (/^\/storage\/v1\/object\/(avatars|attachments)\//.test(url.pathname)) { storageCalls.push([req.method(), url.pathname]); return send(200, { Key: 'ok' }); }
         if (url.pathname.startsWith('/rest/v1/')) return rest(req, url, body, send);
         if (url.pathname.startsWith('/auth/v1/logout')) return send(204, {});
+        if (url.pathname === '/auth/v1/user' && req.method() === 'GET') return send(200, { id: 'u1', factors: [] });
         return send(404, {});
     }
   });
@@ -244,7 +252,19 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   ok('erro de credencial aparece', /incorretos/.test(await page.textContent('.alert')));
 
   // 3. login ok -> app (menu principal novo)
+  await page.fill('#login-id', 'mfa@exemplo.com');
   await page.fill('#login-pw', 'Senha1234!');
+  await page.click('button.btn[type=submit]');
+  await page.waitForSelector('#login-code', { timeout: 5000 });
+  ok('conta com 2 etapas pede o código depois da senha', true);
+  await page.fill('#login-code', '000000');
+  await page.click('button.btn[type=submit]');
+  await page.waitForSelector('.alert');
+  ok('código errado de 2 etapas mostra erro', /não confere/.test(await page.textContent('.alert')));
+  await page.click('[data-act="login-rec"]');
+  ok('dá para trocar para código de recuperação', /recuperação/.test(await page.textContent('label[for="login-code"]')));
+  await page.click('[data-act="login-rec"]');
+  await page.fill('#login-code', '123456');
   await page.click('button.btn[type=submit]');
   await page.waitForSelector('.x .x-ph', { timeout: 5000 });
   ok('depois do login abre a página Amigos do menu principal', /Amigos/.test(await page.textContent('.x-tt')));
@@ -766,6 +786,20 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await page.fill('#u-in', 'novo.nome'); await page.click('#setroot [data-sa="save-user"]');
   await page.waitForFunction(() => !document.querySelector('#setroot .smodal'));
   ok('trocar @usuário chama o banco', world.usernameCalls[0] === 'novo.nome');
+  await page.click('#setroot [data-sa="ed-email"]'); await page.waitForSelector('#setroot .smodal #em-new');
+  await page.fill('#em-new', 'novo@exemplo.com'); await page.fill('#em-pw', 'Senha1234!'); await page.click('#setroot [data-sa="em-send"]');
+  await page.waitForSelector('#setroot .smodal #em-code');
+  await page.fill('#em-code', 'ABC234'); await page.click('#setroot [data-sa="em-ok"]');
+  await page.waitForFunction(() => !document.querySelector('#setroot .smodal'));
+  ok('trocar e-mail: pede código e confirma no servidor', calls.some((c) => c[1] === '/email/change/request' && c[2].new_email === 'novo@exemplo.com') && calls.some((c) => c[1] === '/email/change/confirm' && c[2].code === 'ABC234'));
+  await page.click('#setroot [data-sa="ed-mfa"]'); await page.waitForSelector('#setroot .smodal [data-sa="mfa-start"]');
+  ok('2 etapas desligada oferece "Ligar"', true);
+  await page.click('#setroot [data-sa="modal-close"]');
+  await page.click('#setroot [data-sa="deact"]'); await page.waitForSelector('#setroot .smodal #da-pw');
+  await page.fill('#da-pw', 'errada'); await page.click('#setroot [data-sa="deact-ok"]');
+  await page.waitForFunction(() => /Senha incorreta/.test((document.getElementById('da-err') || {}).textContent || ''));
+  ok('desativar conta com senha errada mostra erro', true);
+  await page.click('#setroot [data-sa="modal-close"]');
   await page.click('#setroot [data-sa="page"][data-id="plus"]'); await page.click('#setroot .splus-hero [data-sa="pay"]');
   await page.waitForSelector('#toast .toast');
   ok('Square Plus: pagamento avisa que ainda não existe', /ainda não/.test(await page.textContent('#toast')));

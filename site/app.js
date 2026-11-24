@@ -97,7 +97,7 @@ const freshN = () => ({ email: '', code: '', manual: false, pass: '', conf: '', 
 
 const S = {
   view: '', session: null, profile: null, after: null,
-  lId: '', lPw: '', lShow: false, lTouched: false, lErr: '', lBusy: false,
+  lId: '', lPw: '', lShow: false, lTouched: false, lErr: '', lBusy: false, lMfa: false, lCode: '', lRecUse: false,
   qr: null,
   r: freshR(), pendingEmail: tab.get('sq.pending') || '', v: freshV(), f: freshF(), n: freshN(),
   ap: null
@@ -146,7 +146,7 @@ async function logout() {
   const tok = S.session && S.session.access_token;
   if (window.SQ_SET) { window.SQ_SET.close(); window.SQ_SET.forget(); }
   clearSession();
-  S.lId = ''; S.lPw = ''; S.lTouched = false; S.lErr = '';
+  S.lId = ''; S.lPw = ''; S.lTouched = false; S.lErr = ''; S.lMfa = false; S.lCode = ''; S.lRecUse = false;
   go('login');
   if (tok) fetch(C.SUPABASE_URL + '/auth/v1/logout?scope=local', { method: 'POST', headers: { apikey: C.SUPABASE_KEY, authorization: 'Bearer ' + tok } }).catch(() => {});
 }
@@ -154,7 +154,7 @@ const displayName = () => (S.profile && S.profile.display_name) || (S.session &&
 
 async function onSignedIn(d) {
   saveSession(d);
-  S.lPw = ''; S.lBusy = false; S.lErr = '';
+  S.lPw = ''; S.lBusy = false; S.lErr = ''; S.lMfa = false; S.lCode = ''; S.lRecUse = false;
   S.r = freshR(); S.v = freshV(); S.pendingEmail = ''; tab.del('sq.pending');
   A = null; // depois de entrar, a tela principal é sempre o painel inicial
   if (S.after) { const a = S.after; S.after = null; go(a); } else go('app');
@@ -276,6 +276,12 @@ function loginView() {
     ${pwBad ? '<div class="err" role="alert">Informe sua senha.</div>' : ''}
     <button type="button" class="lnk sl" data-act="to-forgot">Esqueceu sua senha?</button>
   </div>
+  ${S.lMfa ? `<div class="field">
+    <label class="lbl" for="login-code">${S.lRecUse ? 'Código de recuperação' : 'Código do aplicativo de autenticação'} <span class="req" aria-hidden="true">*</span></label>
+    <input id="login-code" class="inp" type="text" inputmode="${S.lRecUse ? 'text' : 'numeric'}" data-bind="lCode" value="${esc(S.lCode)}" maxlength="${S.lRecUse ? 12 : 8}" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" data-autofocus>
+    <small class="hint">${S.lRecUse ? 'Usar um código de recuperação desliga a verificação em duas etapas da sua conta.' : 'Abra o aplicativo de autenticação e digite o código de 6 números.'}</small>
+    <button type="button" class="lnk sl" data-act="login-rec">${S.lRecUse ? 'Usar o código do aplicativo' : 'Usar um código de recuperação'}</button>
+  </div>` : ''}
   ${alertBox(S.lErr)}
   ${submitBtn(S.lBusy, 'Entrar', 'Entrando…')}
   <div class="small">Precisando de uma conta? <button type="button" class="lnk" data-act="to-register">Registre-se</button></div>
@@ -560,8 +566,13 @@ async function doLogin() {
   if (!S.lId.trim() || !S.lPw) { render(); return; }
   S.lBusy = true; S.lErr = ''; render();
   try {
-    const d = await api('/login', { identifier: S.lId.trim(), password: S.lPw });
+    if (S.lMfa && !S.lCode.trim()) { S.lBusy = false; S.lErr = 'Digite o código para continuar.'; render(); return; }
+    const body = { identifier: S.lId.trim(), password: S.lPw };
+    if (S.lMfa) body[S.lRecUse ? 'recovery_code' : 'code'] = S.lCode.trim();
+    const d = await api('/login', body);
+    if (d.mfa_required) { S.lMfa = true; S.lBusy = false; S.lErr = ''; render(); return; }
     await onSignedIn(d);
+    if (d.mfa_disabled) setTimeout(() => toast('A verificação em duas etapas foi desligada. Ligue de novo em Configurações > Conta.'), 600);
   } catch (e) {
     S.lBusy = false;
     if (e.error === 'unverified') {
@@ -645,6 +656,7 @@ async function doReset() {
   n.busy = true; render();
   try {
     const d = await api('/reset', { email: n.email, code: n.code, password: n.pass });
+    if (d.mfa_required) { S.n = freshN(); S.lMfa = false; S.lErr = 'Senha alterada! Entre com a senha nova e o código do aplicativo de autenticação.'; go('login'); return; }
     saveSession(d);
     S.n = freshN();
     go('done');
@@ -708,6 +720,8 @@ window.SQ_API = {
   servers: () => SERVERS,
   unread: () => (A && A.unread ? Object.keys(A.unread).filter((k) => A.unread[k]).length : 0),
   reload: () => { if (A && S.view === 'app') loadWorld(); },
+  setEmail: (e) => { if (S.session) { S.session.user = Object.assign({}, S.session.user, { email: e }); store.set('sq.session', S.session); } },
+  fn: async (path, body) => { const t = await freshToken(); return api(path, body || {}, t); },
   authFetch: async (path, o = {}) => {
     const t = await freshToken();
     return fetch(C.SUPABASE_URL + path, { method: o.method || 'GET', headers: { apikey: C.SUPABASE_KEY, authorization: 'Bearer ' + t, 'content-type': 'application/json' }, body: o.body !== undefined ? JSON.stringify(o.body) : undefined });
@@ -2118,6 +2132,7 @@ $root.addEventListener('click', (e) => {
   }
   if (!el) return;
   switch (el.dataset.act) {
+    case 'login-rec': S.lRecUse = !S.lRecUse; S.lCode = ''; render(); break;
     case 'toggle-pw': {
       const input = document.getElementById(el.dataset.target); if (!input) break;
       const show = input.type === 'password';

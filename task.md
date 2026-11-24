@@ -98,7 +98,7 @@ Fluxo de acesso: Home → "Entrar" → login (com painel de QR Code) → "Regist
 
 - **Pedido da pessoa (2026-11-23): fazer TODAS as funções das configurações.** Ordem: A tema escuro (feito) → B configurações rápidas do navegador → C backend de conta (e-mail, 2 etapas, desativar/excluir, privacidade do perfil) → D filtro sensível, Impulso, Inventário, atividades etc. Tudo que exigir conta em app externo (pagamentos, serviço de imagens, apps conectados, SMS) vai para a lista "Pendências externas" no fim deste arquivo, para fazer por último.
 
-- **Etapa C (2026-11-24, em andamento):** feito — migração `0019_conta_privacidade_dm.sql` aplicada; função `auth` publicada na versão 6 (trocar e-mail, desativar/excluir conta, 2 etapas com códigos de recuperação); site passou a ler bio/status/cor/"membro desde" pela função `profiles_full` (respeita a privacidade do perfil). **Falta:** telas de conta (e-mail, 2 etapas, desativar/excluir), tela de login com código de 2 etapas, permissões de DM/solicitações, texto alternativo de imagem, avisos de amigos.
+- **Etapa C (2026-11-24, em andamento):** feito — migração `0019_conta_privacidade_dm.sql` aplicada; função `auth` publicada na versão 6 (trocar e-mail, desativar/excluir conta, 2 etapas com códigos de recuperação); site passou a ler bio/status/cor/"membro desde" pela função `profiles_full` (respeita a privacidade do perfil). telas de Conta ligadas (trocar e-mail com código, 2 etapas com QR e 8 códigos de recuperação, desativar e excluir conta) e login com código de 2 etapas (testes 175 OK). **Falta:** permissões de DM/solicitações, privacidade do perfil na tela, texto alternativo de imagem, avisos de amigos (online, aniversário, perfil).
 
 ## Como publicar o site
 

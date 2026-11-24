@@ -73,7 +73,7 @@ ${acct('Telefone', 'Você ainda não adicionou um telefone.', 'Adicionar', 'ed-p
 ${hr()}
 ${h2('acc-sec', 'Senha e segurança')}
 <div class="srow"><b class="sal">Senha</b><span class="sav"></span><button type="button" class="sbtn" data-sa="ed-pass">Editar</button></div>
-${chevRow('Autenticação Multifatorial', 'Definir', 'ed-mfa')}
+${chevRow('Autenticação Multifatorial', 'Gerenciar', 'ed-mfa')}
 ${chevRow('Dispositivos conectados', '1 dispositivo', 'devices')}
 ${hr()}
 ${h2('acc-status', 'Status da conta')}
@@ -96,9 +96,7 @@ Object.assign(SET.acts, {
     try { await api().rpc('change_username', { p_username: v }); const m = api().me && api().me(); if (m) m.user = v; if (api().reload) api().reload(); SET.modal(null); SET.redraw(); toast('Nome de usuário atualizado'); }
     catch (e) { er.textContent = /username_taken/.test((e && e.message) || '') ? 'Esse nome de usuário já está em uso.' : /invalid_username/.test((e && e.message) || '') ? 'Esse nome de usuário não é válido.' : 'Não deu certo. Tente de novo.'; }
   },
-  'ed-email': () => SET.modal({ title: 'Mudar e-mail', body: '<p>A troca de e-mail precisa de uma confirmação por código no novo endereço. Isso ainda não está pronto na Square.</p>', actions: [{ label: 'Entendi', act: 'modal-close', cls: 'primary' }] }),
   'ed-phone': () => SET.modal({ title: 'Telefone', body: '<p>Login e verificação por telefone ainda não existem na Square.</p>', actions: [{ label: 'Entendi', act: 'modal-close', cls: 'primary' }] }),
-  'ed-mfa': () => SET.modal({ title: 'Autenticação multifatorial', body: '<p>A verificação em duas etapas ainda não está disponível. Use uma senha forte e única enquanto isso.</p>', actions: [{ label: 'Entendi', act: 'modal-close', cls: 'primary' }] }),
   'ed-pass': () => SET.modal({ title: 'Mudar senha', body: '<label class="sgl" for="p1">Nova senha</label><input id="p1" class="sinp" type="password" autocomplete="new-password"><label class="sgl" for="p2">Confirmar nova senha</label><input id="p2" class="sinp" type="password" autocomplete="new-password"><small class="sgd">Use pelo menos 8 caracteres.</small><p class="smerr" id="p-err" role="alert"></p>', actions: [{ label: 'Cancelar', act: 'modal-close' }, { label: 'Mudar senha', act: 'save-pass', cls: 'primary' }] }),
   'save-pass': async () => {
     const a = document.getElementById('p1').value, b = document.getElementById('p2').value, er = document.getElementById('p-err');
@@ -111,8 +109,78 @@ Object.assign(SET.acts, {
   'logout-others': async () => { try { const r = await api().authFetch('/auth/v1/logout?scope=others', { method: 'POST' }); if (!r.ok) throw new Error('x'); SET.modal(null); toast('Os outros dispositivos foram desconectados'); } catch (e) { toast('Não deu certo. Tente de novo.'); } },
   'acc-ok': () => toast('Sua conta está em dia. Nenhuma violação registrada.'),
   family: () => toast(SOON),
-  deact: () => SET.modal({ title: 'Desativar conta', body: '<p>A desativação temporária ainda não está disponível. Por enquanto, você pode sair da conta a qualquer momento.</p>', actions: [{ label: 'Entendi', act: 'modal-close', cls: 'primary' }] }),
-  'del-acct': () => SET.modal({ title: 'Excluir conta', body: '<p>A exclusão permanente da conta ainda não está disponível pelo site. Ela precisa de uma etapa de segurança no servidor que ainda não foi criada.</p>', actions: [{ label: 'Entendi', act: 'modal-close', cls: 'primary' }] })
+  /* ---- trocar e-mail ---- */
+  'ed-email': () => SET.modal({ title: 'Mudar e-mail', body: '<label class="sgl" for="em-new">Novo e-mail</label><input id="em-new" class="sinp" type="email" autocomplete="off"><label class="sgl" for="em-pw">Sua senha atual</label><input id="em-pw" class="sinp" type="password" autocomplete="current-password"><small class="sgd">Enviamos um código para o novo endereço para confirmar que ele é seu.</small><p class="smerr" id="em-err" role="alert"></p>', actions: [{ label: 'Cancelar', act: 'modal-close' }, { label: 'Enviar código', act: 'em-send', cls: 'primary' }] }),
+  'em-send': async () => {
+    const ne = (document.getElementById('em-new').value || '').trim().toLowerCase(), pw = document.getElementById('em-pw').value, er = document.getElementById('em-err');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(ne)) { er.textContent = 'Informe um e-mail válido.'; return; }
+    if (!pw) { er.textContent = 'Digite sua senha atual.'; return; }
+    try { await api().fn('/email/change/request', { new_email: ne, password: pw }); }
+    catch (e) { er.textContent = (e && e.message) || 'Não deu certo. Tente de novo.'; return; }
+    SET.modal({ title: 'Confirme o novo e-mail', body: `<p class="sgd">Enviamos um código de 6 caracteres para <b>${esc(ne)}</b>.</p><input id="em-code" class="sinp" maxlength="12" autocomplete="one-time-code" autocapitalize="characters" data-ne="${esc(ne)}"><p class="smerr" id="em-err" role="alert"></p>`, actions: [{ label: 'Cancelar', act: 'modal-close' }, { label: 'Confirmar', act: 'em-ok', cls: 'primary' }] });
+  },
+  'em-ok': async () => {
+    const i = document.getElementById('em-code'), er = document.getElementById('em-err');
+    try { const r = await api().fn('/email/change/confirm', { new_email: i.dataset.ne, code: i.value }); SET.modal(null); toast('E-mail alterado para ' + r.email); if (api().setEmail) api().setEmail(r.email); SET.redraw(); }
+    catch (e) { er.textContent = (e && e.message) || 'Não deu certo. Tente de novo.'; }
+  },
+  /* ---- verificação em duas etapas ---- */
+  'ed-mfa': async () => {
+    let fs = [];
+    try { const r = await api().authFetch('/auth/v1/user'); const u = await r.json(); fs = (u && u.factors) || []; } catch (e) { /* segue */ }
+    const on = fs.some((f) => f.factor_type === 'totp' && f.status === 'verified');
+    if (on) {
+      SET.modal({ title: 'Autenticação multifatorial', body: '<p>A verificação em duas etapas está <b>ligada</b>. Ao entrar, será pedido o código do aplicativo de autenticação.</p>', actions: [{ label: 'Fechar', act: 'modal-close' }, { label: 'Novos códigos de recuperação', act: 'mfa-newrec' }, { label: 'Desligar', act: 'mfa-off', cls: 'dangersolid' }] });
+    } else {
+      SET.modal({ title: 'Autenticação multifatorial', body: '<p>Proteja sua conta pedindo um código de um aplicativo de autenticação (como Google Authenticator, Authy ou 1Password) sempre que você entrar.</p>', actions: [{ label: 'Cancelar', act: 'modal-close' }, { label: 'Ligar', act: 'mfa-start', cls: 'primary' }] });
+    }
+  },
+  'mfa-start': async () => {
+    try {
+      const r0 = await api().authFetch('/auth/v1/user'); const u = await r0.json().catch(() => ({}));
+      for (const f of ((u && u.factors) || []).filter((x) => x.status !== 'verified')) await api().authFetch('/auth/v1/factors/' + f.id, { method: 'DELETE' });
+      const r = await api().authFetch('/auth/v1/factors', { method: 'POST', body: { factor_type: 'totp', friendly_name: 'Square ' + Date.now(), issuer: 'Square' } });
+      const j = await r.json(); if (!r.ok || !j.id) throw new Error('x');
+      SET.modal({ title: 'Ligar verificação em duas etapas', body: `<p class="sgd">1. Escaneie o QR Code no aplicativo de autenticação.</p><div style="text-align:center"><img alt="QR Code para o aplicativo de autenticação" src="${esc(j.totp.qr_code)}" width="180" height="180" style="background:#fff;border-radius:12px"></div><p class="sgd">Ou digite esta chave: <b style="user-select:all;word-break:break-all">${esc(j.totp.secret)}</b></p><p class="sgd">2. Digite o código de 6 números que o aplicativo mostrar.</p><input id="mf-code" class="sinp" inputmode="numeric" maxlength="8" autocomplete="one-time-code" data-fid="${esc(j.id)}"><p class="smerr" id="mf-err" role="alert"></p>`, actions: [{ label: 'Cancelar', act: 'modal-close' }, { label: 'Ativar', act: 'mfa-verify', cls: 'primary' }] });
+    } catch (e) { toast('Não deu certo ligar agora. Tente de novo.'); }
+  },
+  'mfa-verify': async () => {
+    const i = document.getElementById('mf-code'), er = document.getElementById('mf-err'), code = (i.value || '').replace(/\D/g, '');
+    if (code.length !== 6) { er.textContent = 'Digite os 6 números do código.'; return; }
+    try {
+      const c = await api().authFetch('/auth/v1/factors/' + i.dataset.fid + '/challenge', { method: 'POST', body: {} }); const cj = await c.json(); if (!c.ok) throw new Error('c');
+      const v = await api().authFetch('/auth/v1/factors/' + i.dataset.fid + '/verify', { method: 'POST', body: { challenge_id: cj.id, code } }); if (!v.ok) throw new Error('v');
+    } catch (e) { er.textContent = 'Esse código não confere. Confira o horário do celular e tente de novo.'; return; }
+    SET.acts['mfa-newrec'](true);
+  },
+  'mfa-newrec': async (first) => {
+    try {
+      const r = await api().fn('/mfa/recovery', {});
+      SET.modal({ title: first === true ? 'Verificação ligada!' : 'Novos códigos de recuperação', body: `<p class="sgd">Guarde estes 8 códigos em um lugar seguro. Cada um vale uma vez, e só aparecem agora. Se você perder o celular, use um deles para entrar (isso desliga a verificação).</p><div class="sgrp" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-family:monospace;font-size:15px;user-select:all">${r.codes.map((c) => `<span>${esc(c)}</span>`).join('')}</div>`, actions: [{ label: 'Copiar', act: 'mfa-copy' }, { label: 'Já guardei', act: 'modal-close', cls: 'primary' }] });
+      SET._rec = r.codes;
+    } catch (e) { toast((e && e.message) || 'Não deu certo. Tente de novo.'); }
+  },
+  'mfa-copy': () => { try { navigator.clipboard.writeText((SET._rec || []).join('\n')); toast('Códigos copiados'); } catch (e) { toast('Não foi possível copiar. Selecione e copie.'); } },
+  'mfa-off': () => SET.modal({ title: 'Desligar verificação', body: '<label class="sgl" for="mo-pw">Sua senha</label><input id="mo-pw" class="sinp" type="password" autocomplete="current-password"><label class="sgl" for="mo-code">Código do aplicativo (ou de recuperação)</label><input id="mo-code" class="sinp" maxlength="12" autocomplete="one-time-code"><p class="smerr" id="mo-err" role="alert"></p>', actions: [{ label: 'Cancelar', act: 'modal-close' }, { label: 'Desligar', act: 'mfa-off-ok', cls: 'dangersolid' }] }),
+  'mfa-off-ok': async () => {
+    const pw = document.getElementById('mo-pw').value, c = (document.getElementById('mo-code').value || '').trim(), er = document.getElementById('mo-err');
+    const body = { password: pw }; if (/\d{6}/.test(c.replace(/\D/g, '')) && c.replace(/\D/g, '').length === 6 && !/[A-Za-z]/.test(c)) body.code = c; else body.recovery_code = c;
+    try { await api().fn('/mfa/disable', body); SET.modal(null); toast('Verificação em duas etapas desligada'); }
+    catch (e) { er.textContent = (e && e.message) || 'Não deu certo.'; }
+  },
+  /* ---- desativar / excluir ---- */
+  deact: () => SET.modal({ title: 'Desativar conta', body: '<p>Sua conta fica invisível e você será desconectado. Para voltar, é só entrar de novo: ela é reativada na hora. Nada é apagado.</p><label class="sgl" for="da-pw">Sua senha</label><input id="da-pw" class="sinp" type="password" autocomplete="current-password"><p class="smerr" id="da-err" role="alert"></p>', actions: [{ label: 'Cancelar', act: 'modal-close' }, { label: 'Desativar conta', act: 'deact-ok', cls: 'dangersolid' }] }),
+  'deact-ok': async () => {
+    const er = document.getElementById('da-err');
+    try { await api().fn('/account/deactivate', { password: document.getElementById('da-pw').value }); SET.modal(null); api().logout(); }
+    catch (e) { er.textContent = (e && e.message) || 'Não deu certo.'; }
+  },
+  'del-acct': () => SET.modal({ title: 'Excluir conta', body: '<p><b>Isso é permanente.</b> Seu perfil, suas mensagens, fotos e amizades serão apagados. Servidores seus passam para o membro mais antigo (ou somem se estiverem vazios).</p><label class="sgl" for="dl-pw">Sua senha</label><input id="dl-pw" class="sinp" type="password" autocomplete="current-password"><label class="sgl" for="dl-cf">Digite EXCLUIR para confirmar</label><input id="dl-cf" class="sinp" autocomplete="off"><p class="smerr" id="dl-err" role="alert"></p>', actions: [{ label: 'Cancelar', act: 'modal-close' }, { label: 'Excluir para sempre', act: 'del-ok', cls: 'dangersolid' }] }),
+  'del-ok': async () => {
+    const er = document.getElementById('dl-err');
+    try { await api().fn('/account/delete', { password: document.getElementById('dl-pw').value, confirm: document.getElementById('dl-cf').value }); SET.modal(null); api().logout(); }
+    catch (e) { er.textContent = (e && e.message) || 'Não deu certo.'; }
+  }
 });
 
 /* ================================================= DADOS E PRIVACIDADE */
