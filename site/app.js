@@ -812,7 +812,7 @@ function person(p, uid, role) {
   const status = (p && p.status_text) || '';
   const av = (p && p.avatar_path) || '';
   return {
-    id: uid, name, user: (p && p.username) || '', bio: (p && p.bio) || '', status, accent: (p && p.accent) || '#9D8CCF',
+    id: uid, upd: (p && p.profile_updated_at) || '', name, user: (p && p.username) || '', bio: (p && p.bio) || '', status, accent: (p && p.accent) || '#9D8CCF',
     since: (p && p.created_at) || '', role: role || '', me, on, presence: me ? pres : (on ? pres : 'off'), st: on ? (pres === 'idle' ? 'Ausente' : pres === 'dnd' ? 'Não perturbe' : (status || 'Online')) : 'Offline',
     avatar: av, g: avBg(av, me ? G.lilac : gradFor(uid)), ini: av ? '' : name.charAt(0).toUpperCase()
   };
@@ -872,7 +872,7 @@ async function loadWorld(paint) {
       sb('/rest/v1/servers?select=id,name,owner_id,created_at,is_public&order=created_at.asc'),
       sb('/rest/v1/channels?select=id,server_id,name,kind,position&server_id=not.is.null&order=position.asc'),
       sb('/rest/v1/server_members?select=server_id,user_id,role'),
-      sb('/rest/v1/friendships?select=user_a,user_b,requester,status,note'),
+      sb('/rest/v1/friendships?select=user_a,user_b,requester,status,note,created_at'),
       sb('/rest/v1/channels?select=id&kind=eq.dm'),
       sb('/rest/v1/dm_members?select=channel_id,user_id,state'),
       sb('/rest/v1/blocks?select=blocked')
@@ -905,7 +905,8 @@ async function loadWorld(paint) {
     }));
     w.unread = unread;
     loadVoice();
-    w.friends = fr.filter((f) => f.status === 'accepted').map((f) => known[other(f)]).filter(Boolean).map((p) => Object.assign({}, p, { dm: dmByUser[p.id] || '' })).sort(byName);
+    const fsince = {}; fr.forEach((f) => { fsince[other(f)] = f.created_at || ''; });
+    w.friends = fr.filter((f) => f.status === 'accepted').map((f) => known[other(f)]).filter(Boolean).map((p) => Object.assign({}, p, { dm: dmByUser[p.id] || '', fsince: fsince[p.id] || '' })).sort(byName);
     const isFr = new Set(w.friends.map((f) => f.id));
     w.dmReq = []; w.dmOther = [];
     dmc.forEach((c) => {
@@ -949,13 +950,32 @@ function selectServer(id) {
   const s = SERVERS.find((x) => x.id === id); if (!s) return;
   A.server = s.id; A.channel = s.text[0] ? s.text[0].id : null; A.view = 'server'; A.panel = null; A.search = '';
 }
+function friendNotes(prev) {
+  if (!A || !A.friends || (A.me && A.me.presence === 'dnd')) return;
+  const note = (msg) => { toast(msg); if (window.SQ_SET) window.SQ_SET.notify('friend', msg, ''); };
+  A.friends.forEach((f) => {
+    const p = prev[f.id]; if (!p) return;
+    if (!p.on && f.on && SPV('n_friend_online', true)) note(f.name + ' ficou online');
+    if (f.upd && f.upd !== p.upd && SPV('n_friend_profile', true)) note(f.name + ' atualizou o perfil');
+  });
+  if (SPV('n_anniv', true)) {
+    const today = new Date(), key = 'sq.anniv.' + myId(), day = today.toISOString().slice(0, 10);
+    if (store.get(key) === day) return;
+    const hit = A.friends.filter((f) => { const d = f.fsince && new Date(f.fsince); return d && !isNaN(d) && d.getMonth() === today.getMonth() && d.getDate() === today.getDate() && d.getFullYear() < today.getFullYear(); });
+    if (hit.length) { store.set(key, day); const y = today.getFullYear() - new Date(hit[0].fsince).getFullYear(); note('Você e ' + hit[0].name + ' fazem ' + y + (y === 1 ? ' ano' : ' anos') + ' de amizade hoje!'); }
+  }
+}
 async function beat(first) {
   if (S.view !== 'app' || !A || document.hidden) return;
   const w = A;
   try {
     await sb('/rest/v1/profiles?id=eq.' + myId(), { method: 'PATCH', body: { last_seen: new Date().toISOString() } });
     presenceExpire();
-    if (!first && A === w && w.world === 'ready') await loadWorld(refilter);
+    if (!first && A === w && w.world === 'ready') {
+      const prev = {}; (w.friends || []).forEach((f) => { prev[f.id] = { on: f.on, upd: f.upd }; });
+      await loadWorld(refilter);
+      if (A === w) friendNotes(prev);
+    }
   } catch (e) { /* tenta de novo no próximo ciclo */ }
 }
 
