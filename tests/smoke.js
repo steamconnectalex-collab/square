@@ -99,6 +99,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
       if (fn === 'unban_member') { world.bans = world.bans.filter((b) => b.user_id !== body.p_user); return send(204, null); }
       if (fn === 'voice_join') { world.voice = [{ channel_id: body.p_channel, user_id: 'u1', seen_at: new Date().toISOString() }]; return send(204, null); }
       if (fn === 'voice_ping') return send(204, null);
+      if (fn === 'voice_set_state') { world.vstate = body; world.vcalls = (world.vcalls || []).concat([body]); world.voice.forEach((r) => { if (r.user_id === 'u1') Object.assign(r, { muted: !!body.p_muted || !!body.p_deafened, deafened: !!body.p_deafened, video: !!body.p_video, screen: !!body.p_screen }); }); return send(204, null); }
       if (fn === 'voice_leave') { world.voice = []; return send(204, null); }
       if (fn === 'create_event') { world.events.push({ id: 'ev' + (world.events.length + 1), title: body.p_title, description: body.p_description, place: body.p_place, starts_at: body.p_starts }); return send(200, 'ev1'); }
       if (fn === 'toggle_event_interest') { const i = world.interest.findIndex((x) => x.event_id === body.p_event); if (i >= 0) { world.interest.splice(i, 1); return send(200, false); } world.interest.push({ event_id: body.p_event, user_id: 'u1' }); return send(200, true); }
@@ -657,6 +658,13 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   // etapa 7: voz
   const vch = world.channels.find((c) => c.kind === 'voice').id;
   await page.click('[data-act="vjoin"]');
+  await page.waitForSelector('.vp.pre', { timeout: 6000 });
+  ok('canal de voz: abre o painel com "Ainda não tem ninguém aqui" e o botão de entrar', /Ainda não tem ninguém aqui/.test(await page.textContent('.vp.pre')) && (await page.locator('.vp.pre [data-act="vconnect"]').count()) === 1 && !world.voice.length);
+  await page.screenshot({ path: OUT + '/2j-voz-previa.png' });
+  await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(250); await page.screenshot({ path: OUT + '/2j-voz-previa-cel.png' }); await page.setViewportSize({ width: 1440, height: 900 });
+  await page.click('[data-act="vconnect"]');
+  await page.waitForSelector('.vp.call .vt', { timeout: 6000 });
+  ok('entrar na chamada: tela com o seu bloco e os controles', (await page.locator('.vp.call .vt').count()) === 1 && /Você/.test(await page.textContent('.vp.call .vt')) && (await page.locator('.vdock .vdb').count()) === 5 && /Adicionar pessoas ao bate-papo em voz/.test(await page.textContent('.vp.call')));
   await page.waitForSelector('.vbar', { timeout: 6000 });
   await page.waitForSelector('.xvu', { timeout: 6000 });
   ok('entrar na voz: barra "Voz conectada" e a pessoa aparece na sala', /Voz conectada/.test(await page.textContent('.vbar')) && /Tester/.test(await page.textContent('.xvg')));
@@ -670,9 +678,35 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await page.click('[data-act="mute"] >> nth=0');
   ok('silenciar microfone durante a chamada', (await page.locator('[data-act="mute"]').first().getAttribute('aria-pressed')) === 'true');
   await page.click('[data-act="mute"] >> nth=0');
+  ok('mudo na chamada é enviado ao banco (voice_set_state)', (world.vcalls || []).some((c) => c.p_muted === true));
+  // câmera: liga, avisa o banco e mostra o vídeo no bloco
+  await page.click('.vp.call [data-act="vcam"]');
+  await page.waitForSelector('.vp.call .vt video', { timeout: 8000 });
+  ok('câmera: liga, avisa o banco e o vídeo aparece no seu bloco', (world.vcalls || []).some((c) => c.p_video === true) && (await page.locator('.vdb[data-act="vcam"][aria-pressed="true"]').count()) === 1);
+  await page.click('.vp.call [data-act="vcam"]');
+  await page.waitForFunction(() => !document.querySelector('.vp.call .vt video'), null, { timeout: 6000 });
+  ok('câmera: desliga e volta a foto', (world.vcalls || []).some((c) => c.p_video === false));
+  // efeitos sonoros: toca e avisa os outros
+  await page.click('.vp.call [data-act="vfx"]');
+  await page.click('.vfxp [data-act="vsfx"][data-id="bell"]');
+  for (let i = 0; i < 20 && !wsIn.some((j) => j.event === 'broadcast' && j.payload && j.payload.event === 'sfx'); i++) await page.waitForTimeout(100);
+  ok('efeito sonoro: mostra o emoji e avisa os outros pelo canal da sala', wsIn.some((j) => j.event === 'broadcast' && j.payload && j.payload.event === 'sfx' && j.payload.payload.id === 'bell'));
+  // outra pessoa entra na sala: aparece o bloco dela
+  world.voice.push({ channel_id: vch, user_id: 'u2', seen_at: new Date().toISOString(), muted: true, deafened: false, video: false, screen: false });
+  wsConn.send(JSON.stringify({ topic: 'realtime:sq', event: 'postgres_changes', payload: { data: { type: 'INSERT', table: 'voice_members', record: { channel_id: vch, user_id: 'u2' } } } }));
+  await page.waitForFunction(() => document.querySelectorAll('.vp.call .vt').length === 2, null, { timeout: 6000 });
+  ok('outra pessoa na chamada: segundo bloco, com o ícone de mudo dela', (await page.locator('.vp.call .vt .vbd').count()) === 1);
+  world.voice = world.voice.filter((r) => r.user_id === 'u1');
+  await page.click('.vp.call [data-act="vback"] >> nth=0');
+  await page.waitForSelector('.vbar');
+  ok('voltar ao chat mantém a chamada (barra "Voz conectada" com Abrir)', (await page.locator('.vp').count()) === 0 && (await page.locator('.vbar [data-act="vopen"]').count()) === 1);
+  await page.click('.vbar [data-act="vopen"]');
+  await page.waitForSelector('.vp.call .vt');
+  ok('Abrir na barra volta para a tela da chamada', true);
   await page.screenshot({ path: OUT + '/2j-voz.png' });
-  await page.click('[data-act="vleave"]');
-  await page.waitForFunction(() => !document.querySelector('.vbar'), null, { timeout: 4000 });
+  await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(250); await page.screenshot({ path: OUT + '/2j-voz-cel.png' }); ok('celular: a chamada não gera rolagem lateral', await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)); await page.setViewportSize({ width: 1440, height: 900 });
+  await page.click('.vp.call [data-act="vhang"]');
+  await page.waitForFunction(() => !document.querySelector('.vbar') && !document.querySelector('.vp'), null, { timeout: 4000 });
   ok('sair da voz: avisa os outros ("bye") e limpa a sala', wsIn.some((j) => j.event === 'broadcast' && j.payload && j.payload.event === 'bye') && world.voice.length === 0);
   // etapa 8: banir e desbanir (só o dono do servidor)
   if (!(await page.locator('.banlnk').count())) await page.click('.x-ph [data-act="nav"][data-k="members"]');

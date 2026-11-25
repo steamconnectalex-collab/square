@@ -357,3 +357,72 @@
 }
 
 .dmrq{display:flex;align-items:center;gap:2px}.dmrq .dmr{flex:1;min-width:0}.dmrq small{display:block;font-size:11.5px;color:var(--muted)}.dmrb{display:flex;gap:2px;flex:none}
+
+/* ---------- chamada de voz ---------- */
+.vp{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;position:relative}
+.vsheet{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+.vph{display:flex;align-items:center;gap:8px;padding:12px 16px}
+.vph .tsp{flex:1}
+.vchip{display:inline-flex;align-items:center;gap:6px;height:42px;padding:0 14px;border-radius:13px;background:rgba(29,29,34,.08);font-weight:800;font-size:17px;color:#1D1D22;min-width:0;max-width:50%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vib{flex:none;width:42px;height:42px;border-radius:13px;border:0;background:rgba(29,29,34,.08);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.vib:hover{background:rgba(29,29,34,.14)}
+.vib.sel{background:#1D1D22}
+.vbody{flex:1 1 auto;min-height:0;overflow:auto;padding:8px 16px;display:flex;flex-direction:column;gap:12px}
+.vpre{align-items:center;justify-content:center;text-align:center;gap:14px;min-height:120px}
+.vmsg{margin:0;font-size:16px;line-height:1.5;color:#33333A;max-width:34ch}
+.vmsg b{font-size:18px;color:#1D1D22}
+.vwho{display:flex;gap:-6px;justify-content:center;flex-wrap:wrap}
+.vav{flex:none;display:inline-flex;align-items:center;justify-content:center;width:104px;height:104px;border-radius:50%;font-size:38px;font-weight:800;color:#1D1D22;background-size:cover;background-position:center;box-shadow:0 0 0 4px #fff,0 8px 20px rgba(29,29,34,.18)}
+.vav.sm{width:44px;height:44px;font-size:16px;margin:0 -4px;box-shadow:0 0 0 3px #fff}
+.vgrid{flex:1 1 auto;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));grid-auto-rows:minmax(190px,1fr)}
+.vgrid.n1{grid-template-columns:1fr}
+.vt{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;border-radius:22px;background:linear-gradient(150deg,rgba(236,232,250,.95),rgba(246,243,255,.95));border:3px solid rgba(29,29,34,.08);transition:border-color .15s,box-shadow .15s}
+.vt.talk{border-color:#2DA770;box-shadow:0 0 0 3px rgba(45,167,112,.25)}
+.vvid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:transparent}
+.vvid.fit{object-fit:contain;background:#14141A}
+.vnm{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);display:inline-flex;align-items:center;gap:6px;max-width:calc(100% - 24px);padding:7px 14px;border-radius:12px;background:rgba(29,29,34,.86);color:#fff;font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vbd{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#D93025}
+.vfx{position:absolute;top:14px;right:16px;font-size:36px;pointer-events:none;animation:vfxup 1.6s ease-out forwards}
+@keyframes vfxup{from{opacity:1;transform:translateY(0) scale(.8)}to{opacity:0;transform:translateY(-34px) scale(1.25)}}
+.vinv{display:flex;align-items:center;gap:14px;width:100%;padding:14px 16px;border:0;border-radius:18px;background:rgba(29,29,34,.07);text-align:left;cursor:pointer}
+.vinv .tx{display:flex;flex-direction:column;flex:1;min-width:0}
+.vinv b{font-size:16px;color:#1D1D22}
+.vinv small{font-size:14px;color:#55555F}
+.vinvi{flex:none;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:14px;background:#1D1D22}
+.vinvb{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.vdockw{position:relative;padding:0 16px 16px}
+.vdock{display:flex;align-items:center;justify-content:center;gap:10px;margin:8px auto 0;padding:12px 14px;border-radius:26px;background:rgba(255,255,255,.88);border:1px solid rgba(29,29,34,.1);box-shadow:0 8px 24px rgba(29,29,34,.1);width:min(560px,100%)}
+.vsheet>.vdock{margin:8px 16px 16px;width:auto}
+.vdb{flex:1 1 0;min-width:0;height:54px;border:0;border-radius:17px;background:rgba(29,29,34,.08);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-weight:800;font-size:17px;color:#1D1D22}
+.vdb:hover{background:rgba(29,29,34,.14)}
+.vdb.sel{background:#1D1D22}
+.vdb.off{background:#FDECEA}
+.vdb.hang{flex:0 0 78px;background:#D93025}
+.vdb.hang:hover{background:#B3261E}
+.vdb.join{flex:2 1 0;background:#1F9D63;color:#fff;font-size:17px}
+.vdb.join:hover{background:#188653}
+.vdb:disabled{opacity:.55;cursor:not-allowed}
+.vfxp{position:absolute;left:50%;bottom:calc(100% - 6px);transform:translateX(-50%);display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px;border-radius:20px;background:rgba(255,255,255,.96);border:1px solid rgba(29,29,34,.1);box-shadow:0 10px 30px rgba(29,29,34,.18);width:min(380px,calc(100% - 32px));z-index:3}
+.vfxp button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 2px;border:0;border-radius:14px;background:transparent;cursor:pointer}
+.vfxp span{font-size:26px}
+.vfxp small{font-size:11px;color:#44444C;text-align:center}
+/* computador: a prévia é um cartão no meio da página */
+.vp.pre{align-items:center;justify-content:center;background:rgba(29,29,34,.04)}
+.vp.pre .vsheet{flex:0 0 auto;width:min(520px,calc(100% - 32px));border-radius:26px;background:rgba(255,255,255,.92);border:1px solid rgba(29,29,34,.08);box-shadow:0 16px 48px rgba(29,29,34,.16)}
+/* celular e tablet: prévia vira folha de baixo; chamada ocupa a tela */
+@media (max-width:900px){
+  .vp{position:fixed;inset:0;z-index:70}
+  .vp.pre{justify-content:flex-end;align-items:stretch;background:rgba(29,29,34,.4)}
+  .vp.pre .vsheet{width:auto;border-radius:26px 26px 0 0;background:#F6F5FB;border:0;box-shadow:0 -10px 40px rgba(29,29,34,.25);padding-bottom:env(safe-area-inset-bottom,0)}
+  .vp.call{background:linear-gradient(165deg,#F1EEFB,#E9F3F1)}
+  .vgrid{grid-template-columns:1fr;grid-auto-rows:minmax(220px,1fr)}
+  .vgrid.n3,.vgrid.n4,.vgrid.n5,.vgrid.n6{grid-auto-rows:minmax(150px,1fr)}
+  .vav{width:112px;height:112px}
+  .vdockw{padding-bottom:calc(16px + env(safe-area-inset-bottom,0))}
+}
+.vchip{flex:0 1 auto;max-width:none;overflow:visible;min-width:0}
+.vcn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vchip svg{flex:none}
+.vdb.fix{flex:0 0 58px}
+.vdb.join{flex:1 1 0;white-space:nowrap}
+@media (max-width:420px){.vdb.join{font-size:15px}}

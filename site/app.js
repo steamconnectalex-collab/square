@@ -237,6 +237,7 @@ function render(o = {}) {
   }
   if (S.view === 'app' && A && A.world === 'ready') ensureThread(curKey());
   if (S.view === 'app' && A) updateTyping();
+  if (S.view === 'app' && VC) attachVideos();
 }
 
 /* ----------------------------------------------------- peças de acesso */
@@ -825,7 +826,7 @@ function initApp() {
   if (A && A.owner === uid) { startLive(); openJoin(); return; }
   SERVERS = [];
   A = {
-    owner: uid, world: 'loading', werr: '', me: null, server: null, channel: null, voice: null, muted: false, deafened: false,
+    owner: uid, world: 'loading', werr: '', me: null, server: null, channel: null, voice: null, vpage: null, vst: {}, vfxOpen: false, muted: false, deafened: false,
     panel: null, showMembers: true, onlineOpen: true, offlineOpen: true, draft: '', search: '', emojiOpen: false, menu: false,
     view: 'friends', ftab: 'all', af: { user: '', note: '', busy: false }, pop: null, drawer: false, csec: { text: false, voice: false }, devs: null, plan: 'free', gq: '', entered: false,
     threads: {}, rx: {}, tc: {}, rxPick: null, loaded: {}, loading: {}, more: {}, terr: {}, modal: null, poll: null, beat: null, tt: null, typing: {}, pollN: 0, friends: [], incoming: [], outgoing: [], known: {}, dmByUser: {}, dmUser: {}, blocked: new Set(), unread: {}, vrost: {}
@@ -951,7 +952,7 @@ function fixSelection() {
 }
 function selectServer(id) {
   const s = SERVERS.find((x) => x.id === id); if (!s) return;
-  A.server = s.id; A.channel = s.text[0] ? s.text[0].id : null; A.view = 'server'; A.panel = null; A.search = '';
+  A.server = s.id; A.channel = s.text[0] ? s.text[0].id : null; A.view = 'server'; A.panel = null; A.search = ''; A.vpage = null;
 }
 function friendNotes(prev) {
   if (!A || !A.friends || (A.me && A.me.presence === 'dnd')) return;
@@ -1186,11 +1187,11 @@ const voiceRoster = (ch) => ((A && A.vrost[ch]) || []);
 async function loadVoice() {
   const w = A; if (!w) return;
   try {
-    const rows = await sb('/rest/v1/voice_members?select=channel_id,user_id,seen_at');
+    const rows = await sb('/rest/v1/voice_members?select=channel_id,user_id,seen_at,muted,deafened,video,screen');
     if (A !== w) return;
-    const lim = Date.now() - 45000, r = {};
-    rows.forEach((x) => { if (new Date(x.seen_at).getTime() >= lim) (r[x.channel_id] = r[x.channel_id] || []).push(x.user_id); });
-    A.vrost = r;
+    const lim = Date.now() - 45000, r = {}, st = {};
+    rows.forEach((x) => { if (new Date(x.seen_at).getTime() >= lim) { (r[x.channel_id] = r[x.channel_id] || []).push(x.user_id); st[x.user_id] = { m: !!x.muted || !!x.deafened, d: !!x.deafened, v: !!x.video, s: !!x.screen }; } });
+    A.vrost = r; A.vst = st;
     if (S.view === 'app' && A.world === 'ready') render();
   } catch (e) { /* sem lista de voz */ }
 }
@@ -1232,10 +1233,11 @@ async function voiceJoin(ch) {
     const dest = ctx.createMediaStreamDestination(), gate = ctx.createGain(), an = ctx.createAnalyser(); an.fftSize = 512;
     src.connect(gain); gain.connect(gate); gate.connect(dest); gain.connect(an); stream = dest.stream; VCG = { gate, an, buf: new Uint8Array(an.fftSize), hold: 0 };
   } catch (e) { try { if (ctx) ctx.close(); } catch (e2) { /* ok */ } ctx = null; gain = null; stream = raw; }
-  VC = { ch, stream, raw, ctx, gain, vad: VCG ? setInterval(vadTick, 80) : 0, peers: {}, ping: setInterval(() => { rpc('voice_ping', { p_channel: ch }).catch(() => {}); }, 15000) };
+  VC = { ch, stream, raw, ctx, gain, vad: VCG ? setInterval(vadTick, 80) : 0, peers: {}, tlast: {}, talkT: setInterval(talkTick, 120), ping: setInterval(() => { rpc('voice_ping', { p_channel: ch }).catch(() => {}); }, 15000) };
   voiceApply();
   if (window.SQ_SET) { window.SQ_SET.fx('join'); window.SQ_SET.entrySound((SERVERS.find((x) => (x.voice || []).some((c) => c.id === ch)) || {}).id); }
   A.voice = ch;
+  voiceState();
   const t = await freshToken().catch(() => null);
   if (t) voiceRtJoin(t);
   loadVoice(); render();
@@ -1247,11 +1249,20 @@ function voiceRtJoin(t) {
 function voiceHello() { vsend('hello', {}); }
 function voicePeer(uid) {
   if (VC.peers[uid]) return VC.peers[uid];
-  const pc = new RTCPeerConnection(ICE), peer = { pc, audio: null, queue: [] };
+  const pc = new RTCPeerConnection(ICE), peer = { pc, audio: null, queue: [], neg: false, making: false, polite: myId() > uid, vstream: null, vsender: null, an: null, buf: null };
   VC.peers[uid] = peer;
   VC.stream.getTracks().forEach((tr) => pc.addTrack(tr, VC.stream));
+  if (VC.vstream) addVideoTrack(peer);
   pc.onicecandidate = (e) => { if (e.candidate) vsend('ice', { to: uid, cand: e.candidate.toJSON ? e.candidate.toJSON() : e.candidate }); };
+  pc.onnegotiationneeded = async () => {
+    if (!peer.neg || !VC) return;
+    try { peer.making = true; const o = await pc.createOffer(); if (pc.signalingState !== 'stable') return; await pc.setLocalDescription(o); vsend('offer', { to: uid, sdp: pc.localDescription.sdp }); }
+    catch (e) { /* tenta de novo na próxima mudança */ }
+    finally { peer.making = false; }
+  };
   pc.ontrack = (e) => {
+    if (e.track.kind === 'video') { peer.vstream = new MediaStream([e.track]); attachVideos(); return; }
+    try { if (VC && VC.ctx) { const src = VC.ctx.createMediaStreamSource(e.streams[0]), an = VC.ctx.createAnalyser(); an.fftSize = 512; src.connect(an); peer.an = an; peer.buf = new Uint8Array(512); } } catch (e2) { /* sem detecção de fala */ }
     if (!peer.audio) { const a = document.createElement('audio'); a.autoplay = true; a.setAttribute('playsinline', ''); a.style.display = 'none'; document.body.appendChild(a); peer.audio = a; }
     peer.audio.srcObject = e.streams[0]; peer.audio.muted = !!(A && A.deafened);
     if (window.SQ_SET) { peer.audio.volume = window.SQ_SET.outputVolume(); const od = window.SQ_SET.outputDevice(); if (od !== 'default' && peer.audio.setSinkId) peer.audio.setSinkId(od).catch(() => {}); }
@@ -1276,31 +1287,117 @@ async function voiceSignal(ev, d) {
   if (!VC || !d.from || d.from === myId() || (d.to && d.to !== myId())) return;
   const uid = d.from;
   try {
-    if (ev === 'hello') { vsend('hi', { to: uid }); if (myId() < uid) voiceOffer(uid); }
+    if (ev === 'hello') { voiceDrop(uid); vsend('hi', { to: uid }); if (myId() < uid) voiceOffer(uid); }
     else if (ev === 'hi') { if (myId() < uid) voiceOffer(uid); }
     else if (ev === 'offer') {
-      voiceDrop(uid);
-      const peer = voicePeer(uid);
+      const peer = VC.peers[uid] || voicePeer(uid);
+      const collision = peer.making || peer.pc.signalingState !== 'stable';
+      if (collision && !peer.polite) return;
+      if (collision) await peer.pc.setLocalDescription({ type: 'rollback' });
       await peer.pc.setRemoteDescription({ type: 'offer', sdp: d.sdp });
       const an = await peer.pc.createAnswer(); await peer.pc.setLocalDescription(an);
       vsend('answer', { to: uid, sdp: peer.pc.localDescription.sdp });
+      peer.neg = true;
       peer.queue.splice(0).forEach((c) => peer.pc.addIceCandidate(c).catch(() => {}));
     } else if (ev === 'answer') {
       const peer = VC.peers[uid]; if (!peer) return;
       await peer.pc.setRemoteDescription({ type: 'answer', sdp: d.sdp });
+      peer.neg = true;
       peer.queue.splice(0).forEach((c) => peer.pc.addIceCandidate(c).catch(() => {}));
     } else if (ev === 'ice') {
       const peer = VC.peers[uid]; if (!peer || !d.cand) return;
       if (peer.pc.remoteDescription) peer.pc.addIceCandidate(d.cand).catch(() => {}); else peer.queue.push(d.cand);
-    } else if (ev === 'bye') voiceDrop(uid);
-  } catch (e) { voiceDrop(uid); }
+    } else if (ev === 'sfx') { if (typeof d.id === 'string' && Object.prototype.hasOwnProperty.call(SFX, d.id)) { sfxPlay(d.id); showFx(uid, d.id); } }
+    else if (ev === 'bye') voiceDrop(uid);
+  } catch (e) { const p = VC && VC.peers[uid]; if (!p || !p.neg) voiceDrop(uid); }
+}
+/* ---- estado, câmera, tela, quem fala, efeitos ---- */
+function voiceState() {
+  if (!VC) return;
+  rpc('voice_set_state', { p_muted: !!A.muted, p_deafened: !!A.deafened, p_video: !!VC.cam, p_screen: !!VC.scr }).catch(() => {});
+}
+function addVideoTrack(peer) {
+  const tr = VC.vstream && VC.vstream.getVideoTracks()[0]; if (!tr) return;
+  try { peer.vsender = peer.pc.addTrack(tr, VC.vstream); } catch (e) { /* já enviando */ }
+}
+function voiceStopVideo(quiet) {
+  if (!VC || !VC.vstream) return;
+  VC.vstream.getTracks().forEach((t) => { t.onended = null; t.stop(); });
+  Object.keys(VC.peers).forEach((u) => { const p = VC.peers[u]; if (p.vsender) { try { p.pc.removeTrack(p.vsender); } catch (e) { /* ok */ } p.vsender = null; } });
+  VC.vstream = null; VC.cam = false; VC.scr = false;
+  if (!quiet) { voiceState(); if (S.view === 'app') render(); }
+}
+function voiceSetVideo(st, kind) {
+  voiceStopVideo(true);
+  VC.vstream = st; VC.cam = kind === 'cam'; VC.scr = kind === 'scr';
+  const tr = st.getVideoTracks()[0]; if (tr) tr.onended = () => { if (VC && VC.vstream === st) voiceStopVideo(); };
+  Object.keys(VC.peers).forEach((u) => addVideoTrack(VC.peers[u]));
+  voiceState(); render();
+}
+async function voiceCam() {
+  if (!VC) return;
+  if (VC.cam) return voiceStopVideo();
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return toast('Este navegador não permite usar a câmera.');
+  try { voiceSetVideo(await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } } }), 'cam'); }
+  catch (e) { toast('Não consegui usar a câmera. Libere a câmera para este site no navegador e tente de novo.'); }
+}
+async function voiceScreen() {
+  if (!VC) return;
+  if (VC.scr) return voiceStopVideo();
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) return toast('Este aparelho não permite compartilhar a tela.');
+  try { voiceSetVideo(await navigator.mediaDevices.getDisplayMedia({ video: true }), 'scr'); }
+  catch (e) { /* a pessoa cancelou */ }
+}
+function attachVideos() {
+  if (!VC) return;
+  document.querySelectorAll('video[data-vs]').forEach((v) => {
+    const u = v.dataset.vs, st = u === myId() ? VC.vstream : (VC.peers[u] && VC.peers[u].vstream);
+    if (st && v.srcObject !== st) { v.srcObject = st; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); }
+  });
+}
+const rmsOf = (an, buf) => { an.getByteTimeDomainData(buf); let sum = 0; for (let i = 0; i < buf.length; i++) { const v = (buf[i] - 128) / 128; sum += v * v; } return Math.sqrt(sum / buf.length); };
+function talkTick() {
+  if (!VC) return;
+  const now = Date.now(), me = myId();
+  if (VCG && !(A.muted || A.deafened) && VCG.gate.gain.value > 0 && rmsOf(VCG.an, VCG.buf) > 0.02) VC.tlast[me] = now;
+  Object.keys(VC.peers).forEach((u) => { const p = VC.peers[u]; if (p.an && rmsOf(p.an, p.buf) > 0.015) VC.tlast[u] = now; });
+  document.querySelectorAll('.vt[data-vt]').forEach((el) => el.classList.toggle('talk', now - (VC.tlast[el.dataset.vt] || 0) < 350));
+}
+const SFX = { bell: ['Sino', '🔔'], horn: ['Buzina', '📣'], clap: ['Aplausos', '👏'], drum: ['Tambor', '🥁'], coin: ['Moeda', '🪙'], sad: ['Trombone triste', '😢'], siren: ['Sirene', '🚨'], pop: ['Plim', '✨'] };
+function sfxPlay(id) {
+  if (!VC || A.deafened || !Object.prototype.hasOwnProperty.call(SFX, id)) return;
+  const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+  let ctx = VC.ctx || VC.sfx; if (!ctx) { try { ctx = VC.sfx = new AC(); } catch (e) { return; } }
+  if (ctx.resume) ctx.resume().catch(() => {});
+  const t0 = ctx.currentTime, vol = 0.18 * (window.SQ_SET ? window.SQ_SET.outputVolume() : 1);
+  const tone = (f, at, dur, type, to) => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = type || 'sine'; o.frequency.setValueAtTime(f, t0 + at); if (to) o.frequency.linearRampToValueAtTime(to, t0 + at + dur); g.gain.setValueAtTime(vol, t0 + at); g.gain.exponentialRampToValueAtTime(0.001, t0 + at + dur); o.connect(g); g.connect(ctx.destination); o.start(t0 + at); o.stop(t0 + at + dur + 0.02); };
+  const noise = (at, dur) => { const n = Math.floor(ctx.sampleRate * dur), b = ctx.createBuffer(1, n, ctx.sampleRate), dd = b.getChannelData(0); for (let i = 0; i < n; i++) dd[i] = (Math.random() * 2 - 1) * (1 - i / n); const sr = ctx.createBufferSource(), g = ctx.createGain(); sr.buffer = b; g.gain.value = vol * 1.6; sr.connect(g); g.connect(ctx.destination); sr.start(t0 + at); };
+  if (id === 'bell') { tone(880, 0, 1.2); tone(1320, 0, 1); }
+  else if (id === 'horn') tone(220, 0, 0.8, 'sawtooth');
+  else if (id === 'clap') for (let i = 0; i < 7; i++) noise(i * 0.09, 0.08);
+  else if (id === 'drum') { tone(150, 0, 0.3, 'sine', 50); tone(150, 0.35, 0.3, 'sine', 50); }
+  else if (id === 'coin') { tone(988, 0, 0.12, 'square'); tone(1319, 0.1, 0.5, 'square'); }
+  else if (id === 'sad') { tone(392, 0, 0.35, 'sawtooth'); tone(370, 0.35, 0.35, 'sawtooth'); tone(349, 0.7, 0.35, 'sawtooth'); tone(330, 1.05, 0.9, 'sawtooth', 290); }
+  else if (id === 'siren') { tone(600, 0, 0.5, 'sine', 900); tone(900, 0.5, 0.5, 'sine', 600); }
+  else { tone(660, 0, 0.08, 'triangle'); tone(990, 0.08, 0.18, 'triangle'); }
+}
+function showFx(uid, id) {
+  const el = document.querySelector('.vt[data-vt="' + uid + '"]'); if (!el) return;
+  const sp = document.createElement('span'); sp.className = 'vfx'; sp.textContent = SFX[id][1]; el.appendChild(sp); setTimeout(() => sp.remove(), 1700);
+}
+function voiceSfx(id) {
+  if (!VC || !Object.prototype.hasOwnProperty.call(SFX, id) || Date.now() - (VC.sfxAt || 0) < 1500) return;
+  VC.sfxAt = Date.now(); A.vfxOpen = false;
+  sfxPlay(id); vsend('sfx', { id }); showFx(myId(), id); render();
 }
 function voiceLeave(quiet) {
   if (!VC) return;
   if (window.SQ_SET && !quiet) window.SQ_SET.fx('leave');
   const v = VC; vsend('bye', {});
   VC = null;
-  clearInterval(v.ping); clearInterval(v.vad); VCG = null;
+  clearInterval(v.ping); clearInterval(v.vad); clearInterval(v.talkT); VCG = null;
+  if (v.vstream) v.vstream.getTracks().forEach((t) => { t.onended = null; t.stop(); });
+  if (v.sfx) { try { v.sfx.close(); } catch (e) { /* ok */ } }
   Object.keys(v.peers).forEach((u) => { const p = v.peers[u]; try { p.pc.close(); } catch (e) { /* já fechado */ } if (p.audio) { p.audio.srcObject = null; p.audio.remove(); } });
   v.stream.getTracks().forEach((t) => t.stop());
   if (v.raw && v.raw !== v.stream) v.raw.getTracks().forEach((t) => t.stop());
@@ -1501,7 +1598,7 @@ function composerHTML(ok, ph) {
 function voiceBarHTML() {
   if (!A.voice) return '';
   const s = SERVERS.find((x) => x.voice.some((g) => g.id === A.voice)), g = s && s.voice.find((x) => x.id === A.voice);
-  return `<div class="vbar" role="status"><span class="vdot"></span><span class="vt"><b>Voz conectada</b><small>${esc(g ? g.name : 'Sala')}${s ? ' · ' + esc(s.name) : ''}</small></span><button type="button" class="mbtn sm danger" data-act="vleave">Sair</button></div>`;
+  return `<div class="vbar" role="status"><span class="vdot"></span><span class="vt"><b>Voz conectada</b><small>${esc(g ? g.name : 'Sala')}${s ? ' · ' + esc(s.name) : ''}</small></span><button type="button" class="mbtn sm ghost" data-act="vopen">Abrir</button><button type="button" class="mbtn sm danger" data-act="vleave">Sair</button></div>`;
 }
 /* ------------------------------------------------------------- janelas */
 const inviteCode = (v) => { const s = String(v || '').trim(); const mm = s.match(/[?&]c=([0-9a-z]+)/i); return (mm ? mm[1] : s).toLowerCase().replace(/[^0-9a-z]/g, ''); };
@@ -1594,11 +1691,14 @@ function modalHTML() {
     title = 'Tópico'; label = 'Responder';
     const srv = curServer(), pp = m.parent.from === myId() ? null : srv ? srv.byId[m.parent.from] : dmPeer(m.key);
     body = `<div class="thp"><b>${esc(m.parent.from === myId() ? 'Você' : pp ? pp.name : 'Ex-membro')}</b><div>${msgBody(m.parent)}</div></div><div id="thlist" class="thlist" aria-live="polite">${threadListHTML(m)}</div>` + mField('th-r', 'Sua resposta', 'reply', m.reply, { ph: 'Responder neste tópico', max: 2000 });
+  } else if (m.type === 'vinvite') {
+    title = 'Adicionar pessoas'; foot = '<button type="button" class="mbtn ghost" data-act="modal-close">Fechar</button>';
+    body = '<p class="mnote">Avise o grupo que você está na chamada de voz ou convide quem ainda não está no servidor.</p><div class="vinvb"><button type="button" class="mbtn" data-act="v-notify">Avisar no canal de texto</button><button type="button" class="mbtn ghost" data-act="nav" data-k="invite">Criar convite do servidor</button></div>';
   } else if (m.type === 'block') {
     title = 'Bloquear pessoa'; label = 'Bloquear';
     body = `<p class="mnote">Bloquear ${esc(m.name)}? Vocês deixam de ser amigos e você não verá as mensagens dela nos servidores. Você pode desbloquear depois, no perfil dela.</p>`;
   }
-  const showSubmit = !((m.type === 'events' && m.view !== 'new') || m.type === 'invite' || m.type === 'profile' || m.type === 'bans' || (m.type === 'srv' && m.mode === 'explore'));
+  const showSubmit = !((m.type === 'events' && m.view !== 'new') || m.type === 'invite' || m.type === 'profile' || m.type === 'bans' || m.type === 'vinvite' || (m.type === 'srv' && m.mode === 'explore'));
   return `<div class="mback" data-act="modal-bg"><div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}">
     <header class="mhead"><h2>${esc(title)}</h2><button type="button" class="hov sq" data-act="modal-close" aria-label="Fechar">${ic(D.close, 16, '#55555F', 1.8)}</button></header>
     <div class="mbody">${body}${m.err ? `<div class="merr" role="alert">${esc(m.err)}</div>` : ''}</div>
@@ -1857,6 +1957,11 @@ Object.assign(D, {
   apps: '<rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><path d="M16.75 13.5V20M13.5 16.75H20"/>',
   threads: '<path d="M5 9h10M5 15h6M9 4 7 20M15 4l-1.2 8"/><path d="M16 17h5M18.5 14.5v5"/>',
   camera: '<path d="M4 8a2 2 0 0 1 2-2h2l1.5-2h5L16 6h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><circle cx="12" cy="12.5" r="3.5"/>',
+  camOff: '<path d="M4 8a2 2 0 0 1 2-2h2l1.5-2h5L16 6h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><circle cx="12" cy="12.5" r="3.5"/><path d="M4 4l16 16"/>',
+  screen: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4M12 12V8m0 0-2.2 2.2M12 8l2.2 2.2"/>',
+  party: '<path d="M4 20 8.5 8.5 15.5 15.5z"/><path d="M13 4v2.5M19 6.5l-1.8 1.8M20.5 12H18M16 3.5l.5 1.5"/>',
+  hangup: '<path d="M3 14.5c5-4.4 13-4.4 18 0l-1.8 3-3.7-1.6v-2.4a11.5 11.5 0 0 0-7 0v2.4L4.8 17.5z"/>',
+  volOff: '<path d="M11 5 6 9H3v6h3l5 4z"/><path d="M16 9l5 6M21 9l-5 6"/>',
   menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
   user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>'
 });
@@ -2035,8 +2140,40 @@ function dmPageHTML() {
   return `<header class="x-ph"><div class="pt">${ic(D.at, 22, '#33333A', 1.6)}<h1>${esc(peer.name)}</h1><i class="sd ${sdCls(peer)} inl"></i></div><span class="tsp"></span><button type="button" class="hov sq${A.panel === 'search' ? ' sel' : ''}" data-act="nav" data-k="search" aria-label="Buscar mensagens" title="Buscar mensagens">${ic(D.search, 20, '#33333A', 1.7)}</button><button type="button" class="hov sq" data-act="profile" data-id="${peer.id}" aria-label="Ver perfil" title="Ver perfil">${ic(D.user, 20, '#33333A', 1.7)}</button></header>
   <div class="x-pb"><div class="x-chat"><div class="msgs" id="msgs" role="log" aria-label="Mensagens" aria-live="polite">${serverMsgsHTML()}</div>${composerHTML(true, 'Conversar com @' + peer.name)}</div></div>`;
 }
+function voicePageHTML(srv, g) {
+  const inCall = A.voice === g.id, me = myId();
+  let ids = voiceRoster(g.id).slice(); if (inCall && !ids.includes(me)) ids.unshift(me);
+  ids = ids.filter((u, i) => ids.indexOf(u) === i);
+  if (inCall) ids.sort((a, b) => (a === me ? -1 : b === me ? 1 : 0));
+  const people = ids.map((u) => srv.byId[u]).filter(Boolean);
+  const off = A.muted || A.deafened;
+  const head = `<header class="vph"><button type="button" class="vib" data-act="vback" aria-label="Voltar ao chat">${ic(D.down, 22, '#1D1D22', 2.2)}</button><span class="vchip"><span class="vcn">${esc(g.name)}</span>${ic(D.chevR, 16, '#1D1D22', 2.4)}</span><span class="tsp"></span>${inCall ? `<button type="button" class="vib${A.deafened ? '' : ' sel'}" data-act="deaf" aria-pressed="${!!A.deafened}" aria-label="${A.deafened ? 'Ativar áudio' : 'Desativar áudio'}">${ic(A.deafened ? D.volOff : D.volume, 22, A.deafened ? '#B3261E' : '#fff', 2)}</button>` : ''}<button type="button" class="vib" data-act="vinvite" aria-label="Adicionar pessoas">${ic(D.userPlus, 22, '#1D1D22', 1.8)}</button><button type="button" class="vib" data-act="vback" aria-label="Abrir o chat de texto">${ic(D.bubble, 22, '#1D1D22', 1.8)}</button></header>`;
+  if (!inCall) {
+    const full = people.length >= 6;
+    return `<div class="vp pre"><div class="vsheet" role="dialog" aria-label="Canal de voz ${esc(g.name)}">${head}
+    <div class="vbody vpre">${people.length ? `<div class="vwho">${people.map((p) => `<span class="vav sm" style="background:${p.g}" title="${esc(p.name)}">${esc(p.ini)}</span>`).join('')}</div><p class="vmsg"><b>${people.length} ${people.length === 1 ? 'pessoa' : 'pessoas'} na chamada</b><br>Quando estiver pronto para conversar, basta entrar.</p>` : '<p class="vmsg"><b>Ainda não tem ninguém aqui!</b><br>Quando estiver pronto para conversar, basta entrar.</p>'}</div>
+    <div class="vdock"><button type="button" class="vdb fix${off ? ' off' : ''}" data-act="mute" aria-pressed="${off}" aria-label="${off ? 'Ativar microfone' : 'Silenciar microfone'}">${ic(off ? D.micOff : D.mic, 24, off ? '#B3261E' : '#1D1D22', 1.9)}</button><button type="button" class="vdb join" data-act="vconnect"${full ? ' disabled' : ''}>${full ? 'Sala cheia' : 'Entrar na chamada de voz'}</button><button type="button" class="vdb fix" data-act="vback" aria-label="Abrir o chat de texto">${ic(D.bubble, 24, '#1D1D22', 1.8)}</button></div></div></div>`;
+  }
+  const tile = (p) => {
+    const mine = p.id === me, st = mine ? { m: off, d: !!A.deafened, v: !!(VC && (VC.cam || VC.scr)), s: !!(VC && VC.scr) } : (A.vst[p.id] || {});
+    const badges = `${st.d ? `<span class="vbd" title="Sem áudio">${ic(D.volOff, 14, '#fff', 2)}</span>` : st.m ? `<span class="vbd" title="Microfone silenciado">${ic(D.micOff, 14, '#fff', 2)}</span>` : ''}`;
+    return `<div class="vt" data-vt="${esc(p.id)}"><span class="vav" style="background:${p.g}">${esc(p.ini)}</span>${st.v ? `<video class="vvid${st.s ? ' fit' : ''}" data-vs="${esc(p.id)}" autoplay playsinline muted></video>` : ''}<span class="vnm">${esc(mine ? 'Você' : p.name)}${badges}</span></div>`;
+  };
+  const cam = !!(VC && VC.cam), scr = !!(VC && VC.scr);
+  const fx = A.vfxOpen ? `<div class="vfxp" role="menu" aria-label="Efeitos sonoros">${Object.keys(SFX).map((k) => `<button type="button" class="hov" role="menuitem" data-act="vsfx" data-id="${k}"><span>${SFX[k][1]}</span><small>${SFX[k][0]}</small></button>`).join('')}</div>` : '';
+  return `<div class="vp call"><div class="vsheet">${head}
+  <div class="vbody"><div class="vgrid n${Math.min(people.length, 6)}">${people.map(tile).join('')}</div>
+  ${people.length <= 1 ? `<button type="button" class="vinv" data-act="vinvite"><span class="vinvi">${ic(D.userPlus, 24, '#fff', 1.8)}</span><span class="tx"><b>Adicionar pessoas ao bate-papo em voz</b><small>Avise o grupo que você está aqui!</small></span>${ic(D.chevR, 18, '#55555F', 2.2)}</button>` : ''}</div>
+  <div class="vdockw">${fx}<div class="vdock" role="toolbar" aria-label="Controles da chamada">
+    <button type="button" class="vdb${cam ? ' sel' : ''}" data-act="vcam" aria-pressed="${cam}" aria-label="${cam ? 'Desligar câmera' : 'Ligar câmera'}">${ic(cam ? D.camera : D.camOff, 24, cam ? '#fff' : '#1D1D22', 1.8)}</button>
+    <button type="button" class="vdb${off ? ' off' : ''}" data-act="mute" aria-pressed="${off}" aria-label="${off ? 'Ativar microfone' : 'Silenciar microfone'}">${ic(off ? D.micOff : D.mic, 24, off ? '#B3261E' : '#1D1D22', 1.9)}</button>
+    <button type="button" class="vdb${scr ? ' sel' : ''}" data-act="vscr" aria-pressed="${scr}" aria-label="${scr ? 'Parar de compartilhar a tela' : 'Compartilhar tela'}">${ic(D.screen, 24, scr ? '#fff' : '#1D1D22', 1.8)}</button>
+    <button type="button" class="vdb${A.vfxOpen ? ' sel' : ''}" data-act="vfx" aria-expanded="${!!A.vfxOpen}" aria-label="Efeitos sonoros">${ic(D.party, 24, A.vfxOpen ? '#fff' : '#1D1D22', 1.8)}</button>
+    <button type="button" class="vdb hang" data-act="vhang" aria-label="Sair da chamada">${ic(D.hangup, 26, '#fff', 1.9)}</button></div></div></div></div>`;
+}
 function serverPageHTML() {
   const srv = curServer(), chObj = srv.text.find((c) => c.id === A.channel);
+  if (A.vpage) { const vg = srv.voice.find((x) => x.id === A.vpage); if (vg) return voicePageHTML(srv, vg); A.vpage = null; }
   const ib = (act, icon, label, on, extra = '') => `<button type="button" class="hov sq${on ? ' sel' : ''}" data-act="${act}" ${extra} aria-label="${label}" title="${label}">${ic(icon, 20, '#33333A', 1.7)}</button>`;
   return `<header class="x-ph"><div class="pt">${ic(D.hash, 22, '#33333A', 1.7)}<h1>${esc(chObj ? chObj.name : 'Sem canal')}</h1></div><span class="tsp"></span>${ib('toast-soon', D.threads, 'Tópicos', false, 'data-msg="Os tópicos chegam em breve"')}${ib('toast-soon', D.bell, 'Configurações de notificação', false, 'data-msg="As notificações por canal chegam em breve"')}${ib('nav', D.pin, 'Mensagens fixadas', A.panel === 'pins', 'data-k="pins"')}${ib('nav', D.users, 'Lista de membros', A.showMembers, 'data-k="members"')}<button type="button" class="xsearch" data-act="nav" data-k="search" aria-label="Buscar mensagens"><span>Buscar ${esc(srv.name)}</span>${ic(D.search, 16, '#55555F', 1.8)}</button></header>
   <div class="x-pb"><div class="x-chat"><div class="msgs" id="msgs" role="log" aria-label="Mensagens" aria-live="polite">${serverMsgsHTML()}</div>${composerHTML(!!chObj, chObj ? 'Conversar em #' + chObj.name : 'Crie um canal de texto para conversar')}</div>
@@ -2200,11 +2337,21 @@ function appAction(act, el, ev) {
   if (act !== 'emoji-toggle' && act !== 'emoji') A.emojiOpen = false;
   if (act !== 'sticker-toggle' && act !== 'sticker') A.stickerOpen = false;
   switch (act) {
-    case 'chan': A.channel = el.dataset.id; A.draft = ''; break;
-    case 'vjoin': voiceJoin(el.dataset.id); return;
+    case 'chan': A.channel = el.dataset.id; A.draft = ''; A.vpage = null; break;
+    case 'vjoin': A.vpage = el.dataset.id; A.drawer = false; A.panel = null; A.vfxOpen = false; break;
+    case 'vconnect': if (A.vpage) voiceJoin(A.vpage); return;
+    case 'vback': A.vpage = null; A.vfxOpen = false; break;
+    case 'vopen': { const vs = SERVERS.find((x) => x.voice.some((g) => g.id === A.voice)); if (vs) { A.server = vs.id; A.view = 'server'; A.vpage = A.voice; A.panel = null; } break; }
+    case 'vhang': voiceLeave(true); A.vpage = null; A.vfxOpen = false; if (window.SQ_SET) window.SQ_SET.fx('leave'); break;
+    case 'vcam': voiceCam(); return;
+    case 'vscr': voiceScreen(); return;
+    case 'vfx': A.vfxOpen = !A.vfxOpen; break;
+    case 'vsfx': voiceSfx(el.dataset.id); return;
+    case 'vinvite': A.modal = { type: 'vinvite', err: '', busy: false }; break;
+    case 'v-notify': { const vs = curServer(), vg = vs && vs.voice.find((x) => x.id === (A.voice || A.vpage)), tc = vs && (vs.text.find((c) => c.id === A.channel) || vs.text[0]); if (!vs || !vg || !tc) { toast('Não há um canal de texto para avisar.'); return; } sendTo(tc.id, '📞 ' + displayName() + ' está na chamada de voz «' + vg.name + '». Entre e converse com a gente!').then(() => { toast('Aviso enviado em #' + tc.name); }).catch((e) => toast(errText(e))); A.modal = null; break; }
     case 'vleave': voiceLeave(); return;
-    case 'mute': A.muted = !A.muted; voiceApply(); if (window.SQ_SET) window.SQ_SET.fx(A.muted ? 'mute' : 'unmute'); break;
-    case 'deaf': A.deafened = !A.deafened; voiceApply(); if (window.SQ_SET) window.SQ_SET.fx(A.deafened ? 'deaf' : 'undeaf'); break;
+    case 'mute': A.muted = !A.muted; if (VC) voiceState(); voiceApply(); if (window.SQ_SET) window.SQ_SET.fx(A.muted ? 'mute' : 'unmute'); break;
+    case 'deaf': A.deafened = !A.deafened; if (VC) voiceState(); voiceApply(); if (window.SQ_SET) window.SQ_SET.fx(A.deafened ? 'deaf' : 'undeaf'); break;
     case 'settings': if (window.SQ_SET) window.SQ_SET.open(); else toast('Não foi possível abrir as configurações.'); break;
     case 'nav': { const k = el.dataset.k; if (k === 'invite') { openInvite(); return; } if (k === 'members') A.showMembers = !A.showMembers; else { A.panel = A.panel === k ? null : k; if (A.panel === 'mentions') loadMentions(); if (A.panel === 'search') { A.sres = null; runSearch(); } } break; }
     case 'close-panel': A.panel = null; break;
