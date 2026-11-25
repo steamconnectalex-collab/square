@@ -2,7 +2,7 @@
 
 > **Para a IA:** este arquivo é a fonte da verdade sobre o projeto. Leia tudo antes de começar e atualize **na hora** em que algo acontecer (regras completas em `agents.md`). Não duplique tarefas: procure aqui antes de adicionar.
 >
-> Última atualização: 2026-11-24 (chamada de voz nova)
+> Última atualização: 2026-11-25 (app para computador)
 
 ---
 
@@ -106,6 +106,8 @@ Fluxo de acesso: Home → "Entrar" → login (com painel de QR Code) → "Regist
 
 - **Chamada de voz – versão PC (2026-11-25, a partir de 2 prints do Discord no computador):** no computador, clicar no canal de voz **entra direto** (sem painel de "ninguém aqui"); em cima da barra do usuário aparece o cartão **"Voz conectada"** (nome do canal / servidor, botão de desconectar e 4 botões: câmera, compartilhar tela, atividades, efeitos sonoros); no canal aparecem o **cronômetro** e, ao passar o mouse, atalhos de chat, convidar e editar. **Clicar no canal conectado (ou no cartão) abre a tela da chamada:** título com o nome do canal, blocos das pessoas, **cartão "Convidar para voz / Escolher atividade" só quando você está sozinho (some quando entra mais gente)**, barra central (microfone com seta, câmera, compartilhar tela | atividades, efeitos, mais | desligar), convidar no canto esquerdo, janela separada e tela cheia no direito. Celular continua com painel + tela cheia (o site escolhe pelo tamanho da tela e muda sozinho ao redimensionar). "Atividades", "Mais opções" e "Abrir em outra janela" mostram "chegam em breve". Testes 195 OK.
 
+- **App para computador (2026-11-25, opção A — Electron):** pasta `desktop/` (`main.js`, `preload.js`, `picker.html` + `picker-preload.js` = seletor de tela/janela, `offline.html`, ícones em `build/`). O programa abre o site da Vercel numa janela própria (atualizações do site chegam sozinhas); ícone na bandeja (fechar a janela esconde, "Sair" fecha), só abre uma cópia, lembra tamanho/posição, links externos abrem no navegador, permissões de microfone/câmera/tela só para o site da Square, atualização automática do programa (`electron-updater`). **Instalador automático:** `.github/workflows/desktop.yml` gera `.exe` (Windows) e `.AppImage` (Linux) e publica em GitHub Releases quando se cria uma tag `v1.0.0` (ou "Run workflow" na aba Actions). Botão "Baixar apps" (e card de boas-vindas) agora abre a página de Releases; some dentro do app de computador. Corrigido `site/vercel.json`: `Permissions-Policy` bloqueava câmera e compartilhar tela (agora `camera`, `microphone`, `display-capture` liberados). Testes 195 OK. **Não testado em Windows de verdade** (aqui é Linux sem tela). **Limites:** o instalador do Windows sem assinatura digital mostra o aviso azul do SmartScreen ("Windows protegeu seu PC" → Mais informações → Executar assim mesmo); macOS não incluído.
+
 ## Como publicar o site
 
 **Desde 2026-11-19 a Vercel está ligada ao GitHub:** cada `git push` na `main` publica sozinho. Configuração do projeto `square-chat` (Vercel): Root Directory = `site`, sem Build Command e sem Output Directory. O `vercel.json` usado é o de `site/vercel.json`.
@@ -133,6 +135,7 @@ Fluxo de acesso: Home → "Entrar" → login (com painel de QR Code) → "Regist
 Pessoa conferir o novo menu principal no ar (desktop e celular) e dizer onde ficam música, servidores destaque, fixados e notícias. Pendente da pessoa: testar com duas contas reais (amizade, conversa privada, tempo real, foto, imagem, voz, banir) e os passos do painel (Vercel ↔ GitHub, senhas vazadas, domínio no Resend). Depois: GIFs/presentes, configurações, painel inicial com dados reais, servidor TURN se a voz falhar.
 
 ## Pendências externas (fazer por último — exigem conta/serviço fora da Square)
+- [ ] **Certificado de assinatura de código (Windows)** (~US$100–300/ano) para tirar o aviso do SmartScreen; **conta Apple Developer** (US$99/ano) se quiser versão para Mac.
 
 Combinado com a pessoa em 2026-11-23: o que precisa de conta em aplicativo externo fica aqui.
 - [ ] **Pagamentos, planos (Square Plus), Pontos, Impulso pago, Assinaturas, Cobrança, compra de itens da Loja e presentes:** precisa de um processador de pagamento (ex.: Stripe, Mercado Pago) e conta de empresa.
@@ -177,6 +180,8 @@ Combinado com a pessoa em 2026-11-23: o que precisa de conta em aplicativo exter
 - **Feito:** Etapa C completa (conta, 2 etapas, DMs por servidor), reações, figurinhas, eventos, tópicos (migrações 0019 a 0022; função `auth` v6). Testes 184 OK. **Pendente da pessoa:** conferir ao vivo com contas reais (2 etapas, troca de e-mail, privacidade do perfil, DMs, tópicos). **Próximo passo:** resto da Etapa D (Impulso, Inventário, privacidade nas atividades, Central da Família); o que depender de serviço externo está em "Pendências externas".
 
 - **2026-11-24 (noite):** chamada de voz nova (migração 0023, telas 1 e 2, câmera/tela/efeitos). Testes 193 OK (195 após a versão PC). Próximo passo: a pessoa testar com duas contas (celular + computador); mandar print do computador se quiser outro visual; depois voltar à Etapa D.
+
+- **2026-11-25:** app para computador (Electron) em `desktop/` + workflow do GitHub; botão Baixar; Permissions-Policy corrigida. Próximo passo: criar a tag `v1.0.0` (ver abaixo), baixar o instalador na página de Releases e testar no Windows.
 
 ### 2026-11-23
 - **Feito:** decoração de avatar corrigida; skeleton UI; permissões de amizade (migração 0018), filtro de spam e Apertar para Falar. Testes 164 OK. **Próximo passo:** a pessoa conferir no ar; decidir sobre tema escuro, trocar e-mail, 2 etapas e excluir conta (precisam de backend novo).

@@ -2022,7 +2022,7 @@ function railHTML() {
   ${railServers().map((s) => { const on = A.view === 'server' && A.server === s.id; return `<button type="button" class="rt${on ? ' on' : ''}${SPV('fav_servers', false) && favSrv(s.id) ? ' fav' : ''}" data-act="srv-open" data-id="${s.id}" aria-label="${esc(s.name)}" aria-pressed="${on}" title="${esc(s.name)}" style="background:${s.tile}">${esc(s.ini)}</button>`; }).join('')}
   <button type="button" class="rt act" data-act="srv-new" aria-label="Criar ou entrar em um servidor" title="Adicionar um servidor">${ic(D.plus, 22, '#1B6B47', 2)}</button>
   <button type="button" class="rt act" data-act="srv-explore" aria-label="Explorar servidores públicos" title="Explorar servidores públicos">${ic(D.compass, 22, '#1B6B47', 1.8)}</button>
-  <button type="button" class="rt act" data-act="toast-soon" data-msg="Os apps para celular e computador chegam em breve" aria-label="Baixar apps" title="Baixar apps">${ic(D.download, 22, '#1B6B47', 1.8)}</button>
+  ${window.squareDesktop ? '' : `<button type="button" class="rt act" data-act="get-app" aria-label="Baixar o app para computador" title="Baixar o app para computador">${ic(D.download, 22, '#1B6B47', 1.8)}</button>`}
 </nav>`;
 }
 function dmColHTML() {
@@ -2207,7 +2207,7 @@ function welcomeHTML(srv, chObj) {
   if (!srv.mine) return `<div class="wlc"><h2>Bem-vindo(a) a ${esc(srv.name)}</h2><p>Este é o começo do canal #${esc(chObj ? chObj.name : '')}.</p></div>`;
   const card = (act, bg, icon, label, extra = '') => `<button type="button" class="wc" data-act="${act}" ${extra}><span class="wi" style="background:${bg}">${ic(icon, 18, '#fff', 1.8)}</span><b>${label}</b>${ic(D.chevR, 16, '#55555F', 2)}</button>`;
   return `<div class="wlc"><h2>Bem-vindo(a) a<br>${esc(srv.name)}</h2><p>Este é seu servidor, novinho em folha. Aqui vão algumas dicas para ajudar você a começar! Para mais informações, confira nosso <a href="#" data-act="soon" data-msg="O guia de como começar chega em breve">guia de como começar</a>.</p>
-  <div class="wcs">${card('nav', '#9D8CCF', D.userPlus, 'Convide seus amigos', 'data-k="invite"')}${card('toast-soon', '#78BE9D', D.camera, 'Personalize seu servidor com um ícone', 'data-msg="Os ícones de servidor chegam em breve"')}${card('focus-msg', '#7DB8CF', D.send, 'Envie sua primeira mensagem')}${card('toast-soon', '#6CBF7E', D.download, 'Baixar o App Square', 'data-msg="Os apps para celular e computador chegam em breve"')}${card('toast-soon', '#E897AB', D.apps, 'Adicione seu primeiro app', 'data-msg="Os apps de servidor chegam em breve"')}${card('open-boost', '#C77DBA', D.spark, 'Desbloqueie vantagens para todos com impulsos')}</div></div>`;
+  <div class="wcs">${card('nav', '#9D8CCF', D.userPlus, 'Convide seus amigos', 'data-k="invite"')}${card('toast-soon', '#78BE9D', D.camera, 'Personalize seu servidor com um ícone', 'data-msg="Os ícones de servidor chegam em breve"')}${card('focus-msg', '#7DB8CF', D.send, 'Envie sua primeira mensagem')}${card('get-app', '#6CBF7E', D.download, 'Baixar o App Square')}${card('toast-soon', '#E897AB', D.apps, 'Adicione seu primeiro app', 'data-msg="Os apps de servidor chegam em breve"')}${card('open-boost', '#C77DBA', D.spark, 'Desbloqueie vantagens para todos com impulsos')}</div></div>`;
 }
 function dmIntroHTML(peer) {
   if (!peer) return '';
@@ -2394,6 +2394,7 @@ function appAction(act, el, ev) {
     case 'send': doSend(); return;
     case 'srv-open': { selectServer(el.dataset.id); render({ scroll: true }); return; }
     case 'goto-msg': { const ch = el.dataset.ch, srv = serverOfChan(ch); A.panel = null; if (srv) { A.server = srv.id; A.channel = ch; A.view = 'server'; } else if (A.dmUser[ch]) { A.channel = ch; A.view = 'dm'; } render({ scroll: true }); return true; }
+    case 'get-app': window.open('https://github.com/steamconnectalex-collab/square/releases/latest', '_blank', 'noopener'); return;
     case 'toast-soon': toast(el.dataset.msg || 'Isso chega em breve'); return;
     case 'attach': pickImage(); return;
     case 'toast-gift': toast('Presentes chegam em breve'); return;

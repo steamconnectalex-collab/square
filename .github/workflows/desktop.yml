@@ -1,0 +1,32 @@
+name: Aplicativo para computador
+
+# Gera os instaladores (Windows e Linux) quando você cria uma versão (tag "v1.0.0", "v1.0.1"...)
+# ou quando clica em "Run workflow" na aba Actions do GitHub.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar
+        working-directory: desktop
+        run: npm install
+      - name: Gerar instalador e publicar na página de Releases
+        working-directory: desktop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --publish always

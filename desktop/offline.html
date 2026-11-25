@@ -1,0 +1,9 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+<title>Square. — sem conexão</title>
+<style>body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#F4F4F6;font:16px system-ui,Segoe UI,sans-serif;color:#1d1d22;text-align:center}
+.c{max-width:380px;padding:24px}h1{font-size:22px;margin:0 0 8px}p{color:#666;margin:0 0 20px}
+button{border:0;border-radius:12px;background:#2DA770;color:#fff;padding:12px 22px;font:inherit;cursor:pointer}</style></head>
+<body><div class="c"><h1>Sem conexão com a Square.</h1><p>Confira sua internet e tente de novo.</p><button id="r">Tentar de novo</button></div>
+<script>document.getElementById('r').onclick=()=>{location.href=new URLSearchParams(location.search).get('u')||'https://square-chat-silk.vercel.app/'};
+setInterval(()=>{if(navigator.onLine)document.getElementById('r').click()},8000);</script></body></html>
