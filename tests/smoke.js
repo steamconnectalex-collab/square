@@ -492,6 +492,18 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
     if (k === 'frame') await page.screenshot({ path: OUT + '/3c-moldura.png' });
     await page.click('#perfroot .pmf [data-pf="mclose"] >> nth=0');
   }
+  // modo prévia do Square Plus
+  await page.click('#perfroot [data-pf="pvon"]');
+  await page.click('#perfroot [data-pf="decor"]');
+  await page.click('#perfroot .mgrid.sc .mit >> nth=1');
+  ok('prévia: item liberado com "Aplicar"', /Modo prévia/.test(await page.textContent('#perfroot .pm')) && (await page.locator('#perfroot .pmf [data-pf="mapply"]').count()) === 1);
+  await page.click('#perfroot .pmf [data-pf="mapply"]');
+  ok('prévia: decoração aparece no cartão', (await page.locator('#perfroot .pcard .mpd .ja').count()) > 0);
+  await page.click('#perfroot .pf-save [data-pf="save"]');
+  ok('prévia: salvar pede assinatura ou sair da prévia', /Assinar o Square Plus/.test(await page.textContent('#perfroot')) && /Sair do modo prévia/.test(await page.textContent('#perfroot')));
+  await page.screenshot({ path: OUT + '/3e-previa.png' });
+  await page.click('#perfroot .pm [data-pf="pvoff"]');
+  ok('sair da prévia tira os itens', (await page.locator('#perfroot .pcard .mpd .ja').count()) === 0 && (await page.locator('#perfroot .pf-save').count()) === 0);
   // cor da faixa
   await page.click('#perfroot [data-pf="picker"]');
   await page.fill('#phexi', '78BE9D');

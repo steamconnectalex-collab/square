@@ -169,7 +169,7 @@ SET.open = (pageId) => {
 };
 SET.close = () => {
   if (!el || !state.open) return;
-  state.open = false; el.hidden = true; el.innerHTML = ''; document.body.classList.remove('set-open');
+  state.open = false; if (window.SQ_PERFIL && window.SQ_PERFIL.isOpen()) window.SQ_PERFIL.close(); el.hidden = true; el.innerHTML = ''; document.body.classList.remove('set-open');
   if (state.ret && state.ret.focus && document.contains(state.ret)) { try { state.ret.focus(); } catch (e) { /* ok */ } }
 };
 SET.isOpen = () => !!state.open;
@@ -214,7 +214,7 @@ function navHTML() {
 
 function profileHeadHTML() {
   const a = api(), me = (a.me && a.me()) || {}, name = me.name || (a.displayName && a.displayName()) || 'Você';
-  const av = me.avatar ? `<span class="spic" style="background-image:url('${esc(me.avatar)}')"></span>` : `<span class="spic" style="background:${esc(me.g || '#C9B8F0')}">${esc((name.charAt(0) || '?').toUpperCase())}</span>`;
+  const av = `<span class="spic" style="background:${esc(me.g || '#C9B8F0')};${me.avatar ? 'background-size:cover' : ''}">${me.avatar ? '' : esc((name.charAt(0) || '?').toUpperCase())}</span>`;
   return `<div class="sprof">${av}<div class="spt"><b>${esc(name)}</b><button type="button" class="sedit" data-sa="edit-profile">Editar perfis <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20l1-4L16.5 4.5a2 2 0 0 1 3 3L8 19z"/></svg></button></div><button type="button" class="sclose mclose" data-sa="close" aria-label="Fechar configurações"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#33333A" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`;
 }
 

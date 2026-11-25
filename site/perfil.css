@@ -210,3 +210,11 @@ body.perfil-open{overflow:hidden}
   .pm{border-radius:16px}
   .pimg{height:150px}
 }
+
+/* modo prévia do Square Plus */
+.pf-prev.on{background:#C77DBA}
+.pf-pvbar{display:flex;align-items:center;gap:12px;justify-content:center;padding:8px 14px;background:#EFE6FA;color:#3B3B96;font-size:13px;font-weight:600;flex-wrap:wrap}
+.pcard>.pvfx{border-radius:18px;overflow:hidden;z-index:0}
+.pcard>.pvfr{position:absolute;inset:-3px;border-radius:21px;pointer-events:none;opacity:.8;overflow:hidden;-webkit-mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);padding:4px}
+.pvpl{display:inline-block;position:relative;width:60px;height:22px;margin:0 0 4px 8px;vertical-align:middle;border-radius:6px;overflow:hidden}
+.pvpl .ja{position:absolute;inset:0}

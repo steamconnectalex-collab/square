@@ -235,7 +235,7 @@ function render(o = {}) {
     const el = document.getElementById(snap.id);
     if (el) { el.focus(); if (snap.s && el.setSelectionRange) { try { el.setSelectionRange(snap.s[0], snap.s[1]); } catch (e) { /* tipo sem seleção */ } } }
   }
-  if (S.view === 'app' && A && A.world === 'ready') ensureThread(curKey());
+  if (S.view === 'app' && A && A.world === 'ready') { saveNav(); ensureThread(curKey()); }
   if (S.view === 'app' && A) updateTyping();
   if (S.view === 'app' && VC) attachVideos();
 }
@@ -942,7 +942,17 @@ async function loadWorld(paint) {
   }
   (paint || render)();
 }
+const NAV_OK = ['friends', 'dm', 'server', 'official', 'plus', 'quests', 'shop'];
+function saveNav() {
+  if (!A || !A.owner || A.world !== 'ready' || !A.restored) return;
+  store.set('sq.nav.' + A.owner, { view: A.view, server: A.server, channel: A.channel });
+}
 function fixSelection() {
+  if (!A.restored) {
+    A.restored = true;
+    const n = store.get('sq.nav.' + A.owner);
+    if (n && NAV_OK.includes(n.view)) { A.view = n.view; A.server = n.server || null; A.channel = n.channel || null; }
+  }
   if (A.view === 'dm' && !A.friends.some((f) => f.dm && f.dm === A.channel)) { A.view = 'friends'; A.channel = null; }
   if (A.view === 'server') {
     const s = SERVERS.find((x) => x.id === A.server);

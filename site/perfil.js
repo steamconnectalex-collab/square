@@ -61,9 +61,9 @@ function leftHTML() {
   <div class="pf-lh"><button type="button" class="pf-prof" data-pf="profmenu" aria-haspopup="true" aria-expanded="${!!P.profMenu}">Perfil principal ${ic(I.d, 14, 'currentColor', 2.2)}</button><button type="button" class="hov sq pf-col" data-pf="collapse" aria-label="${P.collapsed ? 'Mostrar' : 'Recolher'} editor" title="${P.collapsed ? 'Mostrar' : 'Recolher'}">${ic(P.collapsed ? I.rr : I.ll, 17, '#55555F', 2)}</button>
   ${P.profMenu ? `<div class="pop pf-pm" role="menu"><button type="button" class="pi" data-pf="profmenu"><span class="tx"><b>Perfil principal</b></span></button><button type="button" class="pi" data-pf="soon" data-msg="Perfis por servidor chegam em breve, junto com o Square Plus"><span class="tx"><b>Perfis por servidor</b><small>Square Plus</small></span></button></div>` : ''}</div>
   <div class="pf-ls">
-  <button type="button" class="pf-prev" data-pf="soon" data-msg="A prévia do Square Plus chega em breve">${ic(I.coin, 15, '#fff', 1.8)} Prévia do Square Plus</button>
+  <button type="button" class="pf-prev${P.pv ? ' on' : ''}" data-pf="${P.pv ? 'pvoff' : 'pvon'}">${ic(I.coin, 15, '#fff', 1.8)} ${P.pv ? 'Sair da prévia' : 'Prévia do Square Plus'}</button>
   <h4>Placa de identificação</h4>${slot('plate', `<span class="pplate"><i class="pdot"></i><i class="pbar"></i><span class="padd">${ic(I.plus, 13, '#1D1D22', 2.4)}</span></span>`, 'wide')}
-  <h4>Avatar e decorações</h4><div class="pf-two">${slot('img', `<span class="pcell">${avatarBox(64)}</span>`)}${slot('decor', `<span class="pcell dash">${avatarBox(56, 'dim')}<span class="padd c">${ic(I.plus, 13, '#1D1D22', 2.4)}</span></span>`)}</div>
+  <h4>Avatar e decorações</h4><div class="pf-two">${slot('img', `<span class="pcell">${decAv(64)}</span>`)}${slot('decor', `<span class="pcell dash">${avatarBox(56, 'dim')}<span class="padd c">${ic(I.plus, 13, '#1D1D22', 2.4)}</span></span>`)}</div>
   <h4>Cor da faixa</h4><div class="pf-colwrap"><button type="button" class="pcolor" data-pf="picker" style="background:${esc(P.accent)}" aria-label="Escolher a cor da faixa" aria-expanded="${!!P.picker}"></button>${P.picker ? pickerHTML() : ''}</div>
   <h4>Efeitos de perfil e molduras</h4><div class="pf-two">${slot('effect', `<span class="pcell card">${ic(I.plus, 13, '#1D1D22', 2.4)}</span>`)}${slot('frame', `<span class="pcell card">${ic(I.plus, 13, '#1D1D22', 2.4)}</span>`)}</div>
   <h4>Estilo do nome exibido <em class="pnew">NOVO</em></h4><small class="phint">Experimente a fonte de um jogo de aventura</small>
@@ -84,9 +84,9 @@ function pickerHTML() {
 
 function cardHTML() {
   const x = P.x, m = me();
-  return `<section class="pf-mid" aria-label="Prévia do perfil"><div class="pcard"><div class="pbn" style="background:${esc(P.accent)}"></div>
-  <div class="pcav">${avatarBox(92, 'ring')}<i class="pon" aria-hidden="true"></i><label class="pmus"><span>${ic(I.plus, 12, '#fff', 2.4)}</span><input id="pf-music" value="${esc(x.music || '')}" maxlength="40" placeholder="Última música que não sai da sua cabeça?" aria-label="Última música"></label></div>
-  <div class="pbody"><input class="pname" id="pf-name" value="${esc(P.name)}" maxlength="32" aria-label="Nome exibido" placeholder="Nome exibido">
+  return `<section class="pf-mid" aria-label="Prévia do perfil"><div class="pcard${P.pv && P.ap.frame ? ' pvframe' : ''}"><div class="pbn" style="background:${esc(P.accent)}"></div>${P.pv && P.ap.effect && shop() ? `<span class="mpfx pvfx">${shop().art(findItem(P.ap.effect), true)}</span>` : ''}${P.pv && P.ap.frame && shop() ? `<span class="pvfr">${shop().art(findItem(P.ap.frame), true)}</span>` : ''}
+  <div class="pcav">${decAv(92, 'ring')}<i class="pon" aria-hidden="true"></i><label class="pmus"><span>${ic(I.plus, 12, '#fff', 2.4)}</span><input id="pf-music" value="${esc(x.music || '')}" maxlength="40" placeholder="Última música que não sai da sua cabeça?" aria-label="Última música"></label></div>
+  <div class="pbody"><input class="pname" id="pf-name" value="${esc(P.name)}" maxlength="32" aria-label="Nome exibido" placeholder="Nome exibido">${P.pv && P.ap.plate && shop() ? `<span class="pvpl">${shop().art(findItem(P.ap.plate))}</span>` : ''}
   <div class="pun"><span>${esc(m.user || '')}</span><i>•</i><input id="pf-pron" value="${esc(x.pron || '')}" maxlength="20" placeholder="Adicionar pronomes" aria-label="Pronomes"></div>
   <button type="button" class="pchip" data-pf="soon" data-msg="As insígnias chegam em breve">${ic(I.plus, 12, '#1D1D22', 2.4)} Insígnias</button>
   <div class="pbtns"><span class="pmsg">${ic(I.chat, 15, '#fff', 1.9)} Mensagem</span><span class="psq">${ic(I.gift, 16, '#fff', 1.8)}</span><span class="psq">${ic(I.dots, 16, '#fff', 1.8)}</span></div>
@@ -123,6 +123,14 @@ const CAT = { decor: ['Mudar decoração de avatar', 'Suas decorações', 'Veja 
 const PLUS_EXTRA = [{ id: 'px1', n: 'Fones Neon', t: 'decor', a: ['#7DB8CF', '#9D8CCF', '#fff'] }, { id: 'px2', n: 'Painel 23', t: 'decor', a: ['#E897AB', '#9D8CCF', '#7DB8CF'] }, { id: 'px3', n: 'Anel Verde', t: 'decor', a: ['#78BE9D', '#EBBA6C', '#fff'] }];
 const PLUS_FX = [{ id: 'fx1', n: 'Cubo Neon', t: 'effect', a: ['#9D8CCF', '#E897AB', '#7DB8CF'] }, { id: 'fx2', n: 'Planeta Verde', t: 'effect', a: ['#78BE9D', '#EBBA6C', '#7DB8CF'] }];
 
+const findItem = (id) => (!id ? null : String(id).startsWith('plus:') ? [...PLUS_EXTRA, ...PLUS_FX].find((x) => 'plus:' + x.id === id) : (shop() && shop().byId(id)));
+const hasAp = () => !!(P.pv && P.ap && Object.keys(P.ap).some((k) => P.ap[k]));
+function decAv(px, cls) {
+  const it = P.pv && P.ap.decor ? findItem(P.ap.decor) : null, S = shop();
+  if (!it || !S) return avatarBox(px, cls);
+  const o = Math.round(px * 1.28);
+  return `<span class="mpd" style="width:${o}px;height:${o}px;--bw:${Math.max(2, Math.round(px * 0.075))}px;--sp:${Math.max(5, Math.round(px * 0.09))}px">${avatarBox(px, cls)}${S.art(it, 'ov')}</span>`;
+}
 function shopItems(kind) { const S = shop(); if (!S) return []; return S.catalog.filter((x) => x.t === kind).slice(0, kind === 'frame' ? 18 : 12); }
 function previewOf(kind, it) {
   const S = shop();
@@ -134,17 +142,17 @@ function previewOf(kind, it) {
   return `<div class="mpcard"><div class="mpbn" style="background:${esc(P.accent)}"></div>${avatarBox(64, 'ring')}<b>${esc(P.name || 'você')}</b><small>${esc(me().user || '')}</small><span class="mpb">Botão exemplo</span>${it ? `<span class="mpfx">${S.art(it, true)}</span>` : ''}</div>`;
 }
 function itemsModal(kind) {
-  const S = shop(), c = CAT[kind], m = P.modal, sel = m.sel ? (m.sel.startsWith('plus:') ? [...PLUS_EXTRA, ...PLUS_FX].find((x) => 'plus:' + x.id === m.sel) : S && S.byId(m.sel)) : null;
+  const S = shop(), c = CAT[kind], m = P.modal, sel = m.sel ? findItem(m.sel) : null;
   const tile = (it, plus) => `<button type="button" class="mit${m.sel === (plus ? 'plus:' : '') + it.id ? ' on' : ''}" data-pf="msel" data-id="${plus ? 'plus:' : ''}${it.id}" aria-label="${esc(it.n)}" aria-pressed="${m.sel === (plus ? 'plus:' : '') + it.id}"><span class="jart">${S ? S.art(it) : ''}</span><i class="mlk">${ic(plus ? I.coin : I.lock, 11, '#fff', 2)}</i></button>`;
   const extra = kind === 'decor' ? PLUS_EXTRA : kind === 'effect' ? PLUS_FX : [];
   const none = `<button type="button" class="mit pick${!m.sel ? ' on' : ''}" data-pf="msel" data-id="" aria-pressed="${!m.sel}">${ic(I.none, 24, '#1D1D22', 1.8)}<b>Nenhum</b></button><button type="button" class="mit pick" data-pf="shop">${ic(I.shop, 24, '#1D1D22', 1.8)}<b>Loja</b></button>`;
-  const locked = !!sel, isPlus = m.sel && m.sel.startsWith('plus:');
+  const locked = !!sel && !P.pv, isPlus = m.sel && m.sel.startsWith('plus:');
   return `<div class="pm wide" role="dialog" aria-modal="true" aria-label="${c[0]}"><div class="pmh"><h2>${c[0]}</h2><button type="button" class="hov sq" data-pf="mclose" aria-label="Fechar">${ic(I.x, 18, '#55555F', 2)}</button></div>
   <div class="pmc"><div class="pml"><h3>${c[1]}</h3><div class="mgrid">${none}</div>
   ${extra.length ? `<h3>Exclusivo do Square Plus</h3><div class="mgrid">${extra.map((x) => tile(x, true)).join('')}</div>` : ''}
   <h3>${c[2]}</h3><div class="mgrid sc">${shopItems(kind).map((x) => tile(x)).join('')}</div></div>
-  <div class="pmr">${previewOf(kind, sel)}${locked ? `<div class="mdesc"><b>${esc(sel.n)}</b><span>${isPlus ? 'Exclusivo do Square Plus. Assine para usar este item.' : 'Acesse a Loja para comprar e coletar este item.'}</span></div>` : ''}</div></div>
-  <div class="pmf"><button type="button" class="mbtn ghost" data-pf="mclose">Cancelar</button>${locked ? `<button type="button" class="mbtn" data-pf="${isPlus ? 'plus' : 'shop'}">${isPlus ? 'Obter o Square Plus' : 'Ir para a Loja'}</button>` : '<button type="button" class="mbtn" data-pf="mclose">Aplicar</button>'}</div></div>`;
+  <div class="pmr">${previewOf(kind, sel)}${sel ? `<div class="mdesc"><b>${esc(sel.n)}</b><span>${P.pv ? 'Modo prévia: só você vê, nada disso é salvo.' : isPlus ? 'Exclusivo do Square Plus. Assine para usar este item.' : 'Acesse a Loja para comprar e coletar este item.'}</span></div>` : ''}</div></div>
+  <div class="pmf"><button type="button" class="mbtn ghost" data-pf="mclose">Cancelar</button>${locked ? `<button type="button" class="mbtn" data-pf="${isPlus ? 'plus' : 'shop'}">${isPlus ? 'Obter o Square Plus' : 'Ir para a Loja'}</button>` : `<button type="button" class="mbtn" data-pf="${P.pv ? 'mapply' : 'mclose'}">Aplicar</button>`}</div></div>`;
 }
 function imgModal() {
   const rec = P.x.recents || [];
@@ -177,8 +185,12 @@ function modalHTML() {
   return `<div class="pmback" data-pf="mback">${inner}</div>`;
 }
 
+function warnHTML() {
+  if (!P.warn) return '';
+  return `<div class="pmback"><div class="pm" role="alertdialog" aria-modal="true" aria-label="Itens do modo prévia"><div class="pmh"><h2>Não dá para salvar com a prévia</h2></div><div class="pmc one"><p>Você está usando itens do Square Plus só para visualizar. Para salvar o perfil com eles, assine o Square Plus. Ou saia do modo prévia para salvar o resto.</p></div><div class="pmf"><button type="button" class="mbtn ghost" data-pf="pvoff">Sair do modo prévia</button><button type="button" class="mbtn" data-pf="plus">Assinar o Square Plus</button></div></div></div>`;
+}
 function saveBar() {
-  if (!dirty()) return '';
+  if (!dirty() && !hasAp()) return '';
   return `<div class="pf-save" role="status"><span>Cuidado — você tem alterações não salvas!</span><button type="button" class="plnk" data-pf="reset">Redefinir</button><button type="button" class="mbtn" data-pf="save"${P.busy ? ' disabled' : ''}>${P.busy ? 'Salvando…' : 'Salvar alterações'}</button></div>`;
 }
 
@@ -188,7 +200,7 @@ function paint() {
   const act = ae && ae.id && root.contains(ae) ? { id: ae.id, s: typeof ae.selectionStart === 'number' ? [ae.selectionStart, ae.selectionEnd] : null } : null;
   ['pf-scroll', 'pf-lscroll'].forEach((id) => { const e = document.getElementById(id); if (e) keep[id] = e.scrollTop; });
   root.innerHTML = `<div class="pback"><div class="pwin${P.collapsed ? ' col' : ''}" role="dialog" aria-modal="true" aria-label="Editar perfil"><button type="button" class="pclose" data-pf="close" aria-label="Fechar">${ic(I.x, 18, '#55555F', 2)}</button>
-  <div class="pcols" id="pf-scroll">${leftHTML()}<div class="pf-rest">${cardHTML()}${rightHTML()}</div></div>${saveBar()}</div>${modalHTML()}</div>`;
+  ${P.pv ? '<div class="pf-pvbar" role="status"><span>Modo prévia do Square Plus: só você vê, nada é salvo.</span><button type="button" class="plnk" data-pf="pvoff">Sair da prévia</button></div>' : ''}<div class="pcols" id="pf-scroll">${leftHTML()}<div class="pf-rest">${cardHTML()}${rightHTML()}</div></div>${saveBar()}</div>${modalHTML()}${warnHTML()}</div>`;
   Object.keys(keep).forEach((id) => { const e = document.getElementById(id); if (e) e.scrollTop = keep[id]; });
   if (act) { const e = document.getElementById(act.id); if (e) { e.focus(); if (act.s && e.setSelectionRange) { try { e.setSelectionRange(act.s[0], act.s[1]); } catch (er) { /* tipo sem seleção */ } } } }
   if (P.modal && P.modal.k === 'crop') drawCrop();
@@ -242,6 +254,7 @@ function applyCrop() {
 /* ------------------------------------------------------------ ações */
 async function save() {
   if (P.busy) return;
+  if (hasAp()) { P.warn = true; paint(); return; }
   const name = P.name.trim();
   if (!name) { toast('Informe um nome exibido.'); return; }
   if (!isHex(P.accent)) { toast('A cor precisa ter 6 letras ou números, como 9D8CCF.'); return; }
@@ -280,7 +293,11 @@ function onClick(e) {
     case 'color': P.accent = el.dataset.c; paint(); break;
     case 'eyedrop': if (window.EyeDropper) { new window.EyeDropper().open().then((r) => { P.accent = r.sRGBHex; paint(); }).catch(() => {}); } else toast('Seu navegador não tem conta-gotas.'); break;
     case 'img': P.modal = { k: 'img' }; P.err = ''; P.picker = false; paint(); break;
-    case 'decor': case 'effect': case 'frame': case 'plate': P.modal = { k, sel: '' }; P.picker = false; paint(); break;
+    case 'decor': case 'effect': case 'frame': case 'plate': P.modal = { k, sel: (P.pv && P.ap[k]) || '' }; P.picker = false; paint(); break;
+    case 'pvon': P.pv = true; P.ap = {}; toast('Modo prévia: os itens da Loja estão liberados só para você ver. Nada é salvo.'); paint(); break;
+    case 'pvoff': P.pv = false; P.ap = {}; P.warn = false; paint(); break;
+    case 'mapply': P.ap[P.modal.k] = P.modal.sel || null; P.modal = null; paint(); break;
+    case 'warnx': P.warn = false; paint(); break;
     case 'msel': P.modal.sel = el.dataset.id; paint(); break;
     case 'mclose': P.modal = null; P.crop = null; paint(); break;
     case 'recent': { const src = (P.x.recents || [])[Number(el.dataset.i)]; if (src) { const im = new Image(); im.onload = () => startCrop(im); im.src = src; } break; }
@@ -355,7 +372,7 @@ function open() {
   if (!me().id) { toast('Entre na sua conta para editar o perfil.'); return; }
   root = document.getElementById('perfroot');
   if (!root) { root = document.createElement('div'); root.id = 'perfroot'; document.body.appendChild(root); root.addEventListener('click', onClick); root.addEventListener('input', onInput); root.addEventListener('change', onChange); root.addEventListener('pointerdown', dragStart); root.addEventListener('keydown', onKey); }
-  P = { tab: 'mural', collapsed: false, modal: null, picker: false, profMenu: false, busy: false, err: '', pendingAvatar: null, pendingBlob: null, removeAvatar: false, crop: null, x: getX() };
+  P = { tab: 'mural', collapsed: false, modal: null, picker: false, profMenu: false, busy: false, err: '', pendingAvatar: null, pendingBlob: null, removeAvatar: false, crop: null, pv: false, ap: {}, warn: false, x: getX() };
   fromMe(); document.body.classList.add('perfil-open'); root.hidden = false; paint();
   const c = root.querySelector('.pclose'); if (c) c.focus();
 }
