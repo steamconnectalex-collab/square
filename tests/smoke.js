@@ -657,14 +657,23 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   ok('figurinha enviada aparece grande no chat', (await page.textContent('#msgs .stk')).includes('🦊') && world.messages.some((m) => m.content === '::sticker::🦊'));
   // etapa 7: voz
   const vch = world.channels.find((c) => c.kind === 'voice').id;
+  // celular: clicar no canal abre o painel (folha de baixo)
+  await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(250);
+  await page.click('[data-act="drawer"]');
   await page.click('[data-act="vjoin"]');
   await page.waitForSelector('.vp.pre', { timeout: 6000 });
-  ok('canal de voz: abre o painel com "Ainda não tem ninguém aqui" e o botão de entrar', /Ainda não tem ninguém aqui/.test(await page.textContent('.vp.pre')) && (await page.locator('.vp.pre [data-act="vconnect"]').count()) === 1 && !world.voice.length);
+  ok('celular: canal de voz abre o painel com "Ainda não tem ninguém aqui" e o botão de entrar', /Ainda não tem ninguém aqui/.test(await page.textContent('.vp.pre')) && (await page.locator('.vp.pre [data-act="vconnect"]').count()) === 1 && !world.voice.length);
+  await page.screenshot({ path: OUT + '/2j-voz-previa-cel.png' });
+  await page.click('.vp.pre [data-act="vback"] >> nth=0');
+  await page.setViewportSize({ width: 1440, height: 900 }); await page.waitForTimeout(250);
+  // computador: clicar no canal entra direto, sem painel
+  await page.click('[data-act="vjoin"]');
+  await page.waitForSelector('.vbar', { timeout: 6000 });
+  ok('computador: entra direto na chamada (sem painel) e mostra o cartão "Voz conectada" com 4 botões', (await page.locator('.vp').count()) === 0 && (await page.locator('.vbar .vbbs .vbb').count()) === 4 && /Voz conectada/.test(await page.textContent('.vbar')) && !!world.voice.length);
   await page.screenshot({ path: OUT + '/2j-voz-previa.png' });
-  await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(250); await page.screenshot({ path: OUT + '/2j-voz-previa-cel.png' }); await page.setViewportSize({ width: 1440, height: 900 });
-  await page.click('[data-act="vconnect"]');
-  await page.waitForSelector('.vp.call .vt', { timeout: 6000 });
-  ok('entrar na chamada: tela com o seu bloco e os controles', (await page.locator('.vp.call .vt').count()) === 1 && /Você/.test(await page.textContent('.vp.call .vt')) && (await page.locator('.vdock .vdb').count()) === 5 && /Adicionar pessoas ao bate-papo em voz/.test(await page.textContent('.vp.call')));
+  await page.click('[data-act="vjoin"]');
+  await page.waitForSelector('.vp.call.desk .vt', { timeout: 6000 });
+  ok('clicar no canal conectado abre a tela da chamada, com o cartão de convite (sozinho)', (await page.locator('.vp.call .vt').count()) === 1 && /Você/.test(await page.textContent('.vp.call .vt')) && /Convidar para voz/.test(await page.textContent('.vp.call .vcard')) && (await page.locator('.vdock .vdb').count()) === 8);
   await page.waitForSelector('.vbar', { timeout: 6000 });
   await page.waitForSelector('.xvu', { timeout: 6000 });
   ok('entrar na voz: barra "Voz conectada" e a pessoa aparece na sala', /Voz conectada/.test(await page.textContent('.vbar')) && /Tester/.test(await page.textContent('.xvg')));
@@ -695,7 +704,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   world.voice.push({ channel_id: vch, user_id: 'u2', seen_at: new Date().toISOString(), muted: true, deafened: false, video: false, screen: false });
   wsConn.send(JSON.stringify({ topic: 'realtime:sq', event: 'postgres_changes', payload: { data: { type: 'INSERT', table: 'voice_members', record: { channel_id: vch, user_id: 'u2' } } } }));
   await page.waitForFunction(() => document.querySelectorAll('.vp.call .vt').length === 2, null, { timeout: 6000 });
-  ok('outra pessoa na chamada: segundo bloco, com o ícone de mudo dela', (await page.locator('.vp.call .vt .vbd').count()) === 1);
+  ok('outra pessoa na chamada: segundo bloco, com o ícone de mudo dela, e o cartão de convite some', (await page.locator('.vp.call .vt .vbd').count()) === 1 && (await page.locator('.vp.call .vcard').count()) === 0);
   world.voice = world.voice.filter((r) => r.user_id === 'u1');
   await page.click('.vp.call [data-act="vback"] >> nth=0');
   await page.waitForSelector('.vbar');
