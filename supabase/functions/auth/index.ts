@@ -1,5 +1,5 @@
 // Square — backend de acesso à conta (Edge Function "auth")
-// Rotas (todas POST, exceto /health): signup, verify, resend, login, forgot, reset,
+// Rotas (todas POST, exceto /health): signup, verify, resend, login, login/totp, forgot, reset,
 // qr/create, qr/info, qr/approve, qr/poll, email/change/request, email/change/confirm,
 // account/deactivate, account/delete, mfa/recovery, mfa/disable
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -346,6 +346,40 @@ async function login(body: Record<string, unknown>, ip: string) {
   };
 }
 
+// ---------- entrar só com o código do aplicativo de autenticação (sem senha) ----------
+// Só funciona para contas que já ligaram a verificação em duas etapas. Qualquer falha dá a MESMA resposta,
+// para ninguém descobrir se um e-mail ou usuário tem conta.
+async function loginTotp(body: Record<string, unknown>, ip: string) {
+  const identifier = String(body.identifier ?? "").trim();
+  const code = String(body.code ?? "").replace(/\D/g, "");
+  if (!identifier || code.length !== 6) throw new HttpError(400, "invalid_totp_login", "Informe seu e-mail ou usuário e o código de 6 números do aplicativo.");
+  await limit(`ltotp:ip:${ip}`, 15, 600);
+  await limit(`ltotp:id:${identifier.toLowerCase()}`, 8, 600, "Muitas tentativas. Aguarde alguns minutos.");
+  const bad = () => new HttpError(401, "invalid_totp_login", "Não foi possível entrar com esse código. Confira os dados ou entre com e-mail e senha.");
+  let email: string | null = null;
+  if (identifier.includes("@")) email = identifier.toLowerCase();
+  else {
+    const { data } = await admin.rpc("get_login_email_by_username", { p_username: identifier.toLowerCase() });
+    email = typeof data === "string" ? data : null;
+  }
+  if (!email) throw bad();
+  const user = await findUser(email);
+  if (!user || !user.email_confirmed) throw bad();
+  const factor = await totpFactor(user.id);
+  if (!factor) throw bad();
+  await limit(`mfa:${user.id}`, 8, 600, "Muitas tentativas de código. Aguarde alguns minutos.");
+  const s0 = await mintSession(email);
+  let v;
+  try { v = await mfaVerify(s0, factor.id, code); } catch (_e) { throw bad(); }
+  await reactivate(user.id);
+  return {
+    ok: true,
+    session: { access_token: v.access_token, refresh_token: v.refresh_token, expires_in: v.expires_in, expires_at: Math.floor(Date.now() / 1000) + v.expires_in, token_type: v.token_type },
+    user: { id: user.id, email },
+    profile: await profileOf(user.id),
+  };
+}
+
 async function forgot(body: Record<string, unknown>, ip: string) {
   const email = normEmail(body.email);
   await limit(`forgot:ip:${ip}`, 10, 3600, "Muitos pedidos. Tente de novo mais tarde.");
@@ -573,6 +607,7 @@ Deno.serve(async (req) => {
       case "/verify": out = await verify(body, ip); break;
       case "/resend": out = await resend(body, ip); break;
       case "/login": out = await login(body, ip); break;
+      case "/login/totp": out = await loginTotp(body, ip); break;
       case "/forgot": out = await forgot(body, ip); break;
       case "/reset": out = await reset(body, ip); break;
       case "/qr/create": out = await qrCreate(req, ip); break;

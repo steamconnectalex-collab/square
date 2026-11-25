@@ -97,7 +97,7 @@ const freshN = () => ({ email: '', code: '', manual: false, pass: '', conf: '', 
 
 const S = {
   view: '', session: null, profile: null, after: null,
-  lId: '', lPw: '', lShow: false, lTouched: false, lErr: '', lBusy: false, lMfa: false, lCode: '', lRecUse: false,
+  lId: '', lPw: '', lShow: false, lTouched: false, lErr: '', lBusy: false, lMfa: false, lCode: '', lRecUse: false, lTotp: false,
   qr: null,
   r: freshR(), pendingEmail: tab.get('sq.pending') || '', v: freshV(), f: freshF(), n: freshN(),
   ap: null
@@ -146,7 +146,7 @@ async function logout() {
   const tok = S.session && S.session.access_token;
   if (window.SQ_SET) { window.SQ_SET.close(); window.SQ_SET.forget(); }
   clearSession();
-  S.lId = ''; S.lPw = ''; S.lTouched = false; S.lErr = ''; S.lMfa = false; S.lCode = ''; S.lRecUse = false;
+  S.lId = ''; S.lPw = ''; S.lTouched = false; S.lErr = ''; S.lMfa = false; S.lCode = ''; S.lRecUse = false; S.lTotp = false;
   go('login');
   if (tok) fetch(C.SUPABASE_URL + '/auth/v1/logout?scope=local', { method: 'POST', headers: { apikey: C.SUPABASE_KEY, authorization: 'Bearer ' + tok } }).catch(() => {});
 }
@@ -154,7 +154,7 @@ const displayName = () => (S.profile && S.profile.display_name) || (S.session &&
 
 async function onSignedIn(d) {
   saveSession(d);
-  S.lPw = ''; S.lBusy = false; S.lErr = ''; S.lMfa = false; S.lCode = ''; S.lRecUse = false;
+  S.lPw = ''; S.lBusy = false; S.lErr = ''; S.lMfa = false; S.lCode = ''; S.lRecUse = false; S.lTotp = false;
   S.r = freshR(); S.v = freshV(); S.pendingEmail = ''; tab.del('sq.pending');
   A = null; // depois de entrar, a tela principal é sempre o painel inicial
   if (S.after) { const a = S.after; S.after = null; go(a); } else go('app');
@@ -212,7 +212,6 @@ function route() {
   if (view === 'app') { initApp(); }
   render({ top: true });
   setTimeout(() => { const el = document.querySelector('[data-autofocus]'); if (el) el.focus(); }, 0);
-  if (view === 'login') qrEnsure();
   if (view === 'verify') startResendTick();
   if (view === 'approve') loadApprove();
 }
@@ -260,9 +259,10 @@ function homeView() { return window.SQ_HOME || ''; }
 
 /* ----- login ----- */
 function loginView() {
+  if (S.lTotp) return loginTotpView();
   const idBad = S.lTouched && !S.lId.trim();
   const pwBad = S.lTouched && !S.lPw;
-  return shell(`<section class="card wide" aria-labelledby="t-login">
+  return shell(`<section class="card" aria-labelledby="t-login">
 <form class="stack grow" data-form="login" novalidate>
   <div class="center"><h1 id="t-login" class="ttl big">Boas-vindas de volta!</h1><p class="lead">Que bom ver você por aqui de novo.</p></div>
   ${S.after === 'qr' ? '<div class="info" role="status">Entre na sua conta para autorizar o login no outro dispositivo.</div>' : ''}
@@ -286,12 +286,32 @@ function loginView() {
   ${alertBox(S.lErr)}
   ${submitBtn(S.lBusy, 'Entrar', 'Entrando…')}
   <div class="small">Precisando de uma conta? <button type="button" class="lnk" data-act="to-register">Registre-se</button></div>
+  <button type="button" class="altlogin" data-act="to-totp">${ic(D.shield || '<path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6z"/><path d="m9 12 2 2 4-4"/>', 16, 'currentColor', 1.8)}<span>Entrar com o código do autenticador</span></button>
 </form>
-<div class="qrcol">
-  <div id="qr-box">${qrBoxHTML()}</div>
-  <h2>Entrar com código QR</h2>
-  <p>Escaneie com a câmera de um celular em que você já está conectado e entre na hora, sem digitar a senha.</p>
-</div>
+</section>`);
+}
+
+/* ----- entrar só com o código do aplicativo de autenticação (quem já ligou a verificação em duas etapas) ----- */
+function loginTotpView() {
+  const idBad = S.lTouched && !S.lId.trim();
+  const cBad = S.lTouched && S.lCode.replace(/\D/g, '').length !== 6;
+  return shell(`<section class="card" aria-labelledby="t-totp">
+<form class="stack grow" data-form="logintotp" novalidate>
+  <div class="center"><h1 id="t-totp" class="ttl big">Entrar com o autenticador</h1><p class="lead">Use o código de 6 números do Google Authenticator (ou do aplicativo que você configurou). Funciona só para contas que já ligaram a verificação em duas etapas.</p></div>
+  <div class="field">
+    <label class="lbl" for="login-id">E-mail ou nome de usuário <span class="req" aria-hidden="true">*</span></label>
+    <input id="login-id" class="inp${idBad ? ' bad' : ''}" type="text" data-bind="lId" value="${esc(S.lId)}" autocomplete="username" autocapitalize="none" spellcheck="false" data-autofocus aria-invalid="${idBad}">
+    ${idBad ? '<div class="err" role="alert">Informe seu e-mail ou nome de usuário.</div>' : ''}
+  </div>
+  <div class="field">
+    <label class="lbl" for="login-code">Código do aplicativo <span class="req" aria-hidden="true">*</span></label>
+    <input id="login-code" class="inp${cBad ? ' bad' : ''}" type="text" inputmode="numeric" data-bind="lCode" value="${esc(S.lCode)}" maxlength="8" autocomplete="one-time-code" spellcheck="false" aria-invalid="${cBad}">
+    ${cBad ? '<div class="err" role="alert">Digite os 6 números do código.</div>' : ''}
+  </div>
+  ${alertBox(S.lErr)}
+  ${submitBtn(S.lBusy, 'Entrar', 'Entrando…')}
+  <button type="button" class="lnk sc" data-act="to-pw">Voltar para e-mail e senha</button>
+</form>
 </section>`);
 }
 
@@ -562,6 +582,20 @@ async function qrTick() {
 }
 
 /* ------------------------------------------------------ ações de acesso */
+async function doLoginTotp() {
+  S.lTouched = true;
+  const code = S.lCode.replace(/\D/g, '');
+  if (!S.lId.trim() || code.length !== 6) { render(); return; }
+  S.lBusy = true; S.lErr = ''; render();
+  try {
+    const d = await api('/login/totp', { identifier: S.lId.trim(), code });
+    S.lTotp = false; S.lCode = '';
+    await onSignedIn(d);
+  } catch (e) {
+    S.lBusy = false; S.lErr = e.message || 'Não foi possível entrar agora.';
+    if (S.view === 'login') render();
+  }
+}
 async function doLogin() {
   S.lTouched = true;
   if (!S.lId.trim() || !S.lPw) { render(); return; }
@@ -2485,7 +2519,7 @@ document.addEventListener('keydown', (e) => {
 });
 $root.addEventListener('submit', (e) => {
   e.preventDefault();
-  const fn = { login: doLogin, register: doRegister, verify: doVerify, forgot: doForgot, newpass: doReset }[e.target.dataset.form];
+  const fn = { login: doLogin, logintotp: doLoginTotp, register: doRegister, verify: doVerify, forgot: doForgot, newpass: doReset }[e.target.dataset.form];
   if (fn) fn();
 });
 $root.addEventListener('click', (e) => {
@@ -2509,6 +2543,8 @@ $root.addEventListener('click', (e) => {
     }
     case 'to-login': go('login'); break;
     case 'to-register': go('register'); break;
+    case 'to-totp': S.lTotp = true; S.lCode = ''; S.lErr = ''; S.lTouched = false; S.lMfa = false; render(); break;
+    case 'to-pw': S.lTotp = false; S.lCode = ''; S.lErr = ''; S.lTouched = false; render(); break;
     case 'to-forgot': S.f.err = ''; go('forgot'); break;
     case 'to-app': go('app'); break;
     case 'resend': doResend(); break;

@@ -350,3 +350,8 @@ html.pf-reduce .stk.an,html.pf-reduce .stk.hv:hover{animation:none}
 .thlist{max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
 .thr{padding:6px 10px;border-left:3px solid rgba(157,140,207,.5);font-size:14px;overflow-wrap:anywhere}
 .thr small{color:#62626D}
+
+/* entrada alternativa pelo autenticador (discreta) */
+.altlogin{align-self:center;display:inline-flex;align-items:center;gap:7px;margin-top:2px;padding:7px 12px;border:0;border-radius:999px;background:transparent;color:var(--muted);font:inherit;font-size:13px;font-weight:600;cursor:pointer;max-width:100%}
+.altlogin span{overflow-wrap:anywhere;text-align:left}
+.altlogin:hover,.altlogin:focus-visible{background:rgba(29,29,34,.06);color:var(--ink)}

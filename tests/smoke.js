@@ -198,6 +198,9 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
         }
         if (body.identifier === 'novo@exemplo.com') return send(403, { ok: false, error: 'unverified', message: 'x', email: 'novo@exemplo.com' });
         return send(200, { ok: true, session, user: { id: 'u1', email: 'teste@exemplo.com' }, profile: { username: 'tester', display_name: 'Tester Um' } });
+      case '/login/totp':
+        if (body.code !== '123456') return send(401, { ok: false, error: 'invalid_totp_login', message: 'Não foi possível entrar com esse código.' });
+        return send(200, { ok: true, session, user: { id: 'u1', email: 'teste@exemplo.com' }, profile: { username: 'tester', display_name: 'Tester Um' } });
       case '/signup':
         if (body.username === 'ocupado') return send(409, { ok: false, error: 'username_taken', message: 'Esse nome de usuário já está em uso. Escolha outro.' });
         if (body.accept_terms !== true) return send(400, { ok: false, error: 'terms_required', message: 'x' });
@@ -247,12 +250,22 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   // 1. login + QR
   await page.goto(base + '#login');
   await page.waitForSelector('[data-form="login"]');
-  await page.waitForSelector('#qr-box svg', { timeout: 5000 });
   ok('login renderiza', true);
-  ok('QR real desenhado (svg)', (await page.locator('#qr-box .qrbox > svg > path').count()) === 1);
+  ok('login não tem mais QR Code', (await page.locator('#qr-box, .qrcol').count()) === 0 && qrPolls === 0);
+  ok('login tem a opção discreta do autenticador', (await page.locator('[data-act="to-totp"]').count()) === 1);
   await page.screenshot({ path: OUT + '/1-login.png' });
-  await page.waitForTimeout(2300);
-  ok('QR faz polling', qrPolls >= 1, 'polls=' + qrPolls);
+  // entrar só com o código do autenticador
+  await page.click('[data-act="to-totp"]');
+  await page.waitForSelector('[data-form="logintotp"]');
+  await page.fill('#login-id', 'teste@exemplo.com');
+  await page.fill('#login-code', '000000');
+  await page.click('button.btn[type=submit]');
+  await page.waitForSelector('.alert');
+  ok('código do autenticador errado mostra erro', /Não foi possível entrar/.test(await page.textContent('.alert')));
+  await page.screenshot({ path: OUT + '/1b-login-autenticador.png' });
+  await page.click('[data-act="to-pw"]');
+  await page.waitForSelector('[data-form="login"]');
+  ok('dá para voltar para e-mail e senha', true);
 
   // 2. login inválido
   await page.fill('#login-id', 'teste@exemplo.com');
@@ -866,7 +879,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await page.waitForSelector('#setroot .set');
   ok('Configurações abrem pela engrenagem da barra do usuário', (await page.locator('#setroot .snavb').count()) >= 16 && /Informações da conta/.test(await page.textContent('#setroot .scontent')));
   const navText = await page.textContent('#setroot .snavl');
-  ok('menu lateral tem Conta, Dados, Mensagens, Notificações, Plus, Voz, Aparência, Apps, Desenvolvedor e Sair', ['Conta', 'Dados e privacidade', 'Permissões de mensagens', 'Notificações', 'Square Plus', 'Impulso de servidor', 'Voz e vídeo', 'Aparência', 'Acessibilidade', 'Sistema', 'Idioma e Horário', 'Apps conectados', 'Desenvolvedor', 'Sair'].every((t) => new RegExp(t).test(navText)));
+  ok('menu lateral tem Conta, Dados, Mensagens, Notificações, Plus, Voz, Aparência, Apps, Desenvolvedor e Sair', ['Conta', 'Privacidade e segurança', 'Permissões de mensagens', 'Notificações', 'Square Plus', 'Impulso de servidor', 'Voz e vídeo', 'Aparência', 'Acessibilidade', 'Sistema', 'Idioma e Horário', 'Apps conectados', 'Desenvolvedor', 'Sair'].every((t) => new RegExp(t).test(navText)));
   ok('e-mail aparece escondido até clicar em Mostrar', /\*+@/.test(await page.textContent('#setroot .semail')));
   await page.click('#setroot [data-sa="show-email"]');
   ok('Mostrar revela o e-mail', !/\*{3}/.test(await page.textContent('#setroot .semail')));

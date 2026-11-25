@@ -143,9 +143,9 @@ Object.assign(SET.acts, {
     try { const r = await api().authFetch('/auth/v1/user'); const u = await r.json(); fs = (u && u.factors) || []; } catch (e) { /* segue */ }
     const on = fs.some((f) => f.factor_type === 'totp' && f.status === 'verified');
     if (on) {
-      SET.modal({ title: 'Autenticação multifatorial', body: '<p>A verificação em duas etapas está <b>ligada</b>. Ao entrar, será pedido o código do aplicativo de autenticação.</p>', actions: [{ label: 'Fechar', act: 'modal-close' }, { label: 'Novos códigos de recuperação', act: 'mfa-newrec' }, { label: 'Desligar', act: 'mfa-off', cls: 'dangersolid' }] });
+      SET.modal({ title: 'Autenticação multifatorial', body: '<p>A verificação em duas etapas está <b>ligada</b>. Ao entrar com senha, será pedido o código do aplicativo. Em outros aparelhos você também pode entrar só com esse código, pela tela de login.</p>', actions: [{ label: 'Fechar', act: 'modal-close' }, { label: 'Novos códigos de recuperação', act: 'mfa-newrec' }, { label: 'Desligar', act: 'mfa-off', cls: 'dangersolid' }] });
     } else {
-      SET.modal({ title: 'Autenticação multifatorial', body: '<p>Proteja sua conta pedindo um código de um aplicativo de autenticação (como Google Authenticator, Authy ou 1Password) sempre que você entrar.</p>', actions: [{ label: 'Cancelar', act: 'modal-close' }, { label: 'Ligar', act: 'mfa-start', cls: 'primary' }] });
+      SET.modal({ title: 'Autenticação multifatorial', body: '<p>Baixe o <b>Google Authenticator</b> (ou outro aplicativo de autenticação) no celular. Você vai ler um QR Code uma única vez; depois o aplicativo gera códigos de 6 números para entrar na sua conta em qualquer aparelho.</p>', actions: [{ label: 'Cancelar', act: 'modal-close' }, { label: 'Ligar', act: 'mfa-start', cls: 'primary' }] });
     }
   },
   'mfa-start': async () => {
@@ -197,12 +197,14 @@ Object.assign(SET.acts, {
 });
 
 /* ================================================= DADOS E PRIVACIDADE */
-page({ id: 'privacy', label: 'Dados e privacidade', title: 'Dados e privacidade', kw: 'dados cópia perfil',
-  subs: [{ id: 'dp-data', label: 'Como a Square usa meus dados' }, { id: 'dp-profile', label: 'Privacidade do perfil' }],
+page({ id: 'privacy', label: 'Privacidade e segurança', title: 'Privacidade e segurança', kw: 'dados cópia perfil segurança 2fa autenticação duas etapas google authenticator código qr',
+  subs: [{ id: 'dp-sec', label: 'Segurança da conta' }, { id: 'dp-data', label: 'Como a Square usa meus dados' }, { id: 'dp-profile', label: 'Privacidade do perfil' }],
   render() {
     const n = servers().length, first = servers()[0];
     const share = P('act_share') ? (n ? `Você está compartilhando atividade com <b>${esc(first.name)}</b>${n > 1 ? ' e ' + (n - 1) + (n - 1 === 1 ? ' outro servidor' : ' outros servidores') : ''}.` : 'Você ainda não está em nenhum servidor.') : 'Você não está compartilhando atividade.';
-    return `${h2('dp-data', 'Como a Square usa meus dados')}
+    return `${h2('dp-sec', 'Segurança da conta')}
+<div class="sgrp"><b class="sgl">Verificação em duas etapas (aplicativo de autenticação)</b><small class="sgd">Proteja sua conta com o Google Authenticator (ou Authy, 1Password etc.). Você escaneia um QR Code <b>uma única vez</b>. Depois disso, em qualquer outro computador, tablet ou celular, dá para entrar na sua conta só com o código de 6 números do aplicativo, pela opção "Entrar com o código do autenticador" na tela de login.</small><button type="button" class="sbtn primary" data-sa="ed-mfa">Ativar ou gerenciar</button></div>
+${h2('dp-data', 'Como a Square usa meus dados')}
 <div class="sgrp"><b class="sgl">Utilizar dados para fazer a Square funcionar</b><small class="sgd">A Square precisa armazenar e processar alguns dados para te fornecer os serviços básicos, tais como suas mensagens, servidores em que você está e mensagens diretas. Ao usar a Square, você permite que ela forneça estes serviços básicos. Você pode interromper isso ao <a class="lnk" href="#" data-sa="deact">desativar</a> ou <a class="lnk" href="#" data-sa="del-acct">excluir</a> sua conta.</small></div>
 <p class="sgd">Hoje a Square não usa anúncios nem ferramentas de análise: estas opções ficam guardadas na sua conta como sua escolha e valerão se esses recursos forem criados.</p>
 ${tg('dp_improve', 'Utilizar dados para melhorar a Square', 'Permite que a Square use e processe minhas informações para entender e aprimorar seus serviços. <a class="lnk" href="/privacidade" target="_blank" rel="noopener">Saiba mais</a>')}
