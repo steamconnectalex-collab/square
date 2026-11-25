@@ -23,7 +23,7 @@
     "productName": "Square",
     "directories": { "output": "dist", "buildResources": "build" },
     "files": ["main.js", "preload.js", "picker.html", "picker-preload.js", "offline.html", "build/tray.png", "build/icon.png"],
-    "publish": [{ "provider": "github", "owner": "steamconnectalex-collab", "repo": "square" }],
+    "publish": [{ "provider": "github", "owner": "steamconnectalex-collab", "repo": "square", "releaseType": "release" }],
     "win": { "icon": "build/icon.png", "target": [{ "target": "nsis", "arch": ["x64"] }] },
     "nsis": { "oneClick": true, "perMachine": false, "deleteAppDataOnUninstall": false, "createDesktopShortcut": true, "createStartMenuShortcut": true },
     "linux": { "icon": "build/icon.png", "target": ["AppImage"], "category": "Network", "maintainer": "Square" }

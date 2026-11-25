@@ -1,10 +1,12 @@
 name: Aplicativo para computador
 
-# Gera os instaladores (Windows e Linux) quando você cria uma versão (tag "v1.0.0", "v1.0.1"...)
-# ou quando clica em "Run workflow" na aba Actions do GitHub.
+# Gera os instaladores (Windows e Linux) quando algo na pasta desktop/ muda no GitHub,
+# quando se cria uma tag "v1.0.1"... ou quando clica em "Run workflow" na aba Actions do GitHub.
 on:
   push:
     tags: ['v*']
+    branches: [main]
+    paths: ['desktop/**', '.github/workflows/desktop.yml']
   workflow_dispatch:
 
 permissions:
