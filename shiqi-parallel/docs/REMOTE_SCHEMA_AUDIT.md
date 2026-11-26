@@ -141,3 +141,34 @@ Consulta de privilégios efetivos confirmou que as funções públicas de aplica
 ## Contagem corrigida
 
 O catálogo original retornou 22 tabelas públicas no total: 19 tabelas fora da funcionalidade de música e 3 tabelas de música (`music_favorites`, `playlists`, `playlist_tracks`). Todas as 22 têm RLS habilitado. O paralelo contém cinco tabelas públicas com RLS habilitado, mas seus contratos não são equivalentes ao original.
+
+
+## Contrato estrutural detalhado (extração de colunas)
+
+A consulta direta a `information_schema.columns` recuperou tipos, nulabilidade, defaults e identidade das 19 tabelas fora de música. Pontos críticos para a migration:
+- `messages.id` é `bigint GENERATED ... AS IDENTITY`, não UUID; `message_reactions.message_id` e `messages.thread_of` também são bigint.
+- `channels.server_id` aceita NULL exclusivamente para canais DM; constraint `channels_dm_shape` liga esse estado a `kind='dm'`.
+- `profiles.id`, `servers.owner_id`, membros, amizades, bloqueios, bans, pins, eventos, MFA e presença referenciam identidades do Supabase Auth.
+- `messages.author_id` e `server_pins.user_id` usam `auth.uid()` como default.
+- `email_codes` guarda somente hash do código, tentativas, validade e consumo; nunca armazenar código em texto puro.
+- `qr_sessions` guarda hashes separados para aprovação e polling, além do status e expiração.
+- `rate_hits` é armazenamento de janela de rate limit.
+- `server_invites` tem validade padrão de 7 dias, máximo padrão de 50 usos e contador.
+- `profiles.settings` é JSONB e controla preferências de DM, compartilhamento de perfil e outros ajustes.
+
+## Restrições de integridade recuperadas
+
+Constraints funcionais confirmadas no catálogo (além de PK/FK/NOT NULL):
+- `blocks`: usuário não pode bloquear a si mesmo.
+- `channels`: kind limitado a text/voice/dm; nome 1–30; forma de DM exige `server_id IS NULL` se `kind='dm'`, e servidor não nulo para os outros tipos.
+- `dm_members`: state active/request.
+- `email_codes`: purpose signup/reset/change.
+- `friendships`: ordenação `user_a < user_b`; requester deve ser um dos dois; status limitado; note até 120 caracteres.
+- `messages`: conteúdo e metadados de anexo limitados por constraints; preservar bigint identity e relação de thread.
+- `profiles`: username, display name, bio, status, accent, plan e presence validados por constraints; preservar todos os checks exatos ao criar migration.
+- `server_events`: título 2–80, descrição até 500 e local até 80.
+- `servers`: nome 2–40 e level 1–10.
+- `server_members`: role owner/member.
+- `voice_members`: chave composta por canal/usuário e estados booleanos de áudio/vídeo/tela.
+
+A listagem integral de constraints inclui entradas internas de NOT NULL e repetições por coluna em PK/FK, portanto não deve ser copiada diretamente como SQL. As constraints funcionais nomeadas e as definições de PK/FK serão reconstruídas de forma normalizada em migration revisada.
