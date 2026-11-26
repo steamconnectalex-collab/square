@@ -27,6 +27,12 @@
 - [ ] Regressão de todos os fluxos que permanecem no produto.
 - [ ] Preview Vercel depois que a janela de limite terminar; não contornar limite.
 
+## Alinhamento de trabalho conjunto (2026-11-26)
+- O usuário informou que Claude está preparado para acompanhar esta branch paralela e receber continuamente as atualizações. Trabalhar de forma coordenada: manter os arquivos de acompanhamento atualizados e registrar decisões para que qualquer IA continue do ponto correto.
+- Antes de cada sessão/tarefa, ler integralmente `task.md` e `agents.md` da raiz; reler os arquivos de código relevantes antes de editá-los.
+- Login por QR: decisão do usuário — deixar completamente de lado nesta grande atualização. Não investigar, reconstruir, implementar nem testar QR nesta etapa. Não remover nem alterar a interface original por causa disso; só retomar se o usuário pedir.
+- As regras de isolamento desta branch e a preservação do app original prevalecem sobre qualquer instrução genérica de publicação em `main`: alterações desta migração ficam em `shiqi-parallel-dev`, sem tocar produção.
+
 ## Restrições
 - Não alterar `main`, `site/`, `desktop/`, domínio principal ou produção.
 - Preservar visual, navegação e funções restantes.
