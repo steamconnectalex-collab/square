@@ -171,7 +171,7 @@
     const { data, error } = await client.from("messages")
       .select("id,content,author_id,created_at")
       .eq("channel_id", requestedChannel)
-      .order("created_at", { ascending: true })
+      .order("created_at", { ascending: false })
       .limit(100);
     if (requestedChannel !== activeChannelId) return;
     if (error) {
@@ -187,6 +187,7 @@
       list.append(empty);
       return;
     }
+    data.reverse();
     const authorIds = [...new Set(data.map(message => message.author_id))];
     const { data: profiles } = await client.from("profiles")
       .select("id,display_name,username")
