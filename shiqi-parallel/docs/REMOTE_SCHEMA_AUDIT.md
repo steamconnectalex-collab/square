@@ -15,7 +15,7 @@ A funcionalidade de música foi excluída conforme autorização expressa. Não 
 
 - Original: projeto ativo e saudável, PostgreSQL 17.11, região `sa-east-1`.
 - Paralelo: contém somente cinco tabelas públicas no momento da consulta: `profiles`, `communities`, `community_members`, `channels`, `messages`.
-- O original tem 23 tabelas públicas no catálogo, das quais 3 são exclusivas de música. Portanto, 20 tabelas públicas permanecem relevantes ao escopo; 19 foram detalhadas no inventário estrutural sem música? **Correção:** a lista abaixo contém 20 tabelas, incluindo `mfa_recovery`.
+- O inventário detalhado retornado pela consulta ao catálogo lista 22 tabelas públicas no total: 19 permanecem no escopo e 3 são exclusivas de música.
 - Todas as tabelas públicas originais observadas têm RLS habilitado.
 - Edge Functions: original lista `auth` ativa (versão 8, `verify_jwt=false`); projeto paralelo não lista Edge Functions.
 
@@ -43,7 +43,7 @@ A funcionalidade de música foi excluída conforme autorização expressa. Não 
 | `server_events` | `id`, `server_id`, `creator_id`, `title`, `description`, `place`, `starts_at`, `created_at` |
 | `event_interest` | `event_id`, `user_id`, `created_at` |
 
-Observação: a lista acima totaliza 19 tabelas sem música. O projeto original também possui a tabela `mfa_recovery` já listada; total confirmado pelo catálogo: 20 tabelas sem música? Recontar antes de gerar migration definitiva. A fonte de verdade para a contagem é a consulta ao catálogo, não este resumo.
+A lista acima contém as 19 tabelas sem música identificadas no inventário remoto. Antes da migration definitiva, a contagem será reconfirmada diretamente no catálogo e cruzada com o inventário de dependências do frontend.
 
 ## Constraints e relacionamentos relevantes
 
