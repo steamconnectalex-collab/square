@@ -19,7 +19,7 @@
 - [x] 2026-11-26 — Adicionada criação automática de perfil após cadastro no Supabase Auth.
 - [x] 2026-11-26 — Interface conectada à autenticação por e-mail/senha e criação de comunidades com canal `#geral`.
 - [x] 2026-11-26 — Publicado Preview atualizado: https://shiqi-parallel-git-shiqi-parallel-dev-steamconnectalex-9536.vercel.app (deployment `dpl_iigwSgpVBoYkV2YnPriAftqiQTcS`).
-- [x] 2026-11-26 — Preview atualizado com o chat de comunidades: https://shiqi-parallel-git-shiqi-parallel-dev-steamconnectalex-9536.vercel.app (deployment `dpl_CQsymCo3Hswxed9FkTacX7yaQ8Ab`).
+- [x] 2026-11-26 — Preview atualizado com o chat de comunidades: https://shiqi-parallel-git-shiqi-parallel-dev-steamconnectalex-9536.vercel.app (deployment `dpl_4ioMPc4K6FWLbTDixZA93oyF9hne`).
 
 ## Próximos passos
 - [ ] Testar cadastro, confirmação de e-mail, login e criação de comunidade no Preview.
