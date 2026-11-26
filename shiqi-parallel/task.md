@@ -26,6 +26,12 @@
 - [ ] Copiar/ajustar os testes e executar regressão de todos os fluxos existentes.
 - [ ] Definir a tecnologia de destino após a auditoria; não presumir Next.js/React/Rust.
 
+
+- [x] 2026-11-26 — Inventário de dependências do schema documentado em `docs/SCHEMA_DEPENDENCY_INVENTORY.md`: tabelas/RPCs observadas no frontend, divergências do banco paralelo e lacunas de SQL base, música e eventos.
+- [x] 2026-11-26 — Contratos iniciais de autenticação documentados em `docs/AUTH_CONTRACT_INVENTORY.md`, incluindo payloads comprovados pelo frontend e rotas anunciadas sem handler versionado.
+- [ ] Completar a matriz de campos/operações para todos os recursos e recuperar SQL ausente por fonte autorizada; não aplicar migrations enquanto isso.
+- [ ] Completar testes JWT assinados e negativos; validar algoritmo/chaves do projeto de destino antes de integrar middleware.
+
 ## Correção de rumo registrada
 - [x] 2026-11-26 — O primeiro protótipo genérico não correspondia ao aplicativo original. Foi substituído como base pela cópia fiel dos arquivos de `site/`. Não considerar o protótipo antigo como produto nem como referência de design.
 - [ ] O schema experimental de cinco tabelas está vazio, mas é insuficiente e incompatível com o app original; substituir pelo modelo completo antes de testar login/chat.
