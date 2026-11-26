@@ -126,9 +126,12 @@ Fluxo de acesso: Home → "Entrar" → login (com painel de QR Code) → "Regist
 - [ ] A migração **0025 (voz com 10)** não existe na `main`/Supabase original; a `main` e o app dizem 6. Decidir com a pessoa se sobe para 10 (e testar).
 - [ ] O banco paralelo tem schema experimental de 5 tabelas, incompatível; a base de servidores/canais/eventos (migração inicial) nunca esteve no Git — a pessoa pode precisar exportar só a **estrutura** do Supabase original (sem dados).
 - [ ] Nenhuma migração/função deve ser aplicada no Supabase original pela outra IA; Claude revisa e aplica.
+- [ ] **Teste de design idêntico:** capturas de tela (celular e computador) do preview da branch × site original, lado a lado; qualquer diferença visual bloqueia o merge.
 - [ ] Ao receber: `git diff --stat main...origin/shiqi-parallel-dev`, rodar `node tests/smoke.js`, abrir preview da Vercel e comparar telas; só depois decidir o merge com a pessoa.
 
-**Divisão combinada (a confirmar pela pessoa):** Claude = produção (`main`, Supabase/Vercel originais, domínio, e-mails, app de PC, testes); ChatGPT = migração paralela (`shiqi-parallel/`, Rust, auditorias). Regras completas em `agents.md` ("Trabalho em dupla").
+**Decisão da pessoa (2026-11-26) — regra máxima:** é **inegociável** mudar o design, o layout ou qualquer coisa visível. O Rust entra para a plataforma ficar mais fluida, leve e rápida; o ChatGPT trabalha no projeto paralelo para **agregar** ao projeto principal, sem alterar visual nem funções. O `agents.md` e o `task.md` da raiz mandam; o ChatGPT segue.
+
+**Divisão combinada:** Claude = produção (`main`, Supabase/Vercel originais, domínio, e-mails, app de PC, testes); ChatGPT = migração paralela (`shiqi-parallel/`, Rust, auditorias). Regras completas em `agents.md` ("Trabalho em dupla").
 
 ## Como publicar o site
 

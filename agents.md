@@ -32,11 +32,15 @@ A pessoa que está construindo este projeto é **iniciante**. Escreva e explique
 
 ## Trabalho em dupla (Claude + ChatGPT)
 
+> **Regra máxima (decisão da pessoa, 2026-11-26): o design, o layout e a identidade visual da plataforma são INTOCÁVEIS.** Nenhuma IA muda cores, espaçamentos, telas, textos, ícones, animações, navegação ou fluxos. O trabalho paralelo existe para **somar**: levar o **Rust** para a plataforma (mais fluida, leve e rápida) e trazer melhorias, **sem a pessoa perceber diferença no visual**. Se uma melhoria exigir mexer em algo visível, ela só vale com ordem expressa da pessoa.
+>
+> **Quem manda nestes dois arquivos:** o `agents.md` e o `task.md` da raiz (`main`) são a autoridade do projeto e são mantidos pelo Claude. O ChatGPT segue as regras daqui e registra o trabalho dele no `shiqi-parallel/task.md`; se os dois arquivos divergirem, vale o da raiz.
+
 Desde 2026-11-26 o projeto é feito por **duas IAs lado a lado**. Valem para as duas:
 
 1. **Cada uma na sua pista.** `main` = produto no ar (site da Vercel `square-chat`, Supabase `vjkqyqdabypdylhoupha`, domínio shiqi.com.br): quem mexe é o Claude. `shiqi-parallel-dev` = trabalho paralelo do ChatGPT, só dentro de `shiqi-parallel/` (Vercel `shiqi-parallel` e Supabase `ujdosskjycrdkcgsswfa` próprios). Uma IA **nunca** altera a pista da outra sem a pessoa pedir.
 2. **Nada entra na `main` sem a pessoa autorizar.** Antes de juntar trabalho da outra IA: ler o que muda (`git diff --stat main...<branch>`), rodar `node tests/smoke.js`, conferir que nenhum arquivo ficou cortado (tamanho e `git diff --stat` sem apagar linhas à toa) e só então fazer o merge, com a pessoa de acordo.
-3. **O requisito central não muda:** mesma aparência, navegação e funções do app original. Só se remove/simplifica algo com ordem expressa da pessoa.
+3. **Design congelado:** o `site/` e o `design/` são a referência visual. O que vier da branch paralela precisa ficar **idêntico** na tela (conferido lado a lado com o original antes de qualquer merge). Só se remove ou simplifica algo com ordem expressa da pessoa.
 4. **Tudo vai para o `task.md`.** Quem mexeu registra o quê, onde e o próximo passo (e qual IA fez). Antes de começar, leia o `task.md` **e** o `shiqi-parallel/task.md`.
 5. **Nada de segredos** nos arquivos, nem de acesso cruzado: cada IA usa só as chaves e o banco do seu lado.
 6. **Se algo da outra IA parecer errado, avise a pessoa** em português simples, em vez de consertar por cima em silêncio.
