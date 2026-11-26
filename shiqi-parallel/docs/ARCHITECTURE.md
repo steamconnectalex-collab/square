@@ -19,6 +19,15 @@ A versão atual do repositório usa HTML/CSS/JavaScript sem build no site, Supab
 - Ambientes de Preview separados; nenhuma publicação em produção ou domínio principal nesta etapa.
 - Excluir a pasta não remove recursos externos. Vercel, Supabase, Resend e domínios deverão ser excluídos/desconectados separadamente se o projeto for abandonado.
 
+## Base de dados criada
+- `profiles`: perfil público vinculado a `auth.users`, com username e nome de exibição.
+- `communities`: espaços com proprietário e slug.
+- `community_members`: membros e papéis owner/admin/member; criação de comunidade insere o proprietário automaticamente.
+- `channels`: canais textuais e de voz por comunidade.
+- `messages`: mensagens em canais, com autor e timestamps.
+- Todas as tabelas públicas acima têm RLS habilitado. Helpers de autorização vivem no schema `private`, fora da API exposta.
+- O signup cria o perfil por trigger no banco; o frontend nunca recebe chave `service_role`.
+
 ## Próximas decisões
 - Confirmar organização e custo antes de criar um projeto Supabase.
 - Confirmar o domínio/remetente que será usado no ambiente de testes antes de configurar e-mail.
