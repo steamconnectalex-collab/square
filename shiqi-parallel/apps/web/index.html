@@ -55,7 +55,16 @@
         <button class="action-card action-button" id="startConversationButton" type="button"><div class="card-icon blue">▤</div><div class="card-copy"><h3>Iniciar uma conversa</h3><p>Fale com amigos e mantenha tudo por perto.</p></div><span class="card-arrow">↗</span></button>
         <button class="action-card action-button" id="editProfileButton" type="button"><div class="card-icon amber">⌘</div><div class="card-copy"><h3>Personalizar seu perfil</h3><p>Deixe seu espaço com a sua personalidade.</p></div><span class="card-arrow">↗</span></button>
       </section>
-      <section class="community-section" id="comunidades"><div class="section-heading"><div><span class="eyebrow muted">SEUS ESPAÇOS</span><h2>Suas comunidades</h2></div></div><div id="communityList" class="community-list"><p class="empty-state">Entre na SHIQI para ver suas comunidades.</p></div></section>
+      <section class="community-section" id="comunidades"><div class="section-heading"><div><span class="eyebrow muted">SEUS ESPAÇOS</span><h2>Suas comunidades</h2></div></div><div id="communityList" class="community-list"><p class="empty-state">Entre na SHIQI para ver suas comunidades.</p></div>
+      <section class="chat-section" id="chatSection" hidden aria-label="Chat da comunidade">
+        <aside class="channel-panel"><div class="channel-panel-heading"><span class="eyebrow muted">CANAIS</span><strong id="chatCommunityName">Comunidade</strong></div><div id="channelList" class="channel-list"><p class="empty-state">Selecione uma comunidade.</p></div></aside>
+        <div class="conversation-panel">
+          <header class="conversation-header"><div><strong id="activeChannelName">Selecione um canal</strong><span id="activeChannelDescription">Suas conversas aparecem aqui.</span></div><span class="live-indicator"><i></i> AO VIVO</span></header>
+          <div class="messages-list" id="messagesList"><p class="empty-state">Escolha um canal para abrir a conversa.</p></div>
+          <form class="message-form" id="messageForm"><input id="messageInput" type="text" maxlength="10000" autocomplete="off" placeholder="Escreva uma mensagem..." disabled required><button class="send-button" type="submit" disabled aria-label="Enviar mensagem">↗</button></form>
+        </div>
+      </section>
+      </section>
       <footer class="footer"><span>SHIQI <span class="footer-dot">•</span> Um espaço para estar junto.</span><span class="prototype-tag">PRÉVIA DE DESENVOLVIMENTO</span></footer>
     </main>
   </div>
