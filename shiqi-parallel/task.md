@@ -37,7 +37,7 @@
 - [x] Adicionado validador interno de anexos JPEG/PNG/WebP com limite de 3 MiB e testes unitários; ainda não exposto por HTTP nem ligado ao Storage.
 - [x] Criado workflow GitHub Actions para `cargo fmt`, `cargo test` e `cargo clippy`.
 - [x] Registrada auditoria técnica em `shiqi-parallel/docs/RUST_MIGRATION_AUDIT.md`.
-- [ ] Executar CI e corrigir qualquer falha de compilação/testes. As primeiras execuções falharam em `cargo fmt --check`; após corrigir o formato, a CI avançou para `cargo test` e encontrou um erro de lifetime no refresh JWKS. Esse erro foi corrigido; aguardar nova execução para confirmar testes e Clippy.
+- [ ] Executar CI e corrigir qualquer falha de compilação/testes. [x] CI validada em 2026-11-26 no commit `15ec623`: `cargo fmt --check`, `cargo test --all-targets` e `cargo clippy --all-targets -- -D warnings` concluídos com sucesso.
 - [x] 2026-11-26 — Implementado módulo isolado de validação JWT Supabase via JWKS assimétrico (ES256/RS256), com `kid`, assinatura, issuer, audience, expiração, `nbf`, UUID de usuário, `role=authenticated`, cache e cooldown para `kid` desconhecido. Ainda não conectado a rotas de negócio.
 - [ ] Confirmar o algoritmo de assinatura ativo no projeto Supabase original; HS256 legado é rejeitado deliberadamente até existir configuração segura e autorizada.
 - [ ] Integrar middleware JWT às rotas Rust após recuperar schema e validar paridade.
