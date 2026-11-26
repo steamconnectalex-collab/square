@@ -15,6 +15,7 @@ tower-http = { version = "0.6", features = ["trace"] }
 jsonwebtoken = "9.3"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 thiserror = "2"
+uuid = "1"
 
 [profile.release]
 lto = "thin"
