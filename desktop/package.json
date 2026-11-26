@@ -1,7 +1,7 @@
 {
   "name": "square-desktop",
   "productName": "Shiqi",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Shiqi. — aplicativo para computador",
   "main": "main.js",
   "author": "Shiqi",
@@ -23,9 +23,10 @@
     "productName": "Shiqi",
     "directories": { "output": "dist", "buildResources": "build" },
     "files": ["main.js", "preload.js", "picker.html", "picker-preload.js", "offline.html", "build/tray.png", "build/icon.png"],
-    "publish": [{ "provider": "github", "owner": "steamconnectalex-collab", "repo": "square", "releaseType": "release" }],
+    "publish": [{ "provider": "github", "owner": "steamconnectalex-collab", "repo": "shiqi-downloads", "releaseType": "release" }],
     "win": { "icon": "build/icon.png", "target": [{ "target": "nsis", "arch": ["x64"] }] },
-    "nsis": { "oneClick": true, "perMachine": false, "deleteAppDataOnUninstall": false, "createDesktopShortcut": true, "createStartMenuShortcut": true },
+    "nsis": { "artifactName": "Shiqi-Setup.exe", "oneClick": true, "perMachine": false, "deleteAppDataOnUninstall": false, "createDesktopShortcut": true, "createStartMenuShortcut": true },
+    "appImage": { "artifactName": "Shiqi.AppImage" },
     "linux": { "icon": "build/icon.png", "target": ["AppImage"], "category": "Network", "maintainer": "Shiqi" }
   }
 }

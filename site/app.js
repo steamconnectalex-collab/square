@@ -2438,7 +2438,7 @@ function appAction(act, el, ev) {
     case 'send': doSend(); return;
     case 'srv-open': { selectServer(el.dataset.id); render({ scroll: true }); return; }
     case 'goto-msg': { const ch = el.dataset.ch, srv = serverOfChan(ch); A.panel = null; if (srv) { A.server = srv.id; A.channel = ch; A.view = 'server'; } else if (A.dmUser[ch]) { A.channel = ch; A.view = 'dm'; } render({ scroll: true }); return true; }
-    case 'get-app': window.open('https://github.com/steamconnectalex-collab/square/releases/latest', '_blank', 'noopener'); return;
+    case 'get-app': window.open('/baixar', '_blank', 'noopener'); return;
     case 'toast-soon': toast(el.dataset.msg || 'Isso chega em breve'); return;
     case 'attach': pickImage(); return;
     case 'toast-gift': toast('Presentes chegam em breve'); return;
@@ -2552,6 +2552,7 @@ $root.addEventListener('click', (e) => {
     case 'manual-code': S.n = Object.assign(freshN(), { email: S.f.email, manual: true }); S.view = 'newPass'; history.replaceState(null, '', location.pathname + '#new-password'); render({ top: true }); setTimeout(() => { const f = document.querySelector('[data-autofocus]'); if (f) f.focus(); }, 0); break;
     case 'qr-new': qrStart(); break;
     case 'soon': e.preventDefault(); toast(el.dataset.msg || 'Em breve'); break;
+    case 'get-app': e.preventDefault(); window.open('/baixar', '_blank', 'noopener'); break;
     case 'qr-approve': decideApprove('approve'); break;
     case 'qr-deny': decideApprove('deny'); break;
     default: break;

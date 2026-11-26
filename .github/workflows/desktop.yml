@@ -27,8 +27,8 @@ jobs:
       - name: Instalar
         working-directory: desktop
         run: npm install
-      - name: Gerar instalador e publicar na página de Releases
+      - name: Gerar instalador e publicar no repositório público de instaladores
         working-directory: desktop
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.DOWNLOADS_TOKEN }}   # chave só com permissão no repositório público de instaladores (shiqi-downloads)
         run: npx electron-builder --publish always

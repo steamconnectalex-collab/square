@@ -9,7 +9,7 @@ window.SQ_HOME = `
 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-8l-5 4v-4H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"></path></svg>
 </span> Shiqi </a>
 <nav aria-label="Principal" style="flex: 1 1 auto; display: flex; flex-wrap: wrap; justify-content: center; gap: 0 28px">
-<a href="#home" data-act="soon" style="padding: 12px 0; color: #33333A; text-decoration: none; font-size: 15px; font-weight: 600">Baixar</a>
+<a href="#home" data-act="get-app" style="padding: 12px 0; color: #33333A; text-decoration: none; font-size: 15px; font-weight: 600">Baixar</a>
 <a href="#home" data-act="soon" style="padding: 12px 0; color: #33333A; text-decoration: none; font-size: 15px; font-weight: 600">Premium</a>
 <a href="#home" data-act="soon" style="padding: 12px 0; color: #33333A; text-decoration: none; font-size: 15px; font-weight: 600">Descobrir</a>
 <a href="#home" data-act="soon" style="padding: 12px 0; color: #33333A; text-decoration: none; font-size: 15px; font-weight: 600">Segurança</a>
@@ -25,7 +25,7 @@ window.SQ_HOME = `
 <h1 style="margin: 0; font-family: 'Plus Jakarta Sans', Inter, 'Segoe UI', sans-serif; font-weight: 800; font-size: clamp(40px, 5.2vw, 68px); line-height: 1.04; letter-spacing: -0.03em; text-wrap: balance">Converse, jogue e fique junto com o seu grupo.</h1>
 <p style="margin: 0; max-width: 500px; font-size: 18px; line-height: 1.6; color: #55555F">Crie um espaço seu para bater papo por texto, voz e vídeo, ver quem está online e entrar no jogo com os amigos. Ou monte uma comunidade do tamanho que quiser.</p>
 <div style="display: flex; flex-wrap: wrap; gap: 12px; padding-top: 8px">
-<a href="#home" data-act="soon" data-msg="O app para Windows chega em breve." style="display: inline-flex; align-items: center; gap: 10px; height: 52px; padding: 0 28px; border-radius: 999px; background: #44444C; color: #FFFFFF; text-decoration: none; font-size: 16px; font-weight: 600; box-shadow: 0 12px 28px rgba(29,29,34,.24)">
+<a href="#home" data-act="get-app" style="display: inline-flex; align-items: center; gap: 10px; height: 52px; padding: 0 28px; border-radius: 999px; background: #44444C; color: #FFFFFF; text-decoration: none; font-size: 16px; font-weight: 600; box-shadow: 0 12px 28px rgba(29,29,34,.24)">
 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M4 20h16"></path></svg> Baixar para Windows </a>
 <a href="#login" style="display: inline-flex; align-items: center; height: 52px; padding: 0 28px; border-radius: 999px; background: rgba(255,255,255,.9); border: 1px solid rgba(29,29,34,.1); color: #1D1D22; text-decoration: none; font-size: 16px; font-weight: 600; box-shadow: 0 8px 20px rgba(29,29,34,.06)">Abrir no navegador</a>
 </div>
@@ -497,7 +497,7 @@ window.SQ_HOME = `
 </main>
 <section style="display: flex; flex-direction: column; align-items: center; gap: 32px; padding: 128px 0 0; text-align: center">
 <h2 style="margin: 0; max-width: 820px; font-family: 'Plus Jakarta Sans', Inter, 'Segoe UI', sans-serif; font-weight: 800; font-size: clamp(34px, 5vw, 64px); line-height: 1.06; letter-spacing: -0.03em; text-wrap: balance">Chega de explorar. Vem conversar.</h2>
-<a href="#home" data-act="soon" data-msg="O app para Windows chega em breve." style="display: inline-flex; align-items: center; gap: 10px; height: 52px; padding: 0 28px; border-radius: 999px; background: #44444C; color: #FFFFFF; text-decoration: none; font-size: 16px; font-weight: 600; box-shadow: 0 12px 28px rgba(29,29,34,.24)">
+<a href="#home" data-act="get-app" style="display: inline-flex; align-items: center; gap: 10px; height: 52px; padding: 0 28px; border-radius: 999px; background: #44444C; color: #FFFFFF; text-decoration: none; font-size: 16px; font-weight: 600; box-shadow: 0 12px 28px rgba(29,29,34,.24)">
 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M4 20h16"></path></svg> Baixar para Windows </a>
 <div aria-hidden="true" style="width: 100%; max-width: 100%; overflow: hidden; display: flex; align-items: flex-end; justify-content: center; gap: 0; padding-top: 64px">
 <div style="flex: 0 1 120px; min-width: 0; margin: 0 -7px; display: flex; flex-direction: column; align-items: center; position: relative">
@@ -577,7 +577,7 @@ window.SQ_HOME = `
 <div style="flex: 3 1 560px; min-width: 0; display: flex; flex-wrap: wrap; gap: 36px 28px">
 <div style="flex: 1 1 140px; min-width: 0; display: flex; flex-direction: column; gap: 4px">
 <div style="padding-bottom: 8px; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #55555F">Produto</div>
-<a href="#home" data-act="soon" style="padding: 7px 0; color: #33333A; text-decoration: none; font-size: 14px">Baixar</a>
+<a href="#home" data-act="get-app" style="padding: 7px 0; color: #33333A; text-decoration: none; font-size: 14px">Baixar</a>
 <a href="#home" data-act="soon" style="padding: 7px 0; color: #33333A; text-decoration: none; font-size: 14px">Premium</a>
 <a href="#home" data-act="soon" style="padding: 7px 0; color: #33333A; text-decoration: none; font-size: 14px">Status</a>
 <a href="#home" data-act="soon" style="padding: 7px 0; color: #33333A; text-decoration: none; font-size: 14px">Diretório de aplicativos</a>
