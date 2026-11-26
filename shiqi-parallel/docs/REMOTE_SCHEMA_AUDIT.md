@@ -172,3 +172,43 @@ Constraints funcionais confirmadas no catálogo (além de PK/FK/NOT NULL):
 - `voice_members`: chave composta por canal/usuário e estados booleanos de áudio/vídeo/tela.
 
 A listagem integral de constraints inclui entradas internas de NOT NULL e repetições por coluna em PK/FK, portanto não deve ser copiada diretamente como SQL. As constraints funcionais nomeadas e as definições de PK/FK serão reconstruídas de forma normalizada em migration revisada.
+
+
+## Inventário integral das funções — consulta complementar
+
+A extração direta de `pg_get_functiondef` foi concluída em lotes pequenos no projeto original. O inventário fora de música contém 13 funções em `private` e 45 em `public`. As definições preservam `SECURITY DEFINER` e `search_path = ''` onde indicado no original; não basta recriar apenas nomes e assinaturas.
+
+### Funções privadas (13)
+
+- Triggers: `accept_on_reply()`, `check_thread_parent()`, `messages_rate_limit()`, `touch_edited_at()`, `touch_profile()`.
+- Autorização/membership: `can_post(uuid)`, `can_voice_topic(text)`, `dm_allowed(uuid,uuid)`, `is_channel_member(uuid)`, `is_channel_owner(uuid)`, `is_dm_member(uuid)`, `shares_server_with(uuid)`.
+- Moderação: `remove_from_server(uuid,uuid,boolean)`.
+
+### Funções públicas (45)
+
+`ban_member`, `block_user`, `change_username`, `create_channel`, `create_event`, `create_invite`, `create_server`, `delete_event`, `featured_servers`, `get_auth_user_by_email`, `get_login_email_by_username`, `get_my_settings`, `is_server_member`, `join_public_server`, `join_server`, `kick_member`, `list_bans`, `list_public_servers`, `my_age_group`, `my_plan`, `open_dm`, `pin_server`, `profiles_full`, `purge_user_data`, `rate_check`, `reactivate_account`, `remove_friend`, `respond_dm_request`, `respond_friend_request`, `revoke_user_sessions`, `save_my_settings`, `send_friend_request(text)`, `send_friend_request(text,text)`, `set_my_presence`, `set_server_public`, `toggle_event_interest`, `toggle_reaction(bigint,text)`, `unban_member`, `unblock_user`, `unsubscribe_marketing`, `verify_email_code`, `voice_join`, `voice_leave`, `voice_ping`, `voice_set_state`.
+
+As duas funções públicas de playlist e as três funções privadas de limite de música não entram na migration. A definição original de `voice_join` tem limite 6; a migration específica aprovada para o paralelo deve alterar para 10.
+
+### ACLs efetivas observadas
+
+A consulta de privilégios efetivos no catálogo, excluídas as cinco funções de música, retornou:
+
+| Schema | Funções | SECURITY DEFINER | EXECUTE anon | EXECUTE authenticated | EXECUTE service_role |
+|---|---:|---:|---:|---:|---:|
+| private | 13 | 12 | 7 | 12 | 7 |
+| public | 45 | 45 | 0 | 39 | 45 |
+
+Esses números são privilégios efetivos (incluem herança/PUBLIC), não uma lista de grants explícitos. O paralelo não deve reproduzir automaticamente permissões amplas: é necessário reconstruir grants mínimos por assinatura e separar RPCs de usuário das rotinas internas de backend. Em particular, funções privadas com execução efetiva por `anon` exigem revisão individual; funções públicas de backend como `purge_user_data`, `rate_check`, `verify_email_code`, `revoke_user_sessions`, `get_auth_user_by_email` e `get_login_email_by_username` não devem ser expostas ao cliente.
+
+## Edge Function auth — versão atualmente implantada
+
+A leitura direta do projeto original confirmou a função `auth` ativa, versão 9, com `verify_jwt=false`, contendo os arquivos `index.ts` (30.424 caracteres) e `mail.ts` (7.951 caracteres). Esta é a versão implantada no momento da auditoria; a migration deve manter os contratos e os templates de e-mail, apenas adequando a marca SHIQI onde necessário.
+
+**Divergência importante a resolver:** a versão 9 recuperada do Supabase não contém rotas `/qr/create`, `/qr/poll`, `/qr/info` ou `/qr/approve` no código-fonte de `index.ts`, apesar de essas chamadas constarem no inventário do frontend previamente analisado. Não assumir que QR login está operacional nem inventar endpoints na migração: precisamos localizar a implementação real no código original ou confirmar se o recurso foi desativado.
+
+A função implantada usa Supabase Auth Admin e cliente anon, funções RPC internas, códigos por e-mail com HMAC-SHA256, verificação TOTP e códigos de recuperação, limite de tentativas e Resend. Não foram alteradas secrets, templates, endpoints nem a função remota.
+
+## Próximo passo técnico
+
+Com as definições SQL recuperadas, a próxima etapa é comparar cada RPC/tabela/coluna com as chamadas reais no frontend original e com as rotas da Edge Function, depois montar um plano de migrations incrementais para o banco paralelo. O banco paralelo ainda tem cinco tabelas incompatíveis; nenhuma delas será apagada ou renomeada nesta fase. Nenhuma migration remota foi aplicada.
