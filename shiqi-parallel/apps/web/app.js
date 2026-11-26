@@ -786,7 +786,7 @@ const ERRS = {
   not_authenticated: 'Sua sessão expirou. Entre de novo.', network: 'Sem conexão. Verifique sua internet e tente de novo.',
   invalid_name: 'O nome está fora do tamanho permitido.', too_many_servers: 'Você atingiu o limite de servidores.',
   too_many_channels: 'Esse servidor já tem o máximo de canais.', not_owner: 'Só o dono do servidor pode fazer isso.',
-  not_member: 'Você não faz parte deste servidor.', user_not_found: 'Não encontramos ninguém com esse @usuário.', requests_closed: 'Esta pessoa não está aceitando pedidos de amizade de você.', rate_limited: 'Calma! Você está enviando mensagens rápido demais. Espere alguns segundos.', banned: 'Você foi banido deste servidor.', cannot_remove_self: 'Você não pode fazer isso com você mesmo.', voice_full: 'A sala de voz está cheia (máximo de 6 pessoas).', not_member: 'Você não faz parte deste servidor.', you_blocked: 'Você bloqueou essa pessoa. Desbloqueie para adicioná-la.', cannot_add_self: 'Você não pode adicionar a si mesmo.',
+  not_member: 'Você não faz parte deste servidor.', user_not_found: 'Não encontramos ninguém com esse @usuário.', requests_closed: 'Esta pessoa não está aceitando pedidos de amizade de você.', rate_limited: 'Calma! Você está enviando mensagens rápido demais. Espere alguns segundos.', banned: 'Você foi banido deste servidor.', cannot_remove_self: 'Você não pode fazer isso com você mesmo.', voice_full: 'A sala de voz está cheia (máximo de 10 pessoas).', not_member: 'Você não faz parte deste servidor.', you_blocked: 'Você bloqueou essa pessoa. Desbloqueie para adicioná-la.', cannot_add_self: 'Você não pode adicionar a si mesmo.',
   too_many_requests: 'Você já tem pedidos demais esperando resposta.', no_request: 'Esse pedido não existe mais.', not_friends: 'Vocês ainda não são amigos.', not_owner: 'Só o dono do servidor faz isso.', past_date: 'A data do evento precisa ser no futuro.', too_many_events: 'Este servidor já tem eventos demais marcados.', invalid_thread: 'Não dá para responder a essa mensagem.', dm_closed: 'Esta pessoa não está aceitando mensagens diretas de você.', invalid_invite: 'Convite inválido ou expirado.',
   'row-level security': 'Você não tem permissão para isso.', 'violates check constraint': 'Algum campo está fora do tamanho permitido.'
 };
@@ -1681,7 +1681,7 @@ function modalHTML() {
     title = 'Criar canal'; label = 'Criar canal';
     body = tabs([{ act: 'modal-mode', mode: 'text', l: 'Texto', on: m.kind !== 'voice' }, { act: 'modal-mode', mode: 'voice', l: 'Voz', on: m.kind === 'voice' }])
       + mField('mf-name', 'Nome do canal', 'name', m.name, { ph: m.kind === 'voice' ? 'Ex.: Sala de jogos' : 'Ex.: Avisos', max: 30 })
-      + (m.kind === 'voice' ? '<p class="mnote">Até 6 pessoas por sala. O áudio vai direto entre os participantes.</p>' : '');
+      + (m.kind === 'voice' ? '<p class="mnote">Até 10 pessoas por sala. O áudio vai direto entre os participantes.</p>' : '');
   } else if (m.type === 'invite') {
     title = 'Convidar para o servidor';
     body = m.busy ? '<p class="mnote">Gerando convite…</p>' : (m.code
@@ -2204,7 +2204,7 @@ function voicePageHTML(srv, g) {
   const off = A.muted || A.deafened;
   const head = `<header class="vph"><button type="button" class="vib" data-act="vback" aria-label="Voltar ao chat">${ic(D.down, 22, '#1D1D22', 2.2)}</button><span class="vchip"><span class="vcn">${esc(g.name)}</span>${ic(D.chevR, 16, '#1D1D22', 2.4)}</span><span class="tsp"></span>${inCall ? `<button type="button" class="vib${A.deafened ? '' : ' sel'}" data-act="deaf" aria-pressed="${!!A.deafened}" aria-label="${A.deafened ? 'Ativar áudio' : 'Desativar áudio'}">${ic(A.deafened ? D.volOff : D.volume, 22, A.deafened ? '#B3261E' : '#fff', 2)}</button>` : ''}<button type="button" class="vib" data-act="vinvite" aria-label="Adicionar pessoas">${ic(D.userPlus, 22, '#1D1D22', 1.8)}</button><button type="button" class="vib" data-act="vback" aria-label="Abrir o chat de texto">${ic(D.bubble, 22, '#1D1D22', 1.8)}</button></header>`;
   if (!inCall) {
-    const full = people.length >= 6;
+    const full = people.length >= 10;
     return `<div class="vp pre"><div class="vsheet" role="dialog" aria-label="Canal de voz ${esc(g.name)}">${head}
     <div class="vbody vpre">${people.length ? `<div class="vwho">${people.map((p) => `<span class="vav sm" style="background:${p.g}" title="${esc(p.name)}">${esc(p.ini)}</span>`).join('')}</div><p class="vmsg"><b>${people.length} ${people.length === 1 ? 'pessoa' : 'pessoas'} na chamada</b><br>Quando estiver pronto para conversar, basta entrar.</p>` : '<p class="vmsg"><b>Ainda não tem ninguém aqui!</b><br>Quando estiver pronto para conversar, basta entrar.</p>'}</div>
     <div class="vdock"><button type="button" class="vdb fix${off ? ' off' : ''}" data-act="mute" aria-pressed="${off}" aria-label="${off ? 'Ativar microfone' : 'Silenciar microfone'}">${ic(off ? D.micOff : D.mic, 24, off ? '#B3261E' : '#1D1D22', 1.9)}</button><button type="button" class="vdb join" data-act="vconnect"${full ? ' disabled' : ''}>${full ? 'Sala cheia' : 'Entrar na chamada de voz'}</button><button type="button" class="vdb fix" data-act="vback" aria-label="Abrir o chat de texto">${ic(D.bubble, 24, '#1D1D22', 1.8)}</button></div></div></div>`;
@@ -2221,7 +2221,7 @@ function voicePageHTML(srv, g) {
     const card = `<div class="vcard"><div class="vart" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div><div class="vcb"><button type="button" class="mbtn ghost" data-act="vinvite">${ic(D.userPlus, 16, '#1D1D22', 1.8)}Convidar para voz</button><button type="button" class="mbtn ghost" data-act="toast-soon" data-msg="As atividades chegam em breve">${ic(D.apps, 16, '#1D1D22', 1.8)}Escolher atividade</button></div></div>`;
     const db = (act, icon, label, on, bad, extra = '') => `<button type="button" class="vdb${on ? ' sel' : ''}${bad ? ' off' : ''}" data-act="${act}" ${extra} aria-label="${label}" title="${label}">${ic(icon, 22, on ? '#fff' : bad ? '#B3261E' : '#1D1D22', 1.8)}</button>`;
     return `<div class="vp call desk"><header class="vph dk"><span class="vtitle">${ic(D.volume, 20, '#33333A', 1.8)}<b>${esc(g.name)}</b></span><span class="tsp"></span><button type="button" class="vib" data-act="vback" aria-label="Abrir o chat de texto" title="Chat de texto">${ic(D.bubble, 20, '#1D1D22', 1.8)}</button></header>
-    <div class="vbody"><div class="vgrid n${Math.min(people.length, 6)}${alone ? ' withinv' : ''}">${people.map(tile).join('')}${alone ? card : ''}</div></div>
+    <div class="vbody"><div class="vgrid n${Math.min(people.length, 10)}${alone ? ' withinv' : ''}">${people.map(tile).join('')}${alone ? card : ''}</div></div>
     <div class="vdockw dk">${fx}<button type="button" class="vcorner l" data-act="vinvite" aria-label="Convidar para voz" title="Convidar para voz">${ic(D.userPlus, 22, '#33333A', 1.8)}</button>
     <div class="vdock dk" role="toolbar" aria-label="Controles da chamada">
       <div class="vgp">${db('mute', off ? D.micOff : D.mic, off ? 'Ativar microfone' : 'Silenciar microfone', false, off, `aria-pressed="${off}"`)}<button type="button" class="vdb chev" data-act="pop" data-k="mic" aria-label="Opções do microfone" aria-expanded="${pk === 'mic'}">${ic(D.down, 12, '#33333A', 2.4)}</button>${db('vcam', cam ? D.camera : D.camOff, cam ? 'Desligar câmera' : 'Ligar câmera', cam, false, `aria-pressed="${cam}"`)}${db('vscr', D.screen, scr ? 'Parar de compartilhar a tela' : 'Compartilhar tela', scr, false, `aria-pressed="${scr}"`)}</div>
@@ -2230,7 +2230,7 @@ function voicePageHTML(srv, g) {
     <span class="vcorner r"><button type="button" class="vib" data-act="toast-soon" data-msg="A janela separada chega em breve" aria-label="Abrir em outra janela" title="Abrir em outra janela">${ic(D.popout, 20, '#33333A', 1.8)}</button><button type="button" class="vib" data-act="vfull" aria-label="Tela cheia" title="Tela cheia">${ic(D.expand, 20, '#33333A', 1.8)}</button></span></div></div>`;
   }
   return `<div class="vp call"><div class="vsheet">${head}
-  <div class="vbody"><div class="vgrid n${Math.min(people.length, 6)}">${people.map(tile).join('')}</div>
+  <div class="vbody"><div class="vgrid n${Math.min(people.length, 10)}">${people.map(tile).join('')}</div>
   ${people.length <= 1 ? `<button type="button" class="vinv" data-act="vinvite"><span class="vinvi">${ic(D.userPlus, 24, '#fff', 1.8)}</span><span class="tx"><b>Adicionar pessoas ao bate-papo em voz</b><small>Avise o grupo que você está aqui!</small></span>${ic(D.chevR, 18, '#55555F', 2.2)}</button>` : ''}</div>
   <div class="vdockw">${fx}<div class="vdock" role="toolbar" aria-label="Controles da chamada">
     <button type="button" class="vdb${cam ? ' sel' : ''}" data-act="vcam" aria-pressed="${cam}" aria-label="${cam ? 'Desligar câmera' : 'Ligar câmera'}">${ic(cam ? D.camera : D.camOff, 24, cam ? '#fff' : '#1D1D22', 1.8)}</button>
