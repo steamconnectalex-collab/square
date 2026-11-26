@@ -1,6 +1,6 @@
-mod attachments;
+pub mod attachments;
 
-use axum::{http::StatusCode, routing::get, Json, Router};
+use axum::{routing::get, Json, Router};
 use serde::Serialize;
 use std::{env, net::SocketAddr};
 use tokio::net::TcpListener;
@@ -22,11 +22,11 @@ async fn healthz() -> Json<HealthResponse> {
 
 // Until external dependencies are connected, readiness means only that the
 // process completed startup. It must be extended before business routes ship.
-async fn readyz() -> Result<Json<HealthResponse>, (StatusCode, Json<HealthResponse>)> {
-    Ok(Json(HealthResponse {
+async fn readyz() -> Json<HealthResponse> {
+    Json(HealthResponse {
         service: "shiqi-core",
         status: "ready",
-    }))
+    })
 }
 
 #[tokio::main]
