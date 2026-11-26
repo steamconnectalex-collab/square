@@ -6,7 +6,7 @@ Escopo: preparação isolada; nenhuma alteração no projeto original, em `main`
 
 ## Decisão de escopo: música
 
-O usuário desistiu da funcionalidade de música. Excluir música do escopo do produto, schema alvo, testes e migração. A migration incompleta 0011 pode permanecer no repositório apenas como registro histórico, mas nunca deve ser aplicada. Não é necessário recuperar seu SQL. A remoção de referências/UI será feita somente na cópia paralela e preservando o restante da interface original.
+O usuário desistiu da funcionalidade de música. Excluir música do escopo do produto, schema alvo, testes e migração. As migrations 0011 e 0012 foram removidas apenas da pasta de migrations paralela. Os arquivos originais na main permanecem intactos. Não é necessário recuperar o SQL de música. A remoção de referências/UI será feita somente na cópia paralela e preservando o restante da interface original.
 
 ## Decisão de segurança
 
@@ -24,7 +24,7 @@ O banco paralelo contém um schema mínimo de comunidades/chat que não é equiv
 7. **A fonte correspondente em `main` também é o mesmo stub incompleto** (com fallback de chave publicável e URL antigas). Portanto, não existe uma implementação completa dessa função no Git versionado que possa simplesmente ser copiada. As rotas descritas no cabeçalho e chamadas pelo frontend não estão implementadas nesse arquivo.
 8. O frontend original chama endpoints de cadastro/login e também depende de fluxos de verificação, reenvio de e-mail, TOTP, QR e recuperação de senha; os contratos iniciais estão em `docs/AUTH_CONTRACT_INVENTORY.md`.
 9. A migration `0025_voz_10_participantes.sql` depende de colunas `muted`, `deafened`, `video` e `screen` adicionadas em `0023_estado_da_chamada.sql`. A sequência 0023 antes de 0025 é requisito. A migration 0025 não foi aplicada no banco paralelo.
-10. A migration 0021 (eventos) é um resumo, não implementação completa. A migration 0011 (música) também é um resumo, mas música foi retirada do escopo pelo usuário e sua recuperação não é necessária.
+10. A migration 0021 (eventos) é um resumo, não implementação completa. Música foi retirada do escopo; as migrations 0011 e 0012 foram removidas somente da pasta paralela.
 11. A auditoria de segurança do Supabase paralelo não retornou findings na consulta desta data. Isso não substitui testes funcionais, revisão das policies nem validação do schema.
 
 ## Restrições preservadas
@@ -40,7 +40,7 @@ O banco paralelo contém um schema mínimo de comunidades/chat que não é equiv
 
 ## Próximas ações
 
-1. Completar inventário de campos/operações e recuperar SQL ausente do schema base e eventos por fonte autorizada.
+1. Completar inventário de campos/operações e recuperar SQL ausente do schema base e eventos por fonte autorizada. Se não houver outra fonte, pedir dump somente de estrutura do banco original.
 2. Reconstruir auth com contratos explícitos e testes; o código versionado original é stub, não implementação funcional.
 3. Validar JWT do Supabase, ampliar testes e só depois integrar middleware Rust.
 4. Criar migrations incrementais compatíveis no projeto paralelo, sem apagar dados/objetos existentes e excluindo música.
