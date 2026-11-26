@@ -82,6 +82,38 @@ Esta matriz não propõe novas funcionalidades. Ela registra o comportamento que
 - A função original `voice_join` tem limite histórico de 6; o destino deve aplicar a exceção aprovada de 10, sem repetir o teste já feito pelo usuário.
 - Funções SECURITY DEFINER e grants precisam de revisão individual; não copiar privilégios efetivos amplos automaticamente.
 
+## Rotas de autenticação e conta observadas no cliente
+
+Rotas de autenticação usadas pelo app principal:
+- `/signup`, `/verify`, `/resend`, `/login`, `/login/totp`, `/forgot`, `/reset`.
+
+Rotas de conta observadas nas configurações:
+- `/email/change/request`, `/email/change/confirm`;
+- `/mfa/recovery`, `/mfa/disable`;
+- `/account/deactivate`, `/account/delete`.
+
+Também há chamadas diretas ao Supabase Auth para fatores MFA, atualização do usuário e revogação de outras sessões. O contrato exato de cada resposta/erro precisa ser validado antes da implementação; esta lista não substitui os testes de contrato.
+
+## Lista inicial de regressão a preparar
+
+| Grupo | Verificações mínimas de comportamento |
+|---|---|
+| Acesso | Cadastro válido/inválido; e-mail/usuário duplicado; código correto/incorreto/expirado; cooldown; login correto/incorreto; sessão renovada; logout |
+| MFA e conta | TOTP correto/incorreto; recuperação de uso único; troca de e-mail confirmada; senha redefinida; desativar e excluir com confirmação; revogar sessões |
+| Perfil | Carregar/editar campos; avatar enviar/trocar/remover; validações; preferências de visibilidade |
+| Servidores/canais | Criar; abrir; explorar; entrar por convite/público; permissões de dono/membro; criar canal; ordenação; fixar/favoritar |
+| Mensagens | Enviar; receber; editar; apagar; paginação; histórico; busca; menções; não lidas; limites de envio |
+| Segurança social | Pedido de amizade; aceitar/recusar/remover; abrir DM; solicitação de DM; bloquear/desbloquear; impedir acesso indevido |
+| Anexos | Upload autorizado; usuário não pode gravar na pasta de outro; tamanho/MIME; carregar imagem e legenda |
+| Reações/tópicos | Alternar reação; contagem; limites; responder no mesmo canal; rejeitar thread inválida |
+| Voz | Entrar/sair; presença; mute/deafen; vídeo/tela; reconexão; autorização do canal privado; não repetir teste de 10 participantes |
+| Eventos | Criar com limites; listar; interesse alternar; excluir com permissão correta |
+| Configurações | Alterar preferência; persistir no navegador; sincronizar na conta; recarregar e confirmar estado; verificar opções sem efeito/“em breve” |
+| Interface | Abrir/fechar modais; navegação desktop/mobile; foco e teclado; scroll; estados vazios/erro/carregamento; preservar layout e estilos |
+| PC/legal | Link e instalador existente; abrir termos/privacidade; aceite do cadastro; validar URLs e identidade visual |
+
+Os testes devem rodar contra mocks isolados primeiro e, depois, contra o Supabase paralelo com usuários de teste autorizados. Não criar usuários nem enviar e-mails reais sem autorização específica.
+
 ## Lacunas de validação desta matriz
 
 1. A matriz foi montada por leitura estática do código e dos inventários existentes. Ainda não significa que cada botão/fluxo foi executado contra o backend paralelo.
