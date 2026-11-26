@@ -17,9 +17,9 @@
 ## Em andamento
 - [x] 2026-11-26 — Inventário de dependências do schema documentado em `docs/SCHEMA_DEPENDENCY_INVENTORY.md`.
 - [x] 2026-11-26 — Contratos iniciais de autenticação documentados em `docs/AUTH_CONTRACT_INVENTORY.md`.
-- [x] 2026-11-26 — Música excluída do escopo: não recuperar/aplicar migration 0011; referências serão retiradas apenas da cópia paralela, sem tocar no original.
+- [x] 2026-11-26 — Música excluída do escopo: migrations 0011 e 0012 removidas somente da pasta paralela; originals em `main` preservados.
 - [ ] Completar matriz de campos, filtros e operações de todos os recursos restantes.
-- [ ] Recuperar SQL ausente da base de servidores/canais e dos eventos por fonte Git autorizada ou material fornecido pelo proprietário.
+- [ ] Recuperar SQL ausente da base de servidores/canais e dos eventos por fonte Git autorizada ou material fornecido pelo proprietário. Histórico Git acessível já pesquisado sem localizar o SQL base.
 - [ ] Reconciliar o schema paralelo de cinco tabelas com o modelo alvo sem drops/renames destrutivos.
 - [ ] Reconstruir e testar contratos de autenticação; o arquivo versionado atual é apenas stub.
 - [ ] Completar testes JWT assinados/negativos e validar algoritmo/chaves do projeto destino antes de integrar middleware.
@@ -38,6 +38,6 @@
 ## Próximas ações técnicas
 1. Inspecionar os componentes/scripts que ainda referenciam música e removê-los apenas da cópia paralela, preservando o restante do layout.
 2. Continuar inventário de schema e contratos para servidores, canais, eventos, amizades, DMs, bloqueios, mensagens, anexos, voz e configurações.
-3. Recuperar a migration base ausente de servidores e eventos; pedir ao usuário export/SQL se não houver fonte Git autorizada.
+3. Recuperar a migration base ausente de servidores e eventos; pedir ao usuário dump SQL somente de estrutura (sem dados) se não houver fonte Git autorizada.
 4. Corrigir e testar autenticação antes de conectar a UI.
 5. Expandir testes de JWT e middleware Rust; validar algoritmo e chaves antes da integração.
