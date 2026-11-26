@@ -1,4 +1,4 @@
-// Envio dos e-mails da Square. (código de cadastro e recuperação de senha) via Resend.
+// Envio dos e-mails da Shiqi (código de cadastro e recuperação de senha) via Resend.
 // Segredos da função: RESEND_API_KEY (obrigatório), RESEND_FROM (opcional), BRAND_NAME (opcional).
 
 export class MailError extends Error {
@@ -8,8 +8,8 @@ export class MailError extends Error {
 }
 
 const apiKey = () => (Deno.env.get("RESEND_API_KEY") ?? "").trim();
-const fromAddr = () => (Deno.env.get("RESEND_FROM") ?? "").trim() || "Square. <onboarding@resend.dev>";
-const brand = () => (Deno.env.get("BRAND_NAME") ?? "").trim() || "Square.";
+const fromAddr = () => (Deno.env.get("RESEND_FROM") ?? "").trim() || "Shiqi <onboarding@resend.dev>";
+const brand = () => (Deno.env.get("BRAND_NAME") ?? "").trim() || "Shiqi";
 
 export const mailConfigured = () => apiKey() !== "";
 

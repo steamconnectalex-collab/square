@@ -2,13 +2,13 @@
 'use strict';
 
 /* =====================================================================
-   Square. — site real: acesso à conta (cadastro com código, login, QR Code,
+   Shiqi. — site real: acesso à conta (cadastro com código, login, QR Code,
    recuperação de senha) + tela principal.
    Backend: Supabase Edge Function "auth" + Supabase Auth/PostgREST.
    ===================================================================== */
 
 const C = window.SQ_CONFIG;
-const BRAND = 'Square.';
+const BRAND = 'Shiqi';
 const $root = document.getElementById('root');
 
 /* ---------------------------------------------------------------- util */
@@ -2074,10 +2074,10 @@ function dmColHTML() {
   const nav = (act, icon, label, on, extra = '') => `<button type="button" class="cn${on ? ' on' : ''}" data-act="${act}">${ic(icon, 22, '#33333A', 1.6)}<span>${label}</span>${extra}</button>`;
   const row = (f) => { const on = v === 'dm' && f.dm === A.channel; return `<button type="button" class="dmr${on ? ' on' : ''}" data-act="dm-open" data-id="${f.id}" aria-current="${on}">${xAv(f, 'sm')}<span class="tx"><b>${esc(f.name)}</b></span>${udot(f.dm)}</button>`; };
   return `<button type="button" class="qfind" data-act="qs-open">Encontre ou comece uma conversa</button>
-  <div class="cnav">${nav('go-home', D.users, 'Amigos', v === 'friends')}${nav('go-plus', D.spark, 'Square Plus', v === 'plus')}${nav('go-shop', D.grid, 'Loja', v === 'shop')}${nav('go-quests', D.quest, 'Missões', v === 'quests', '<em class="xnb">NOVO</em>')}</div>
+  <div class="cnav">${nav('go-home', D.users, 'Amigos', v === 'friends')}${nav('go-plus', D.spark, 'Shiqi Plus', v === 'plus')}${nav('go-shop', D.grid, 'Loja', v === 'shop')}${nav('go-quests', D.quest, 'Missões', v === 'quests', '<em class="xnb">NOVO</em>')}</div>
   <hr class="chr0">
   <div class="dmh"><span>Mensagens diretas</span><button type="button" class="hov sq" data-act="add-tab" aria-label="Criar mensagem direta" title="Criar mensagem direta">${ic(D.plus, 16, '#55555F', 2)}</button></div>
-  <button type="button" class="dmr${v === 'official' ? ' on' : ''}" data-act="go-official" aria-current="${v === 'official'}"><span class="xav sm sqo">${logoMark(16)}</span><span class="tx"><b>Square <u class="ofi">${ic(D.check, 10, '#fff', 3.2)}OFICIAL</u></b><small>Mensagem Oficial da Square</small></span></button>
+  <button type="button" class="dmr${v === 'official' ? ' on' : ''}" data-act="go-official" aria-current="${v === 'official'}"><span class="xav sm sqo">${logoMark(16)}</span><span class="tx"><b>Shiqi <u class="ofi">${ic(D.check, 10, '#fff', 3.2)}OFICIAL</u></b><small>Mensagem Oficial da Shiqi</small></span></button>
   ${A.friends.filter((f) => f.dm).concat(A.dmOther || []).map(row).join('')}
   ${(A.dmReq || []).length ? `<div class="dmh"><span>Solicitações de mensagens (${A.dmReq.length})</span></div>${A.dmReq.map((f) => `<div class="dmrq"><button type="button" class="dmr${v === 'dm' && f.dm === A.channel ? ' on' : ''}" data-act="dm-open" data-id="${f.id}">${xAv(f, 'sm')}<span class="tx"><b>${esc(f.name)}</b><small>quer te enviar mensagem</small></span></button><span class="dmrb"><button type="button" class="hov sq" data-act="dmreq" data-ch="${f.dm}" data-ok="1" aria-label="Aceitar solicitação de ${esc(f.name)}" title="Aceitar">${ic(D.check, 16, '#1B6B47', 2.4)}</button><button type="button" class="hov sq" data-act="dmreq" data-ch="${f.dm}" data-ok="0" aria-label="Recusar solicitação de ${esc(f.name)}" title="Recusar">${ic(D.x || D.close || D.plus, 16, '#B3261E', 2.4)}</button></span></div>`).join('')}` : ''}`;
 }
@@ -2100,7 +2100,7 @@ function userPopHTML() {
   const durs = (s) => `<div class="fly fly2">${[['Por 15 minutos', 900000], ['Por 1 hora', 3600000], ['Por 3 horas', 10800000], ['Por 8 horas', 28800000], ['Por 24 horas', 86400000], ['Até eu mudar', 0]].map((d) => `<button type="button" class="pi" data-act="status-set" data-s="${s}" data-ms="${d[1]}">${d[0]}</button>`).join('')}</div>`;
   const sti = (s, label, desc, dot) => `<div class="pi-w"><button type="button" class="pi st${pr === s ? ' cur' : ''}" data-act="status-set" data-s="${s}" data-ms="0"><i class="sd ${dot} stat"></i><span class="tx"><b>${label}</b>${desc ? `<small>${desc}</small>` : ''}</span>${s === 'online' ? '' : ic(D.chevR, 14, '#55555F', 2.2)}</button>${s === 'online' ? '' : durs(s)}</div>`;
   const statusFly = `<div class="fly" role="menu">${sti('online', 'Disponível', '', 'on')}${sti('idle', 'Ausente', '', 'idle')}${sti('dnd', 'Não perturbe', 'Você não receberá notificação na área de trabalho', 'dnd')}${sti('invisible', 'Invisível', 'Você vai aparecer Off-line', 'off')}</div>`;
-  const ptsFly = `<div class="fly pts"><div class="ptsh">${ic(D.coin, 30, '#7B6BB5', 1.6)}<b>0</b></div><div class="ptst"><small>Desafios ativos</small><button type="button" class="tagx" data-act="toast-soon" data-msg="O Square Plus chega em breve">Desbloquear 1.2x</button></div>
+  const ptsFly = `<div class="fly pts"><div class="ptsh">${ic(D.coin, 30, '#7B6BB5', 1.6)}<b>0</b></div><div class="ptst"><small>Desafios ativos</small><button type="button" class="tagx" data-act="toast-soon" data-msg="O Shiqi Plus chega em breve">Desbloquear 1.2x</button></div>
     <button type="button" class="ch2" data-act="go-shop"><span class="ci">${ic(D.grid, 18, '#fff', 1.8)}</span><span class="tx"><b>Compre um item da loja</b><small>Ganhe 2000 Pontos</small></span>${ic(D.chevR, 14, '#55555F', 2.2)}</button>
     <button type="button" class="ch2" data-act="go-shop"><span class="ci">${ic(D.heart, 18, '#fff', 1.8)}</span><span class="tx"><b>Adicione um item à lista de desejos</b><small>Ganhe 150 Pontos</small></span>${ic(D.chevR, 14, '#55555F', 2.2)}</button>
     <div class="ptsb"><button type="button" class="mbtn ghost sm" data-act="go-quests">${ic(D.quest, 16, '#1D1D22', 1.8)}Missões</button><button type="button" class="mbtn ghost sm" data-act="go-shop">${ic(D.grid, 16, '#1D1D22', 1.8)}Loja</button></div>
@@ -2155,7 +2155,7 @@ function leftHTML() {
 }
 function titlebarHTML() {
   const v = A.view, srv = v === 'server' ? curServer() : null, peer = v === 'dm' ? dmPeer(A.channel) : null;
-  const t = srv ? [D.hash, srv.name] : peer ? [D.at, peer.name] : v === 'official' ? [D.bubble, 'Square'] : v === 'shop' ? [D.grid, 'Loja'] : v === 'quests' ? [D.quest, 'Missões'] : v === 'plus' ? [D.spark, 'Square Plus'] : [D.users, 'Amigos'];
+  const t = srv ? [D.hash, srv.name] : peer ? [D.at, peer.name] : v === 'official' ? [D.bubble, 'Shiqi'] : v === 'shop' ? [D.grid, 'Loja'] : v === 'quests' ? [D.quest, 'Missões'] : v === 'plus' ? [D.spark, 'Shiqi Plus'] : [D.users, 'Amigos'];
   const n = A.incoming.length;
   return `<header class="x-tb"><button type="button" class="hov x-burger" data-act="drawer" aria-label="Abrir menu">${ic(D.menu, 20, '#33333A', 1.8)}</button><span class="x-tt">${ic(t[0], 15, '#33333A', 1.9)}<span>${esc(t[1])}</span></span><span class="x-ti"><button type="button" class="hov" data-act="nav" data-k="notif" aria-label="Caixa de entrada" title="Caixa de entrada">${ic(D.inbox, 18, '#33333A', 1.8)}${n ? '<i class="udot"></i>' : ''}</button><button type="button" class="hov" data-act="nav" data-k="help" aria-label="Central de ajuda" title="Central de ajuda">${ic(D.help, 18, '#33333A', 1.8)}</button></span></header>`;
 }
@@ -2171,7 +2171,7 @@ function flistHTML() {
 }
 function addFriendHTML() {
   const f = A.af;
-  return `<div class="af"><div class="afh"><div><h2>Adicionar amigo</h2><p>Você pode adicionar amigos com o nome de usuário Square deles.</p></div>${IMG_MASCOT}</div>
+  return `<div class="af"><div class="afh"><div><h2>Adicionar amigo</h2><p>Você pode adicionar amigos com o nome de usuário Shiqi deles.</p></div>${IMG_MASCOT}</div>
   <div class="afbox"><div class="afr"><input id="af-user" type="text" placeholder="Insira um nome de usuário" maxlength="30" value="${esc(f.user)}" data-app-bind="af:user" autocomplete="off" spellcheck="false" aria-label="Nome de usuário"><button type="button" class="mbtn sm" id="af-send" data-act="af-send"${f.user.trim() && !f.busy ? '' : ' disabled'}>Enviar pedido de amizade</button></div>
   <div class="afn"><textarea id="af-note" rows="3" maxlength="120" placeholder="Personalize sua solicitação (opcional)" data-app-bind="af:note" aria-label="Mensagem do pedido">${esc(f.note)}</textarea><span class="afc" id="af-cnt">${120 - f.note.length}</span></div></div>
   <p class="afhint">O que você escrever aqui também aparecerá nas suas mensagens diretas se vocês se tornarem amigos.</p>
@@ -2186,8 +2186,8 @@ function friendsPageHTML() {
 }
 function officialPageHTML() {
   const name = (displayName() || '').split(' ')[0];
-  return `<header class="x-ph"><div class="pt"><span class="xav sm sqo">${logoMark(16)}</span><h1>Square <u class="ofi">${ic(D.check, 10, '#fff', 3.2)}OFICIAL</u></h1></div></header>
-  <div class="x-pb"><div class="x-chat"><div class="msgs"><div class="fill"></div><div class="min"><div class="col"><span class="av40 sqo">${logoMark(20)}</span></div><div class="bub"><span class="an">Square</span>Olá, ${esc(name)}! Bem-vindo(a) à Square. Aqui você conversa com amigos, cria servidores e participa de comunidades. Para começar, adicione um amigo ou crie o seu primeiro servidor.</div></div></div>
+  return `<header class="x-ph"><div class="pt"><span class="xav sm sqo">${logoMark(16)}</span><h1>Shiqi <u class="ofi">${ic(D.check, 10, '#fff', 3.2)}OFICIAL</u></h1></div></header>
+  <div class="x-pb"><div class="x-chat"><div class="msgs"><div class="fill"></div><div class="min"><div class="col"><span class="av40 sqo">${logoMark(20)}</span></div><div class="bub"><span class="an">Shiqi</span>Olá, ${esc(name)}! Bem-vindo(a) à Shiqi. Aqui você conversa com amigos, cria servidores e participa de comunidades. Para começar, adicione um amigo ou crie o seu primeiro servidor.</div></div></div>
   <div class="comp"><div class="cbar"><input type="text" placeholder="Você não pode responder a esta conversa." disabled aria-label="Resposta indisponível"></div></div></div></div>`;
 }
 function dmPageHTML() {
@@ -2251,7 +2251,7 @@ function welcomeHTML(srv, chObj) {
   if (!srv.mine) return `<div class="wlc"><h2>Bem-vindo(a) a ${esc(srv.name)}</h2><p>Este é o começo do canal #${esc(chObj ? chObj.name : '')}.</p></div>`;
   const card = (act, bg, icon, label, extra = '') => `<button type="button" class="wc" data-act="${act}" ${extra}><span class="wi" style="background:${bg}">${ic(icon, 18, '#fff', 1.8)}</span><b>${label}</b>${ic(D.chevR, 16, '#55555F', 2)}</button>`;
   return `<div class="wlc"><h2>Bem-vindo(a) a<br>${esc(srv.name)}</h2><p>Este é seu servidor, novinho em folha. Aqui vão algumas dicas para ajudar você a começar! Para mais informações, confira nosso <a href="#" data-act="soon" data-msg="O guia de como começar chega em breve">guia de como começar</a>.</p>
-  <div class="wcs">${card('nav', '#9D8CCF', D.userPlus, 'Convide seus amigos', 'data-k="invite"')}${card('toast-soon', '#78BE9D', D.camera, 'Personalize seu servidor com um ícone', 'data-msg="Os ícones de servidor chegam em breve"')}${card('focus-msg', '#7DB8CF', D.send, 'Envie sua primeira mensagem')}${card('get-app', '#6CBF7E', D.download, 'Baixar o App Square')}${card('toast-soon', '#E897AB', D.apps, 'Adicione seu primeiro app', 'data-msg="Os apps de servidor chegam em breve"')}${card('open-boost', '#C77DBA', D.spark, 'Desbloqueie vantagens para todos com impulsos')}</div></div>`;
+  <div class="wcs">${card('nav', '#9D8CCF', D.userPlus, 'Convide seus amigos', 'data-k="invite"')}${card('toast-soon', '#78BE9D', D.camera, 'Personalize seu servidor com um ícone', 'data-msg="Os ícones de servidor chegam em breve"')}${card('focus-msg', '#7DB8CF', D.send, 'Envie sua primeira mensagem')}${card('get-app', '#6CBF7E', D.download, 'Baixar o App Shiqi')}${card('toast-soon', '#E897AB', D.apps, 'Adicione seu primeiro app', 'data-msg="Os apps de servidor chegam em breve"')}${card('open-boost', '#C77DBA', D.spark, 'Desbloqueie vantagens para todos com impulsos')}</div></div>`;
 }
 function dmIntroHTML(peer) {
   if (!peer) return '';
@@ -2277,7 +2277,7 @@ function srvNewHTML(m) {
   let inner = '';
   if (step === 'start') {
     const row = (k, ico, label) => `<button type="button" class="sn-r" data-act="sn-tpl" data-k="${k}"><span class="sn-i">${ico}</span><b>${label}</b>${ic(D.chevR, 16, '#55555F', 2)}</button>`;
-    inner = `<h2>${first ? 'Crie seu primeiro servidor na Square' : 'Criar seu servidor'}</h2><p class="sn-p">Seu servidor é onde você e seus amigos se reúnem. Crie o seu e comece a interagir.</p>
+    inner = `<h2>${first ? 'Crie seu primeiro servidor na Shiqi' : 'Criar seu servidor'}</h2><p class="sn-p">Seu servidor é onde você e seus amigos se reúnem. Crie o seu e comece a interagir.</p>
     <div class="sn-l">${row('own', '🛠️', 'Criar o meu')}<h3>Começar de um molde</h3>${TPLS.map((t) => row(t[0], t[2], t[1])).join('')}</div>
     ${first ? '<div class="sn-f"><a href="#" data-act="modal-open" data-k="srv" data-mode="join">Já tem um convite? Entrar em um servidor</a></div>' : '<div class="sn-f2"><b>Já tem um convite?</b><button type="button" class="mbtn ghost" data-act="modal-open" data-k="srv" data-mode="join">Entrar em um servidor</button></div>'}`;
   } else if (step === 'about') {
@@ -2289,7 +2289,7 @@ function srvNewHTML(m) {
     <button type="button" class="sn-up" data-act="toast-soon" data-msg="Os ícones de servidor chegam em breve" aria-label="Enviar ícone"><span>${ic(D.camera, 22, '#33333A', 1.7)}<small>Enviar</small></span><i>${ic(D.plus, 14, '#fff', 2.4)}</i></button>
     <div class="mf sn-n"><label for="mf-name">Nome do servidor <em>*</em></label><input id="mf-name" data-mf type="text" data-app-bind="m:name" maxlength="40" value="${esc(m.name)}" autocomplete="off" spellcheck="false"></div>
     ${m.kind === 'community' ? `<div class="mf"><button type="button" class="mtog${m.pub ? ' on' : ''}" data-act="m-pub" aria-pressed="${!!m.pub}"><i></i><span>Servidor público (aparece em Explorar)</span></button></div>` : ''}
-    <p class="sn-t">Ao criar um servidor, você concorda com as <a href="/termos" target="_blank" rel="noopener">diretrizes da comunidade</a> da Square.</p>
+    <p class="sn-t">Ao criar um servidor, você concorda com as <a href="/termos" target="_blank" rel="noopener">diretrizes da comunidade</a> da Shiqi.</p>
     ${m.err ? `<div class="merr" role="alert">${esc(m.err)}</div>` : ''}
     <div class="sn-b"><button type="button" class="sn-back" data-act="sn-back">Voltar</button><button type="button" class="mbtn" data-act="modal-submit"${m.busy ? ' disabled' : ''}>${m.busy ? 'Aguarde…' : 'Criar'}</button></div>`;
   }

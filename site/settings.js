@@ -2,7 +2,7 @@
 'use strict';
 
 /* =====================================================================
-   Square. — Configurações (janela própria, fora do #root, para não ser
+   Shiqi — Configurações (janela própria, fora do #root, para não ser
    apagada quando o painel se redesenha). As páginas ficam em settings-pages.js.
    Preferências: guardadas no navegador (por conta) e na conta (profiles.settings).
    ===================================================================== */
@@ -137,7 +137,7 @@ SET.outputDevice = () => P('out_device') || 'default';
 /* título com bolinha de não lidas (Notificações > Insígnias) */
 setInterval(() => {
   const a = api(); if (!a.unread) return;
-  const n = a.unread(); const base = 'Square.';
+  const n = a.unread(); const base = 'Shiqi';
   document.title = n && P('n_badge') ? '(•) ' + base : base;
 }, 2000);
 
@@ -228,7 +228,7 @@ ${profileHeadHTML()}
 <nav class="snavl" id="snavl">${navHTML()}
 <div class="sgroup"><button type="button" class="snavb out" data-sa="logout"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D92D45" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h9"/></svg><span>Sair</span></button></div>
 </nav>
-<div class="sver"><span>Square · versão 1.0</span><span><a href="/privacidade" target="_blank" rel="noopener">Política de privacidade</a> • <a href="/termos" target="_blank" rel="noopener">Termos de serviço</a></span></div>
+<div class="sver"><span>Shiqi · versão 1.0</span><span><a href="/privacidade" target="_blank" rel="noopener">Política de privacidade</a> • <a href="/termos" target="_blank" rel="noopener">Termos de serviço</a></span></div>
 </aside>
 <section class="smain"><header class="shead"><button type="button" class="sback" data-sa="mback" aria-label="Voltar ao menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D1D22" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h1 id="sttl">${esc(p.title || p.label)}</h1><button type="button" class="sclose" data-sa="close" aria-label="Fechar configurações"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#33333A" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header>
 <div class="scontent" id="scontent" tabindex="-1"><div class="sinner" id="sinner">${typeof p.render === 'function' ? p.render() : ''}</div></div></section>
@@ -301,7 +301,7 @@ function onClick(ev) {
   const k = t.dataset.k;
   if (k && t.classList.contains('stg')) { if (t.disabled) return; const v = !P(k); setP(k, v); if (SET.onToggle) SET.onToggle(k, v); return; }
   if (k && t.classList.contains('sradio')) { if (t.disabled) return; setP(k, t.dataset.v); return; }
-  if (k && t.classList.contains('sicon')) { if (t.dataset.lock === '1') { api().toast && api().toast('Mais ícones chegam com o Square Plus (pagamentos ainda não existem).'); return; } setP(k, Number(t.dataset.v)); return; }
+  if (k && t.classList.contains('sicon')) { if (t.dataset.lock === '1') { api().toast && api().toast('Mais ícones chegam com o Shiqi Plus (pagamentos ainda não existem).'); return; } setP(k, Number(t.dataset.v)); return; }
   if (k && t.classList.contains('stab')) { state['tab_' + k] = t.dataset.v; drawMain(true); return; }
   const a = t.dataset.sa; if (!a) return;
   if (a === 'close-bg') { if (ev.target === t) SET.close(); return; }

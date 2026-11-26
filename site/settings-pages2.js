@@ -8,7 +8,7 @@ const toast = (t) => SET.toast(t);
 const page = (o) => SET.pages.push(o);
 const paid = () => { const a = api(); return !!(a.plan && a.plan() && a.plan() !== 'free'); };
 const servers = () => { const a = api(); return (a.servers && a.servers()) || []; };
-const lock = '<svg class="slock" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3B3B96" stroke-width="2" stroke-linecap="round" aria-label="Square Plus"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/></svg>';
+const lock = '<svg class="slock" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3B3B96" stroke-width="2" stroke-linecap="round" aria-label="Shiqi Plus"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/></svg>';
 const srvOpts = () => [['all', 'Todos os servidores']].concat(servers().map((s) => [s.id, s.name]));
 const fxRow = (k, label) => `<div class="srow fx"><div class="stx"><b>${esc(label)}</b><button type="button" class="sinl" data-sa="fx-prev" data-id="${k.replace('fx_', '')}">Prévia do som</button></div><button type="button" class="stg" role="switch" data-k="${k}" aria-checked="false" aria-label="${esc(label)}"><i></i></button></div>`;
 
@@ -22,8 +22,8 @@ page({ id: 'voice', label: 'Voz e vídeo', title: 'Voz e vídeo', kw: 'microfone
 ${sel('in_device', 'Dispositivo de entrada', '', din)}
 ${sel('out_device', 'Dispositivo de saída', '', dout)}
 ${range('out_vol', 'Volume de saída', 'Volume das pessoas que você ouve nos canais de voz.', { min: 0, max: 100, step: 5, fmt: 'pct' })}
-${rd('input_profile', 'Perfil de entrada', '', [['isolation', 'Isolamento de Voz', 'Só a sua linda voz: deixe a Square equalizar o ruído'], ['studio', 'Estúdio', 'Áudio puro: microfone aberto e sem processamento'], ['custom', 'Personalizado', 'Modo avançado: me dê todos os botões e mostradores!']])}
-${range('sens', 'Sensibilidade de entrada', 'Controla quanto som a Square transmite do seu microfone.', { min: 0, max: 100, cls: 'sens' })}
+${rd('input_profile', 'Perfil de entrada', '', [['isolation', 'Isolamento de Voz', 'Só a sua linda voz: deixe a Shiqi equalizar o ruído'], ['studio', 'Estúdio', 'Áudio puro: microfone aberto e sem processamento'], ['custom', 'Personalizado', 'Modo avançado: me dê todos os botões e mostradores!']])}
+${range('sens', 'Sensibilidade de entrada', 'Controla quanto som a Shiqi transmite do seu microfone.', { min: 0, max: 100, cls: 'sens' })}
 ${sel('noise', 'Supressão de ruído', 'Reduz o ruído de fundo do seu microfone. Fornecido pelo seu navegador.', [['standard', 'Padrão do navegador'], ['off', 'Desativada']])}
 ${tg('echo', 'Cancelamento de eco', '')}
 ${tg('ptt', 'Apertar para Falar', 'Com isto ligado, seu microfone só transmite enquanto você segura a tecla Ctrl direita.')}
@@ -69,19 +69,19 @@ page({ id: 'look', label: 'Aparência', title: 'Aparência', kw: 'tema ícone me
     const unlocked = paid();
     const compact = P('chat_display') === 'compact';
     return `${h2('lk-theme', 'Tema')}
-${rd('theme', '', '', [['light', 'Claro', 'O visual da Square.'], ['dark', 'Escuro', 'Fundo escuro, mais confortável à noite.'], ['auto', 'Automático', 'Acompanha o tema do seu aparelho.']])}
+${rd('theme', '', '', [['light', 'Claro', 'O visual da Shiqi.'], ['dark', 'Escuro', 'Fundo escuro, mais confortável à noite.'], ['auto', 'Automático', 'Acompanha o tema do seu aparelho.']])}
 ${tg('sync_theme', 'Sincronizar tema em meus dispositivos', '')}
 ${tg('theme_others', 'Aplicar tema aos perfis de outros usuários', '')}
 <p class="srel">Configurações relacionadas</p>
 ${link('Acessibilidade', 'Altere a saturação de cores, habilite modos de alto contraste e muito mais', 'access', 'access')}
 ${hr()}
 ${h2('lk-icon', 'Ícone do aplicativo')}
-<div class="sicohead"><p class="sdesc">Altere o ícone da Square (aba do navegador), somente com Square Plus.</p><div class="sicoact"><button type="button" class="sbtn" data-sa="icon-prev">Ícone de prévia</button><button type="button" class="sbtn white" data-sa="pay">${lock} ${unlocked ? 'Square Plus ativo' : 'Desbloquear com Square Plus'}</button></div></div>
+<div class="sicohead"><p class="sdesc">Altere o ícone da Shiqi (aba do navegador), somente com Shiqi Plus.</p><div class="sicoact"><button type="button" class="sbtn" data-sa="icon-prev">Ícone de prévia</button><button type="button" class="sbtn white" data-sa="pay">${lock} ${unlocked ? 'Shiqi Plus ativo' : 'Desbloquear com Shiqi Plus'}</button></div></div>
 <div class="sicons">${ICONS.map((c, i) => `<button type="button" class="sicon" data-k="app_icon" data-v="${i}" ${i && !unlocked ? 'data-lock="1" ' : ''}aria-label="Ícone ${i + 1}" aria-pressed="false">${SET.iconSvg(i)}<span class="chk"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></button>`).join('')}</div>
 ${hr()}
 ${h2('lk-msgs', 'Mensagens')}
 <b class="sgl">Mostrar imagens, vídeos e memes…</b>
-${tg('msg_links', 'Quando publicados como links no chat.', '')}${tg('msg_upload', 'Quando o envio é feito diretamente à Square.', '')}${tg('msg_attach', 'Mostrar anexos e prévia de links', '')}${tg('msg_react', 'Mostrar reações de emoji', '')}
+${tg('msg_links', 'Quando publicados como links no chat.', '')}${tg('msg_upload', 'Quando o envio é feito diretamente à Shiqi.', '')}${tg('msg_attach', 'Mostrar anexos e prévia de links', '')}${tg('msg_react', 'Mostrar reações de emoji', '')}
 ${sel('spoilers', 'Mostrar spoilers', '', [['click', 'Ao clicar'], ['mod', 'Em servidores que modero'], ['always', 'Sempre']])}
 ${tg('threads_split', 'Abrir tópicos em janela dividida', '')}
 <div class="srow"><div class="stx"><b>Mostrar avatares dos usuários</b><small>Para ocultar avatares, acesse <a class="lnk" href="#" data-sa="goto" data-id="access">Acessibilidade</a> e selecione Compacto em Exibição das mensagens de chat.</small></div><button type="button" class="stg${compact ? '' : ' on'}" role="switch" aria-checked="${!compact}" disabled aria-label="Mostrar avatares dos usuários"><i></i></button></div>
@@ -96,7 +96,7 @@ ${hr()}
 ${h2('lk-stream', 'Modo streamer')}
 ${tg('streamer', 'Ativar modo streamer', 'O modo streamer oculta suas informações pessoais para que outros assistindo à sua transmissão não possam vê-las.')}
 <b class="sgl">Se o modo streamer estiver habilitado…</b>
-${tg('s_hide_personal', 'Ocultar meus dados pessoais, como e-mail, contas conectadas e notas', '')}${tg('s_hide_invite', 'Ocultar links de convite para meus servidores da Square', '')}${tg('s_mute_sfx', 'Desativar todos os efeitos de som', '')}${tg('s_mute_notif', 'Desativar notificações', '')}`;
+${tg('s_hide_personal', 'Ocultar meus dados pessoais, como e-mail, contas conectadas e notas', '')}${tg('s_hide_invite', 'Ocultar links de convite para meus servidores da Shiqi', '')}${tg('s_mute_sfx', 'Desativar todos os efeitos de som', '')}${tg('s_mute_notif', 'Desativar notificações', '')}`;
   }
 });
 SET.acts['icon-prev'] = () => { const n = (Number(P('app_icon')) || 0); toast('Este é o ícone em uso: ' + (n + 1) + ' de ' + SET.ICON_COLORS.length + '. Veja na aba do navegador.'); };
@@ -125,7 +125,7 @@ ${h2('ac-motion', 'Movimento Reduzido')}
 ${tg('reduce_motion', 'Ativar movimento reduzido', 'Reduz a quantidade e a intensidade de animações, efeitos de cursor e outros efeitos de movimento. <a class="lnk" href="#" data-sa="soon">Saiba mais.</a>')}
 ${tg('sync_motion', 'Sincronizar com computador', '')}
 ${range('notif_ms', 'Duração mínima da notificação', 'Mantenha notificações na tela por pelo menos, no mínimo, este intervalo. Notificações que permanecem por mais tempo não serão afetadas.', { min: 3, max: 20, step: 1, fmt: 's', ticks: [['3s', 0], ['5s', pct(3, 20, 5)], ['10s', pct(3, 20, 10)], ['15s', pct(3, 20, 15)], ['20s', 100]] })}
-${tg('play_gifs', 'Reproduzir GIFs quando a Square estiver em primeiro plano', '')}
+${tg('play_gifs', 'Reproduzir GIFs quando a Shiqi estiver em primeiro plano', '')}
 ${tg('play_emoji', 'Reproduzir emojis animados.', '')}
 ${rd('stickers', 'Jogar animações de figurinha', '', [['always', 'Animar sempre'], ['hover', 'Animar ao interagir', 'No cliente de área de trabalho, figurinhas são animadas quando focadas ou quando o cursor passa sobre elas. Em clientes móveis, as figurinhas se animam com um toque longo.'], ['never', 'Nunca animar']])}
 ${hr()}
@@ -139,7 +139,7 @@ ${tg('plain_input', 'Use entrada de chat padrão', 'Desativa a maioria dos recur
 SET.fmt.s = (v) => v + 's';
 SET.acts['tts-prev'] = () => {
   if (!('speechSynthesis' in window)) { toast('Este navegador não lê texto em voz alta.'); return; }
-  const u = new SpeechSynthesisUtterance('Esta é uma prévia da leitura em voz alta da Square.'); u.lang = 'pt-BR'; u.rate = Number(P('tts_rate')) || 1;
+  const u = new SpeechSynthesisUtterance('Esta é uma prévia da leitura em voz alta da Shiqi.'); u.lang = 'pt-BR'; u.rate = Number(P('tts_rate')) || 1;
   window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
 };
 
@@ -171,7 +171,7 @@ page({ id: 'lang', label: 'Idioma e Horário', title: 'Idioma e Horário', kw: '
   render() {
     const cur = LANGS.find((l) => l[0] === P('lang')) || LANGS[21], open = !!SET.langOpen;
     const chev = `<svg class="chev${open ? ' up' : ''}" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#33333A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>`;
-    return `<div class="sgrp"><b class="sgl big">Selecione um idioma</b><small class="sgd">Escolha o idioma que você quer que a Square exiba.</small>
+    return `<div class="sgrp"><b class="sgl big">Selecione um idioma</b><small class="sgd">Escolha o idioma que você quer que a Shiqi exiba.</small>
 <div class="slang"><button type="button" class="slangb${open ? ' open' : ''}" data-sa="lang-toggle" aria-haspopup="listbox" aria-expanded="${open}"><span class="fl">${flag(cur[1])}</span><span class="n">${esc(cur[2])}</span><span class="e">${open ? '' : esc(cur[3])}</span>${chev}</button>${open ? `<div class="slangl" role="listbox" id="slangl" tabindex="-1">${LANGS.map((l) => `<button type="button" role="option" class="slango${l[0] === cur[0] ? ' on' : ''}" aria-selected="${l[0] === cur[0]}" data-sa="lang-pick" data-id="${l[0]}"><span class="fl">${flag(l[1])}</span><span class="n">${esc(l[2])}</span><span class="e">${esc(l[3])}</span>${l[0] === cur[0] ? '<svg class="ck" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1D1D22" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' : ''}</button>`).join('')}</div>` : ''}</div></div>
 ${rd('time_fmt', 'Formato de tempo', '', [['auto', 'Auto'], ['12', '12 horas'], ['24', '24 horas']])}`;
   },
@@ -180,7 +180,7 @@ ${rd('time_fmt', 'Formato de tempo', '', [['auto', 'Auto'], ['12', '12 horas'], 
 SET.acts['lang-toggle'] = () => { SET.langOpen = !SET.langOpen; SET.redraw(); };
 SET.acts['lang-pick'] = (t) => {
   SET.langOpen = false;
-  if (t.dataset.id !== 'pt-BR') { SET.redraw(); toast('A Square só está disponível em português do Brasil por enquanto.'); return; }
+  if (t.dataset.id !== 'pt-BR') { SET.redraw(); toast('A Shiqi só está disponível em português do Brasil por enquanto.'); return; }
   SET.setP('lang', 'pt-BR'); SET.redraw();
 };
 })();

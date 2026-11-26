@@ -79,7 +79,7 @@ let out = render(tpl, vals);
 
 // 4) ajustes para o site real
 out = out.replace(/\s*\n\s*/g, ' ').trim();                                   // compacta espaços
-out = out.replace(/Square\.\./g, 'Square.');                                // "Square.." (marca já termina em ponto)
+out = out.replace(/Shiqi\.\./g, 'Shiqi.');                                // "Shiqi.." (marca já termina em ponto)
 out = out.replace(/^<div style="position: relative;/, '<div class="home" style="position: relative;');
 out = out.replace(/<a href="Auth\.dc\.html"/g, '<a href="#login"');           // Entrar / Abrir no navegador
 let first = true;

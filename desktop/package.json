@@ -1,10 +1,10 @@
 {
   "name": "square-desktop",
-  "productName": "Square",
+  "productName": "Shiqi",
   "version": "1.0.0",
-  "description": "Square. — aplicativo para computador",
+  "description": "Shiqi. — aplicativo para computador",
   "main": "main.js",
-  "author": "Square",
+  "author": "Shiqi",
   "license": "UNLICENSED",
   "private": true,
   "scripts": {
@@ -20,12 +20,12 @@
   },
   "build": {
     "appId": "app.square.desktop",
-    "productName": "Square",
+    "productName": "Shiqi",
     "directories": { "output": "dist", "buildResources": "build" },
     "files": ["main.js", "preload.js", "picker.html", "picker-preload.js", "offline.html", "build/tray.png", "build/icon.png"],
     "publish": [{ "provider": "github", "owner": "steamconnectalex-collab", "repo": "square", "releaseType": "release" }],
     "win": { "icon": "build/icon.png", "target": [{ "target": "nsis", "arch": ["x64"] }] },
     "nsis": { "oneClick": true, "perMachine": false, "deleteAppDataOnUninstall": false, "createDesktopShortcut": true, "createStartMenuShortcut": true },
-    "linux": { "icon": "build/icon.png", "target": ["AppImage"], "category": "Network", "maintainer": "Square" }
+    "linux": { "icon": "build/icon.png", "target": ["AppImage"], "category": "Network", "maintainer": "Shiqi" }
   }
 }

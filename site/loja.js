@@ -2,7 +2,7 @@
 'use strict';
 
 /* =====================================================================
-   Square. — Loja (Destaques, Navegar, Loja de Pontos), Missões e Square Plus.
+   Shiqi. — Loja (Destaques, Navegar, Loja de Pontos), Missões e Shiqi Plus.
    As páginas são desenhadas aqui e encaixadas no menu principal pelo app.js
    (window.SQ_SHOP.shopHTML / questsHTML / plusHTML). Ainda não existe pagamento:
    comprar, assinar e cumprir missões mostram um aviso "em breve".
@@ -55,7 +55,7 @@ COLS.forEach((c, ci) => {
   });
 });
 const PONTOS = [
-  ['credit', 'Crédito Square Plus de 3 dias', 1400, ['#9D8CCF', '#E897AB', '#7DB8CF'], 1], ['badge', 'Insígnia de Aprendiz dos Pontos', 120, ['#7DB8CF', '#9D8CCF', '#fff'], 1],
+  ['credit', 'Crédito Shiqi Plus de 3 dias', 1400, ['#9D8CCF', '#E897AB', '#7DB8CF'], 1], ['badge', 'Insígnia de Aprendiz dos Pontos', 120, ['#7DB8CF', '#9D8CCF', '#fff'], 1],
   ['pack', '3x Pacote Turbilhão Infinito', 8900, ['#9D8CCF', '#7DB8CF', '#E897AB'], 1, 15], ['plate', 'Névoas Mágicas', 3500, ['#7DB8CF', '#9D8CCF', '#E897AB'], 1],
   ['decor', 'Névoas Mágicas', 3500, ['#9D8CCF', '#7DB8CF', '#E897AB'], 1], ['plate', 'Turbilhão Infinito', 3500, ['#9D8CCF', '#E897AB', '#7DB8CF'], 1],
   ['decor', 'Turbilhão Infinito', 3500, ['#7DB8CF', '#9D8CCF', '#E897AB'], 1], ['effect', 'Névoas Mágicas', 3500, ['#9D8CCF', '#E897AB', '#7DB8CF'], 1],
@@ -177,7 +177,7 @@ function browseBody() {
 }
 function pointsBody() {
   const ex = PONTOS.filter((x) => x.excl), pop = sortList(PONTOS.filter((x) => !x.excl));
-  return `<section class="jpt-hero"><div><h1>Apresentando os Pontos da Square</h1><p>Recompense seu jogo. Ganhe em missões. Gaste na loja.</p></div><button type="button" class="jcta" data-lj="goquests">Ir para a página das missões</button><span class="jgem" aria-hidden="true"></span></section>
+  return `<section class="jpt-hero"><div><h1>Apresentando os Pontos da Shiqi</h1><p>Recompense seu jogo. Ganhe em missões. Gaste na loja.</p></div><button type="button" class="jcta" data-lj="goquests">Ir para a página das missões</button><span class="jgem" aria-hidden="true"></span></section>
   ${grid(ex)}
   <section class="jwhat"><div><h2>O que posso conseguir com Pontos?</h2><p>Gaste Pontos em decorações exclusivas ou pegue suas favoritas na loja principal. <a href="#" data-lj="soon" data-msg="Em breve: guia dos Pontos">Saiba mais.</a></p></div><span class="jgem sm" aria-hidden="true"></span></section>
   <div class="jsec"><h2>Escolhas Populares para Pontos</h2><span class="jctl"><label>Ordenar por</label>${sel('sort', ST.sort === 'foryou' ? 'pop' : ST.sort, [['pop', 'Em alta'], ['low', 'Menor preço'], ['high', 'Maior preço'], ['name', 'Nome (A–Z)']])}<button type="button" class="mbtn ghost sm" data-lj="shuffle">Embaralhar!</button></span></div>
@@ -218,10 +218,10 @@ const QG = [
   ['Onde os Ventos Se Encontram', 'Estúdio Brisa', '23/11', '700 Pontos', 'Jogue durante 15 minutos e ganhe 700 Pontos.', 700, 'Jogar agora', 'Aceitar missão', ['#E897AB', '#7DB8CF']],
   ['Fim da Linha', 'Estúdio Grifo', '25/11', '700 Pontos', 'Jogue Fim da Linha durante 15 minutos e ganhe 700 Pontos.', 700, 'Jogar agora', 'Aceitar missão', ['#9A9AA7', '#E8A06B']],
   ['Arena 27', 'Liga Quadra', '25/11', 'Medalha de Especialista', 'Assista ao vídeo para desbloquear uma medalha de avatar.', 'item', 'Mais detalhes', 'Assistir 1m', ['#D9697A', '#EBBA6C']],
-  ['Futebol de Bolso', 'Blocos & Cia', '25/11', '700 Pontos', 'Jogue durante 15 minutos com o Square aberto e ganhe 700 Pontos.', 700, 'Jogar agora', 'Aceitar missão', ['#78BE9D', '#7DB8CF']],
+  ['Futebol de Bolso', 'Blocos & Cia', '25/11', '700 Pontos', 'Jogue durante 15 minutos com o Shiqi aberto e ganhe 700 Pontos.', 700, 'Jogar agora', 'Aceitar missão', ['#78BE9D', '#7DB8CF']],
   ['Duna Dourada', 'Areia Pictures', '27/11', '200 Pontos', 'Assista ao vídeo para ganhar 200 Pontos!', 200, 'Entrar no servidor', 'Assistir 3m', ['#EBBA6C', '#E8A06B']],
   ['Raposa Azul', 'Fogueira Software', '29/11', '200 Pontos', 'Assista ao vídeo para ganhar 200 Pontos!', 200, 'Baixe aqui', 'Assistir 59s', ['#E8A06B', '#9D8CCF']],
-  ['Square', 'Square', '30/11', '200 Pontos', 'Assista ao vídeo para ganhar 200 Pontos!', 200, 'Mais detalhes', 'Assistir 50s', ['#9D8CCF', '#E897AB']],
+  ['Shiqi', 'Shiqi', '30/11', '200 Pontos', 'Assista ao vídeo para ganhar 200 Pontos!', 200, 'Mais detalhes', 'Assistir 50s', ['#9D8CCF', '#E897AB']],
   ['Estrela Trilho', 'Cosmos Jogos', '01/12', 'Pacote de Missão da V4.7', 'Jogue durante 15 minutos e ganhe o Pacote de Missão da V4.7.', 'item', 'Jogar agora', 'Aceitar missão', ['#9D8CCF', '#D9697A']],
   ['Caçadores de Monstros', 'Estúdio Garra', '04/12', 'Decoração de avatar', 'Assista ao vídeo para desbloquear uma decoração de avatar.', 'item', 'Jogar agora', 'Assistir 2m', ['#78BE9D', '#B58B6B']],
   ['Costa Neon', 'Estúdio Maré', '07/12', 'Avatar Costa Neon', 'Assista ao vídeo para desbloquear o avatar Costa Neon.', 'item', 'Comprar agora', 'Assistir 29s', ['#E897AB', '#7DB8CF']],
@@ -239,14 +239,14 @@ function questsHTML() {
   if (ST.qtab === 'done') return `${head2}<div class="x-pb"><div class="lj" id="lj"><div class="jempty">Você ainda não resgatou nenhuma missão. Aceite uma missão para começar a juntar Pontos.</div></div></div>`;
   return `${head2}<div class="x-pb"><div class="lj" id="lj">
   <section class="jqh" style="--a:#8F7BD8;--b:#E897AB;--c:#7DB8CF"><span class="jtag">Patrocinado</span><div class="jqht"><span class="jlogo">COSTA<br>NEON</span><h1>COSTA NEON II</h1><p>A cidade nunca dorme. Jade e Rafa sempre souberam que as cartas estavam contra eles. Mas quando um golpe fácil dá errado, os dois se veem no lado mais sombrio da metrópole, obrigados a confiar um no outro mais do que nunca quiseram.</p><button type="button" class="jcta wh" data-lj="soon" data-msg="Isto é um exemplo: não há compra aqui">Comprar agora</button></div></section>
-  <div class="jqrow"><section class="jpromo"><div class="jpa"><span class="jpad"></span></div><div class="jpb"><h2>Dê à Square um novo visual no estilo Costa Neon</h2><p>Deixe a Square com a cara de Costa Neon por tempo limitado, durante o evento de lançamento. Fica disponível para todos até 13/12/2026 e, para quem tem Square Plus, até 20/02/2027.</p><ul><li>${ic(I.pal, 14, '#33333A', 1.8)} Tema colorido</li><li><b>Aa</b> Estilo do nome exibido</li><li>${ic(I.user, 14, '#33333A', 1.8)} Ícone do aplicativo</li></ul><button type="button" class="mbtn" data-lj="soon" data-msg="Pré-visualização de temas chega em breve">Pré-visualizar tema</button></div></section>
+  <div class="jqrow"><section class="jpromo"><div class="jpa"><span class="jpad"></span></div><div class="jpb"><h2>Dê à Shiqi um novo visual no estilo Costa Neon</h2><p>Deixe a Shiqi com a cara de Costa Neon por tempo limitado, durante o evento de lançamento. Fica disponível para todos até 13/12/2026 e, para quem tem Shiqi Plus, até 20/02/2027.</p><ul><li>${ic(I.pal, 14, '#33333A', 1.8)} Tema colorido</li><li><b>Aa</b> Estilo do nome exibido</li><li>${ic(I.user, 14, '#33333A', 1.8)} Ícone do aplicativo</li></ul><button type="button" class="mbtn" data-lj="soon" data-msg="Pré-visualização de temas chega em breve">Pré-visualizar tema</button></div></section>
   <section class="jdeco"><small class="jdt"><b>DECORAÇÃO DE AVATAR</b><em>${ic(I.quest, 11, '#33333A', 2)} 16D 13H</em></small><div class="jdc">${art({ t: 'decor', a: ['#E897AB', '#9D8CCF', '#7DB8CF'] }, true)}</div><b>Avatar Costa Neon</b><small>${ic(I.check, 11, '#1B6B47', 2.6)} Estúdio Maré · 0%</small></section></div>
   <div class="jsec"><h2>Missões disponíveis</h2><span class="jctl"><button type="button" class="mbtn ghost sm" data-lj="soon" data-msg="Ordenação de missões chega em breve">Sugestões ${ic(I.d, 13, '#1D1D22', 2.2)}</button><button type="button" class="mbtn ghost sm" data-lj="soon" data-msg="Filtros de missões chegam em breve">Filtros ${ic(I.sliders, 14, '#1D1D22', 1.8)}</button></span></div>
   <div class="jqg">${QG.map(questCard).join('')}</div>
   <section class="jqf"><span class="jlogo big">COSTA<br>NEON</span></section></div></div>`;
 }
 
-/* ------------------------------------------------------------ Square Plus */
+/* ------------------------------------------------------------ Shiqi Plus */
 const PLUS_ROWS = [
   ['Exiba o seu estilo', [['Insígnia de perfil Plus', 1, 1], ['Perfis personalizados por servidores', 0, 1], ['Sons de entrada personalizados', 0, 1], ['Estilos de nome exibido', 0, 1]]],
   ['Torne este lugar o seu espaço', [['Emojis animados e personalizados em qualquer lugar', 1, 1], ['Figurinhas personalizadas em qualquer lugar', 1, 1], ['Ícones personalizados do aplicativo', 1, 1], ['Sons de efeitos sonoros personalizados em qualquer lugar', 0, 1], ['+ de 20 temas coloridos do aplicativo', 0, 1]]],
@@ -260,17 +260,17 @@ function plusHTML() {
     <button type="button" class="jcta${pop ? ' wh' : ' ghost'}" data-lj="subscribe">${ic(I.coin, 14, 'currentColor', 1.8)} Inscrever-se</button></div>`;
   return `<header class="x-ph lj-h"><div class="pt">${ic(I.coin, 22, '#33333A', 1.6)}</div><i class="dotsep" aria-hidden="true"></i>${[['top', 'Início'], ['news', 'Novidades'], ['best', 'Melhor do Plus'], ['plans', 'Planos'], ['cmp', 'Comparar']].map((x) => `<button type="button" class="ftab" data-lj="goto" data-t="jp-${x[0]}">${x[1]}</button>`).join('')}<span class="tsp"></span><button type="button" class="hov sq" data-lj="soon" data-msg="Sua lista de desejos do Plus chega em breve" aria-label="Lista de desejos">${ic(I.heart, 18, '#33333A', 1.8)}</button><button type="button" class="mbtn ghost sm" data-lj="soon" data-msg="Presentear chega em breve">${ic(I.gift, 15, '#1D1D22', 1.8)} Presentear Plus</button></header>
   <div class="x-pb"><div class="lj plus" id="lj">
-  <section class="jp-hero" id="jp-top"><h1>DESBLOQUEIE UM MUNDO DE VANTAGENS COM SQUARE PLUS</h1><div class="jp-b"><button type="button" class="jcta wh" data-lj="subscribe">${ic(I.coin, 14, 'currentColor', 1.8)} Inscrever-se</button><button type="button" class="jcta ghost" data-lj="soon" data-msg="Presentear chega em breve">${ic(I.gift, 14, 'currentColor', 1.8)} Presentear Plus</button></div><small>O Square Plus é uma assinatura automática. Você pode cancelar a qualquer momento nas configurações.</small><span class="jgem" aria-hidden="true"></span></section>
+  <section class="jp-hero" id="jp-top"><h1>DESBLOQUEIE UM MUNDO DE VANTAGENS COM SHIQI PLUS</h1><div class="jp-b"><button type="button" class="jcta wh" data-lj="subscribe">${ic(I.coin, 14, 'currentColor', 1.8)} Inscrever-se</button><button type="button" class="jcta ghost" data-lj="soon" data-msg="Presentear chega em breve">${ic(I.gift, 14, 'currentColor', 1.8)} Presentear Plus</button></div><small>O Shiqi Plus é uma assinatura automática. Você pode cancelar a qualquer momento nas configurações.</small><span class="jgem" aria-hidden="true"></span></section>
   <h2 class="jp-h" id="jp-news">NOVIDADES</h2>
-  <div class="jp-card wide"><div><span class="jlogo sm">COSTA<br>NEON</span><h3>Carregue junto com o seu equipamento</h3><p>Obtenha um projeto exclusivo para assinantes do Square Plus.</p><button type="button" class="mbtn ghost sm" data-lj="soon" data-msg="Ofertas chegam em breve">Desbloquear oferta</button></div><span class="jp-art a1" aria-hidden="true"></span></div>
-  <div class="jp-two"><div class="jp-card"><span class="jp-art a2" aria-hidden="true"></span><h3>Dê à Square um novo visual no estilo Costa Neon</h3><p>Assinantes do Plus mantêm o tema por mais tempo. Disponível para todos até 13 de dezembro e para membros Plus até 20 de fevereiro.</p><button type="button" class="mbtn ghost sm" data-lj="soon" data-msg="Temas chegam em breve">Experimentar</button></div>
+  <div class="jp-card wide"><div><span class="jlogo sm">COSTA<br>NEON</span><h3>Carregue junto com o seu equipamento</h3><p>Obtenha um projeto exclusivo para assinantes do Shiqi Plus.</p><button type="button" class="mbtn ghost sm" data-lj="soon" data-msg="Ofertas chegam em breve">Desbloquear oferta</button></div><span class="jp-art a1" aria-hidden="true"></span></div>
+  <div class="jp-two"><div class="jp-card"><span class="jp-art a2" aria-hidden="true"></span><h3>Dê à Shiqi um novo visual no estilo Costa Neon</h3><p>Assinantes do Plus mantêm o tema por mais tempo. Disponível para todos até 13 de dezembro e para membros Plus até 20 de fevereiro.</p><button type="button" class="mbtn ghost sm" data-lj="soon" data-msg="Temas chegam em breve">Experimentar</button></div>
   <div class="jp-card"><span class="jp-art a3" aria-hidden="true"></span><h3>Ganhe mais Pontos com o Plus</h3><p>Transforme vitórias em megavitórias com recompensas de 1,2x ao assinar o Plus. Cancele a qualquer momento.</p><button type="button" class="mbtn ghost sm" data-lj="soon" data-msg="Em breve">Bora lá!</button></div></div>
   <h2 class="jp-h" id="jp-best">MELHOR DO PLUS</h2>
   <div class="jp-card wide"><div><h3>Exiba o seu estilo</h3><p>Adicione um avatar animado, tema de perfil, imagem de faixa e muito mais.</p><button type="button" class="mbtn ghost sm" data-lj="soon" data-msg="Em breve">Bora lá!</button></div><span class="jp-art a4" aria-hidden="true"></span></div>
   <div class="jp-card wide rev"><span class="jp-art a5" aria-hidden="true"></span><div><h3>Torne este lugar o seu espaço</h3><p>Escolha entre mais de 20 temas de cores e ícones de aplicativo personalizados.</p><button type="button" class="mbtn ghost sm" data-lj="soon" data-msg="Em breve">Bora lá!</button></div></div>
   <div class="jp-two"><div class="jp-card"><span class="jp-art a6" aria-hidden="true"></span><h3>Melhore seu jogo de emojis</h3><p>Empolgue, zoe e mande memes com emojis personalizados em qualquer lugar.</p></div><div class="jp-card"><span class="jp-art a7" aria-hidden="true"></span><h3>Sem limites, pura diversão</h3><p>Envie arquivos maiores e transmita em HD até 4K e 60FPS.</p></div></div>
   <h2 class="jp-h" id="jp-plans">ESCOLHA SEU PLANO</h2>
-  <div class="jp-two plans">${pl('b', 'SQUARE PLUS BÁSICO', 'R$ 89,90', 'R$ 8,90', '', ['50 MB de uploads', 'Emoji personalizado em qualquer lugar', 'Super-reações ilimitadas', 'Insígnia Plus especial no seu perfil'], false)}${pl('p', 'SQUARE PLUS', 'R$ 249,99', 'R$ 24,99', 'R$ 20,83/mês cobrado anualmente', ['Tudo que está incluso no Básico, além de', '1 GB de uploads', 'Emoji personalizado em qualquer lugar', 'Super-reações ilimitadas', 'Transmissão de vídeo em HD', '2 impulsos de servidor', 'Perfis personalizados e muito mais!'], true)}</div>
+  <div class="jp-two plans">${pl('b', 'SHIQI PLUS BÁSICO', 'R$ 89,90', 'R$ 8,90', '', ['50 MB de uploads', 'Emoji personalizado em qualquer lugar', 'Super-reações ilimitadas', 'Insígnia Plus especial no seu perfil'], false)}${pl('p', 'SHIQI PLUS', 'R$ 249,99', 'R$ 24,99', 'R$ 20,83/mês cobrado anualmente', ['Tudo que está incluso no Básico, além de', '1 GB de uploads', 'Emoji personalizado em qualquer lugar', 'Super-reações ilimitadas', 'Transmissão de vídeo em HD', '2 impulsos de servidor', 'Perfis personalizados e muito mais!'], true)}</div>
   <h2 class="jp-h" id="jp-cmp">COMPARE NOSSOS PLANOS</h2>
   <div class="jtab" role="table"><div class="jtr jth2" role="row"><span>Preços e funcionalidades</span><span><b>Básico</b><small>R$ 8,90</small></span><span class="pop"><i>POPULAR</i><b>Plus</b><small>R$ 24,99</small></span></div>
   ${PLUS_ROWS.map((g) => `<div class="jtg">${g[0]}</div>${g[1].map((r) => `<div class="jtr" role="row"><span>${r[0]}</span><span>${cell(r[1])}</span><span class="pop">${cell(r[2])}</span></div>`).join('')}`).join('')}</div>
@@ -307,7 +307,7 @@ document.addEventListener('click', (e) => {
   if (k === 'qtab') { ST.qtab = el.dataset.k; full(); return; }
   if (k === 'quest') { const i = el.dataset.i; ST.qdone[i] = !ST.qdone[i]; full(); soon(ST.qdone[i] ? 'Missão aceita. As recompensas chegam junto com os Pontos.' : 'Missão cancelada'); return; }
   if (k === 'goto') { const t = document.getElementById(el.dataset.t), l = document.getElementById('lj'); if (t && l) l.scrollTo({ top: t.offsetTop - 8, behavior: 'smooth' }); return; }
-  if (k === 'subscribe') soon('Os pagamentos do Square Plus ainda não existem. Chega em breve!');
+  if (k === 'subscribe') soon('Os pagamentos do Shiqi Plus ainda não existem. Chega em breve!');
 });
 document.addEventListener('keydown', (e) => {
   if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('.jt[data-lj="item"]')) { e.preventDefault(); ST.item = e.target.dataset.id; full(); }

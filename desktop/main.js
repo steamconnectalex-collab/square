@@ -1,4 +1,4 @@
-// Square. para computador — abre o site oficial dentro de uma janela própria.
+// Shiqi para computador — abre o site oficial dentro de uma janela própria.
 const { app, BrowserWindow, Tray, Menu, session, shell, desktopCapturer, ipcMain, nativeImage, screen } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -50,7 +50,7 @@ function createWindow() {
     x: b ? b.x : undefined, y: b ? b.y : undefined,
     minWidth: 480, minHeight: 600,
     backgroundColor: '#F4F4F6',
-    title: 'Square.',
+    title: 'Shiqi',
     icon: path.join(__dirname, 'build', 'icon.png'),
     autoHideMenuBar: true,
     show: false,
@@ -71,7 +71,7 @@ function createWindow() {
     win.loadFile(path.join(__dirname, 'offline.html'), { query: { u: SITE } });
   });
 
-  // links externos abrem no navegador; só o site da Square fica na janela
+  // links externos abrem no navegador; só o site da Shiqi fica na janela
   win.webContents.setWindowOpenHandler(({ url }) => {
     openExternal(url);
     return { action: 'deny' };
@@ -97,7 +97,7 @@ function openExternal(url) {
   } catch {}
 }
 
-// ---------- permissões (só o site da Square) ----------
+// ---------- permissões (só o site da Shiqi) ----------
 function setupPermissions() {
   const ses = session.defaultSession;
   const allowed = new Set(['media', 'display-capture', 'notifications', 'clipboard-sanitized-write', 'fullscreen', 'audioCapture', 'videoCapture']);
@@ -146,9 +146,9 @@ function createTray() {
   let img = nativeImage.createFromPath(path.join(__dirname, 'build', 'tray.png'));
   if (img.isEmpty()) img = nativeImage.createEmpty();
   tray = new Tray(img);
-  tray.setToolTip('Square.');
+  tray.setToolTip('Shiqi.');
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Abrir Square.', click: showWindow },
+    { label: 'Abrir Shiqi.', click: showWindow },
     { type: 'separator' },
     { label: 'Sair', click: () => { quitting = true; app.quit(); } }
   ]));

@@ -1,5 +1,5 @@
-/* Square. — menu principal novo (trilho de servidores, coluna, barra do usuário, páginas).
-   Layout das fotos de referência, no visual claro e translúcido da Square. Classes começam com x-. */
+/* Shiqi. — menu principal novo (trilho de servidores, coluna, barra do usuário, páginas).
+   Layout das fotos de referência, no visual claro e translúcido da Shiqi. Classes começam com x-. */
 
 .x{position:relative;display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden;font-size:14px;line-height:1.4;
   background:radial-gradient(60% 50% at 0% 0%,rgba(214,200,240,.55),rgba(214,200,240,0) 70%),radial-gradient(50% 45% at 100% 20%,rgba(249,208,218,.45),rgba(249,208,218,0) 70%),radial-gradient(60% 50% at 40% 100%,rgba(196,228,238,.5),rgba(196,228,238,0) 70%),#F4F4F8}

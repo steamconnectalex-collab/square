@@ -5,7 +5,7 @@ const { esc, h2, hr, tg, rd, sel, range, btnRow, link, info, expand } = SET;
 const api = () => window.SQ_API || {};
 const P = SET.P;
 const toast = (t) => SET.toast(t);
-const SOON = 'Isso ainda não está disponível na Square.';
+const SOON = 'Isso ainda não está disponível na Shiqi.';
 
 /* ----------------------------------------------------- valores iniciais */
 Object.assign(SET.def, {
@@ -49,7 +49,7 @@ const ageGroup = () => SET.getState('age') || 'unknown';
 const loadAge = () => { const a = api(); if (SET.getState('age') || !a.rpc) return; SET.setState('age', 'unknown'); a.rpc('my_age_group').then((g) => { SET.setState('age', String(g || 'unknown')); SET.redraw(); }).catch(() => {}); };
 const ageBanner = (text) => (ageGroup() === 'adult' ? '' : info(text, 'Confirmar idade', 'age'));
 
-SET.acts.age = () => SET.modal({ title: 'Confirmar idade', body: '<p>A Square já guarda a data de nascimento que você informou ao criar a conta. A confirmação por documento ainda não existe, então os recursos só para adultos continuam bloqueados por enquanto.</p>', actions: [{ label: 'Entendi', act: 'modal-close', cls: 'primary' }] });
+SET.acts.age = () => SET.modal({ title: 'Confirmar idade', body: '<p>A Shiqi já guarda a data de nascimento que você informou ao criar a conta. A confirmação por documento ainda não existe, então os recursos só para adultos continuam bloqueados por enquanto.</p>', actions: [{ label: 'Entendi', act: 'modal-close', cls: 'primary' }] });
 SET.acts.soon = () => toast(SOON);
 
 /* ============================================================== CONTA */
@@ -90,7 +90,7 @@ ${chevRow('Dispositivos conectados', '1 dispositivo', 'devices')}
 ${hr()}
 ${h2('acc-status', 'Status da conta')}
 <div class="sst">${shield}<div class="stx"><b>Grupo etário</b><small>${g === 'adult' ? 'Seu grupo etário foi confirmado pela data de nascimento informada no cadastro.' : g === 'teen' ? 'Seu grupo etário foi definido pela data de nascimento informada no cadastro. Alguns conteúdos e configurações destinados a adultos não estão disponíveis.' : 'Seu grupo etário ainda não foi confirmado, então <a class="lnk" href="#" data-sa="age">alguns conteúdos e configurações</a> destinados a adultos não estarão disponíveis até você <a class="lnk" href="#" data-sa="age">confirmar que é maior de idade</a>.'}</small></div><span class="sav">${ageTxt}</span>${g === 'unknown' ? '<button type="button" class="sbtn" data-sa="age">Confirmar idade</button>' : ''}</div>
-<button type="button" class="sst chevrow" data-sa="acc-ok">${check}<div class="stx"><b>Status da Conta</b><small>Agradecemos por respeitar os <a class="lnk" href="/termos" target="_blank" rel="noopener">termos de serviço</a> da Square. Se você tiver uma violação, ela aparecerá aqui.</small></div><span class="sav">Tudo certo!</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#33333A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+<button type="button" class="sst chevrow" data-sa="acc-ok">${check}<div class="stx"><b>Status da Conta</b><small>Agradecemos por respeitar os <a class="lnk" href="/termos" target="_blank" rel="noopener">termos de serviço</a> da Shiqi. Se você tiver uma violação, ela aparecerá aqui.</small></div><span class="sav">Tudo certo!</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#33333A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
 ${hr()}
 ${h2('acc-fam', 'Central da Família')}
 <button type="button" class="srow chevrow fam" data-sa="family"><span class="stx"><b>Configurar Central da Família</b><small>Conecte-se com um responsável para que ele possa ficar por dentro. Suas mensagens permanecem privadas e você sempre poderá saber exatamente o que ele vê.</small></span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#33333A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
@@ -108,7 +108,7 @@ Object.assign(SET.acts, {
     try { await api().rpc('change_username', { p_username: v }); const m = api().me && api().me(); if (m) m.user = v; if (api().reload) api().reload(); SET.modal(null); SET.redraw(); toast('Nome de usuário atualizado'); }
     catch (e) { er.textContent = /username_taken/.test((e && e.message) || '') ? 'Esse nome de usuário já está em uso.' : /invalid_username/.test((e && e.message) || '') ? 'Esse nome de usuário não é válido.' : 'Não deu certo. Tente de novo.'; }
   },
-  'ed-phone': () => SET.modal({ title: 'Telefone', body: '<p>Login e verificação por telefone ainda não existem na Square.</p>', actions: [{ label: 'Entendi', act: 'modal-close', cls: 'primary' }] }),
+  'ed-phone': () => SET.modal({ title: 'Telefone', body: '<p>Login e verificação por telefone ainda não existem na Shiqi.</p>', actions: [{ label: 'Entendi', act: 'modal-close', cls: 'primary' }] }),
   'ed-pass': () => SET.modal({ title: 'Mudar senha', body: '<label class="sgl" for="p1">Nova senha</label><input id="p1" class="sinp" type="password" autocomplete="new-password"><label class="sgl" for="p2">Confirmar nova senha</label><input id="p2" class="sinp" type="password" autocomplete="new-password"><small class="sgd">Use pelo menos 8 caracteres.</small><p class="smerr" id="p-err" role="alert"></p>', actions: [{ label: 'Cancelar', act: 'modal-close' }, { label: 'Mudar senha', act: 'save-pass', cls: 'primary' }] }),
   'save-pass': async () => {
     const a = document.getElementById('p1').value, b = document.getElementById('p2').value, er = document.getElementById('p-err');
@@ -152,7 +152,7 @@ Object.assign(SET.acts, {
     try {
       const r0 = await api().authFetch('/auth/v1/user'); const u = await r0.json().catch(() => ({}));
       for (const f of ((u && u.factors) || []).filter((x) => x.status !== 'verified')) await api().authFetch('/auth/v1/factors/' + f.id, { method: 'DELETE' });
-      const r = await api().authFetch('/auth/v1/factors', { method: 'POST', body: { factor_type: 'totp', friendly_name: 'Square ' + Date.now(), issuer: 'Square' } });
+      const r = await api().authFetch('/auth/v1/factors', { method: 'POST', body: { factor_type: 'totp', friendly_name: 'Shiqi ' + Date.now(), issuer: 'Shiqi' } });
       const j = await r.json(); if (!r.ok || !j.id) throw new Error('x');
       SET.modal({ title: 'Ligar verificação em duas etapas', body: `<p class="sgd">1. Escaneie o QR Code no aplicativo de autenticação.</p><div style="text-align:center"><img alt="QR Code para o aplicativo de autenticação" src="${esc(j.totp.qr_code)}" width="180" height="180" style="background:#fff;border-radius:12px"></div><p class="sgd">Ou digite esta chave: <b style="user-select:all;word-break:break-all">${esc(j.totp.secret)}</b></p><p class="sgd">2. Digite o código de 6 números que o aplicativo mostrar.</p><input id="mf-code" class="sinp" inputmode="numeric" maxlength="8" autocomplete="one-time-code" data-fid="${esc(j.id)}"><p class="smerr" id="mf-err" role="alert"></p>`, actions: [{ label: 'Cancelar', act: 'modal-close' }, { label: 'Ativar', act: 'mfa-verify', cls: 'primary' }] });
     } catch (e) { toast('Não deu certo ligar agora. Tente de novo.'); }
@@ -198,19 +198,19 @@ Object.assign(SET.acts, {
 
 /* ================================================= DADOS E PRIVACIDADE */
 page({ id: 'privacy', label: 'Privacidade e segurança', title: 'Privacidade e segurança', kw: 'dados cópia perfil segurança 2fa autenticação duas etapas google authenticator código qr',
-  subs: [{ id: 'dp-sec', label: 'Segurança da conta' }, { id: 'dp-data', label: 'Como a Square usa meus dados' }, { id: 'dp-profile', label: 'Privacidade do perfil' }],
+  subs: [{ id: 'dp-sec', label: 'Segurança da conta' }, { id: 'dp-data', label: 'Como a Shiqi usa meus dados' }, { id: 'dp-profile', label: 'Privacidade do perfil' }],
   render() {
     const n = servers().length, first = servers()[0];
     const share = P('act_share') ? (n ? `Você está compartilhando atividade com <b>${esc(first.name)}</b>${n > 1 ? ' e ' + (n - 1) + (n - 1 === 1 ? ' outro servidor' : ' outros servidores') : ''}.` : 'Você ainda não está em nenhum servidor.') : 'Você não está compartilhando atividade.';
     return `${h2('dp-sec', 'Segurança da conta')}
 <div class="sgrp"><b class="sgl">Verificação em duas etapas (aplicativo de autenticação)</b><small class="sgd">Proteja sua conta com o Google Authenticator (ou Authy, 1Password etc.). Você escaneia um QR Code <b>uma única vez</b>. Depois disso, em qualquer outro computador, tablet ou celular, dá para entrar na sua conta só com o código de 6 números do aplicativo, pela opção "Entrar com o código do autenticador" na tela de login.</small><button type="button" class="sbtn primary" data-sa="ed-mfa">Ativar ou gerenciar</button></div>
-${h2('dp-data', 'Como a Square usa meus dados')}
-<div class="sgrp"><b class="sgl">Utilizar dados para fazer a Square funcionar</b><small class="sgd">A Square precisa armazenar e processar alguns dados para te fornecer os serviços básicos, tais como suas mensagens, servidores em que você está e mensagens diretas. Ao usar a Square, você permite que ela forneça estes serviços básicos. Você pode interromper isso ao <a class="lnk" href="#" data-sa="deact">desativar</a> ou <a class="lnk" href="#" data-sa="del-acct">excluir</a> sua conta.</small></div>
-<p class="sgd">Hoje a Square não usa anúncios nem ferramentas de análise: estas opções ficam guardadas na sua conta como sua escolha e valerão se esses recursos forem criados.</p>
-${tg('dp_improve', 'Utilizar dados para melhorar a Square', 'Permite que a Square use e processe minhas informações para entender e aprimorar seus serviços. <a class="lnk" href="/privacidade" target="_blank" rel="noopener">Saiba mais</a>')}
-${tg('dp_personalize', 'Utilizar dados para personalizar minha experiência na Square', 'Permite que a Square utilize informações, como com quem você conversa ou os jogos que joga, para personalizar a Square para você. <a class="lnk" href="/privacidade" target="_blank" rel="noopener">Saiba mais</a>')}
-${tg('dp_sponsored_activity', 'Usar minha atividade da Square para personalizar o conteúdo patrocinado', 'Permite que a Square personalize o conteúdo patrocinado, como missões, usando sua atividade na Square, como os jogos que você joga. Se você recusar, ainda poderá ver as missões, mas elas não serão personalizadas.')}
-${tg('dp_sponsored_third', 'Usar dados de terceiros para personalizar o conteúdo patrocinado', 'Permite que a Square personalize o conteúdo patrocinado, como missões, usando dados que ela recebe de anunciantes e outros provedores de dados. Se você recusar, ainda poderá ver missões, mas elas não serão personalizadas usando dados de terceiros. <a class="lnk" href="/privacidade" target="_blank" rel="noopener">Saiba mais</a>')}
+${h2('dp-data', 'Como a Shiqi usa meus dados')}
+<div class="sgrp"><b class="sgl">Utilizar dados para fazer a Shiqi funcionar</b><small class="sgd">A Shiqi precisa armazenar e processar alguns dados para te fornecer os serviços básicos, tais como suas mensagens, servidores em que você está e mensagens diretas. Ao usar a Shiqi, você permite que ela forneça estes serviços básicos. Você pode interromper isso ao <a class="lnk" href="#" data-sa="deact">desativar</a> ou <a class="lnk" href="#" data-sa="del-acct">excluir</a> sua conta.</small></div>
+<p class="sgd">Hoje a Shiqi não usa anúncios nem ferramentas de análise: estas opções ficam guardadas na sua conta como sua escolha e valerão se esses recursos forem criados.</p>
+${tg('dp_improve', 'Utilizar dados para melhorar a Shiqi', 'Permite que a Shiqi use e processe minhas informações para entender e aprimorar seus serviços. <a class="lnk" href="/privacidade" target="_blank" rel="noopener">Saiba mais</a>')}
+${tg('dp_personalize', 'Utilizar dados para personalizar minha experiência na Shiqi', 'Permite que a Shiqi utilize informações, como com quem você conversa ou os jogos que joga, para personalizar a Shiqi para você. <a class="lnk" href="/privacidade" target="_blank" rel="noopener">Saiba mais</a>')}
+${tg('dp_sponsored_activity', 'Usar minha atividade da Shiqi para personalizar o conteúdo patrocinado', 'Permite que a Shiqi personalize o conteúdo patrocinado, como missões, usando sua atividade na Shiqi, como os jogos que você joga. Se você recusar, ainda poderá ver as missões, mas elas não serão personalizadas.')}
+${tg('dp_sponsored_third', 'Usar dados de terceiros para personalizar o conteúdo patrocinado', 'Permite que a Shiqi personalize o conteúdo patrocinado, como missões, usando dados que ela recebe de anunciantes e outros provedores de dados. Se você recusar, ainda poderá ver missões, mas elas não serão personalizadas usando dados de terceiros. <a class="lnk" href="/privacidade" target="_blank" rel="noopener">Saiba mais</a>')}
 ${tg('dp_public_web', 'Mostrar o conteúdo das minhas mensagens em canais públicos em páginas da web', 'Permita que o conteúdo das mensagens que você envia em canais públicos apareça em páginas da web. Os administradores dos Servidores do Descobrir controlam quais canais podem ser descobertos. Essas mensagens aparecerão exatamente como você as escreveu, mas não mostrarão seu nome de usuário. <a class="lnk" href="/privacidade" target="_blank" rel="noopener">Saiba mais</a>')}
 ${tg('dp_voice_clips', 'Permitir que minha voz seja gravada nos clipes', 'Permite que sua voz seja incluída quando alguém no mesmo canal de voz usa clipes.')}
 ${btnRow('Solicitar meus dados', 'Se você precisar de uma cópia dos seus dados pessoais de todo o histórico da sua conta, poderá obtê-la aqui. <a class="lnk" href="/privacidade" target="_blank" rel="noopener">Saiba mais</a> sobre como funciona a solicitação de uma cópia dos seus dados.', 'Solicitar dados', 'export')}
@@ -249,7 +249,7 @@ page({ id: 'msgs', label: 'Permissões de mensagens', title: 'Permissões de men
     const dis = ageGroup() !== 'adult';
     return `${h2('pm-content', 'Filtros de conteúdo')}
 ${ageBanner('Algumas configurações só podem ser alteradas se você estiver no grupo de idade adulto. <a class="lnk" href="#" data-sa="age">Saiba mais</a>')}
-<b class="sgl">Filtros de conteúdo sensível</b><small class="sgd">Escolha como você quer visualizar imagens detectadas pelos filtros de conteúdo sensível da Square. <a class="lnk" href="/privacidade" target="_blank" rel="noopener">Saiba mais</a></small>
+<b class="sgl">Filtros de conteúdo sensível</b><small class="sgd">Escolha como você quer visualizar imagens detectadas pelos filtros de conteúdo sensível da Shiqi. <a class="lnk" href="/privacidade" target="_blank" rel="noopener">Saiba mais</a></small>
 <div class="stabs2"><div class="stabl"><button type="button" class="stab2${tab === 'sx' ? ' on' : ''}" data-sa="tab-sens" data-id="sx">Conteúdo sexual maduro</button><button type="button" class="stab2${tab === 'gr' ? ' on' : ''}" data-sa="tab-sens" data-id="gr">Mídia gráfica</button></div>
 <div class="stabr">${row('dm_friends', 'Mensagens diretas de amigos', dis)}${row('dm_others', 'Mensagens diretas de outras pessoas', dis)}${row('server', 'Mensagens em canais do servidor', true)}<small class="sgd">${tab === 'sx' ? 'Ajuda a detectar imagens que podem conter material sexualmente explícito ou sugestivo envolvendo adultos.' : 'Ajuda a detectar imagens que podem conter violência gráfica.'}</small></div></div>
 ${tg('age_cmds', 'Permite acesso a comandos com restrição de idade de apps em mensagens diretas', 'Permite que pessoas com 18 anos ou mais acessem comandos marcados como restritos por idade nas mensagens diretas. Aplica-se a todos os apps.', { dis })}
@@ -258,7 +258,7 @@ ${tg('ios_age', 'Permitir acesso a servidores com restrição de idade no iOS', 
 ${link('Aparência', 'Mostrar/ocultar mídia no chat e conteúdo de spoiler', 'look', 'look')}
 ${hr()}
 ${h2('pm-spam', 'Filtros de spam')}
-${rd('spam', 'Filtrar automaticamente mensagens de spam suspeitas', 'A Square pode filtrar algumas mensagens que contêm spam. Essas mensagens vão para a sua caixa de envio de spam.', [['all', 'Filtrar todos os envios de spam'], ['unknown', 'Filtrar mensagens de desconhecidos (recomendado)'], ['none', 'Não filtrar envios de spam']])}
+${rd('spam', 'Filtrar automaticamente mensagens de spam suspeitas', 'A Shiqi pode filtrar algumas mensagens que contêm spam. Essas mensagens vão para a sua caixa de envio de spam.', [['all', 'Filtrar todos os envios de spam'], ['unknown', 'Filtrar mensagens de desconhecidos (recomendado)'], ['none', 'Não filtrar envios de spam']])}
 ${hr()}
 ${h2('pm-dm', 'Permissões de mensagens diretas (DM)')}
 <div class="sgrp"><select class="ssel" data-k="dm_scope" aria-label="Servidor"><option value="all">Todos os servidores</option>${servers().map((s) => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('')}</select></div>
@@ -268,7 +268,7 @@ ${hr()}
 ${h2('pm-fr', 'Permissões de pedido de amizade', 'Controle quem pode enviar pedidos de amizade e como eles aparecem.')}
 <b class="sgl">Permitir pedidos de amizade de…</b>
 ${tg('fr_all', 'Todos', '')}${tg('fr_fof', 'Amigos de amigos', '')}${tg('fr_server', 'Membros do servidor', 'Membros do servidor só podem enviar pedidos de amizade de servidores onde você também')}
-${h2('pm-games', 'Mensagens em jogos conectados', 'Estas são as configurações para jogos que usam a Square para impulsionar atividades sociais.')}
+${h2('pm-games', 'Mensagens em jogos conectados', 'Estas são as configurações para jogos que usam a Shiqi para impulsionar atividades sociais.')}
 ${box('<b>Nenhum jogo conectado</b><small>Quer conectar um jogo à sua conta? <a class="lnk" href="#" data-sa="soon">Saiba mais</a></small>', 'center')}
 <p class="srel">Configurações relacionadas</p>
 ${link('Aplicativos autorizados', 'Gerencie seus jogos em Aplicativos Autorizados', 'apps', 'apps')}`;
@@ -294,7 +294,7 @@ ${h2('nt-badge', 'Insígnias')}
 ${tg('n_badge', 'Ativar indicador de mensagens não lidas', 'Mostra um indicador vermelho no ícone do aplicativo quando houver mensagens não lidas.')}
 ${hr()}
 ${h2('nt-mail', 'E-mail')}
-${tg('e_tips', 'E-mails de dicas', 'Receba e-mails com conselhos úteis sobre como usar a Square e informações sobre recursos menos conhecidos.')}
+${tg('e_tips', 'E-mails de dicas', 'Receba e-mails com conselhos úteis sobre como usar a Shiqi e informações sobre recursos menos conhecidos.')}
 ${tg('e_rec', 'E-mails de recomendações', 'Receba e-mails com servidores recomendados e eventos sugeridos.')}
 ${btnRow('Cancelar inscrição para e-mails de marketing', '', 'Cancelar inscrição', 'unsub', 'dangerghost')}
 ${hr()}
@@ -313,28 +313,28 @@ SET.onToggle = (k, v) => {
   if (k === 'lang') return;
 };
 
-/* ============================================================= PLUS (Square Plus) */
+/* ============================================================= PLUS (Shiqi Plus) */
 const tickI = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1D1D22" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>', crossI = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8A8A96" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 const PERKS = [['Mais poder emoji', 'Empolgue, zoe e mande memes com emojis personalizados em qualquer lugar.', 'face'], ['Vídeo HD', 'Melhor resolução de vídeo para todas as suas transmissões. Transmita aplicativos e jogos em resolução HD impecável.', 'video'], ['1GB Envios', 'Envie o que quiser com um limite de upload expandido de 1GB.', 'upload'], ['Ícones Personalizados do Aplicativo', 'Escolha um ícone para celular e no app do desktop que combine com a sua vibe.', 'icon'], ['Usar sons personalizados', 'Reaja com sons personalizados do painel de efeitos sonoros em todos os canais de voz.', 'sound'], ['Planos de Fundos de Vídeo', 'Faça videochamadas com seus próprios fundos de vídeo.', 'bg'], ['Super-reações ilimitadas', 'Tornamos as super-reações ilimitadas para que você possa desencadear o caos em suas conversas.', 'star'], ['Acesso a figurinhas especiais', 'Use figurinha personalizada em qualquer lugar.', 'sticker'], ['Insígnia de assinante', 'Pegue essa insígnia maneira por ser um assinante.', 'badge']];
-const CMP = [['Emojis personalizados em qualquer lugar, inclusive animados', 1, 1], ['Figurinhas personalizadas em qualquer lugar', 1, 1], ['Ícones Personalizados do Aplicativo', 1, 1], ['Super-reações', 1, 1], ['Envio de arquivo maiores', '50 MB', '1 GB'], ['Transmissões em HD', 0, 'Até 4K e 60 fps'], ['2 impulsos + 30% de desconto em impulsos adicionais', 0, 1], ['Avatar animado, faixa e tema de perfil', 0, 1], ['Estilos de nome exibido', 0, 1], ['Perfis personalizados por servidores', 0, 1], ['Preços para membros da loja e itens exclusivos', 0, 1], ['Cores para o seu tema da Square', 0, 1], ['Insígnia Plus no seu perfil', 1, 1], ['Vídeos de fundo personalizados', 1, 1], ['Sons personalizados em qualquer lugar', 0, 1], ['Sons de entrada personalizados', 0, 1], ['Entre em até 200 servidores', 0, 1], ['Mensagens mais longas, de até 4000 caracteres', 0, 1], ['3 Passes de amigo Plus', 0, 1], ['Mantenha as recompensas de decoração de avatar de missão por mais tempo', 0, 1]];
+const CMP = [['Emojis personalizados em qualquer lugar, inclusive animados', 1, 1], ['Figurinhas personalizadas em qualquer lugar', 1, 1], ['Ícones Personalizados do Aplicativo', 1, 1], ['Super-reações', 1, 1], ['Envio de arquivo maiores', '50 MB', '1 GB'], ['Transmissões em HD', 0, 'Até 4K e 60 fps'], ['2 impulsos + 30% de desconto em impulsos adicionais', 0, 1], ['Avatar animado, faixa e tema de perfil', 0, 1], ['Estilos de nome exibido', 0, 1], ['Perfis personalizados por servidores', 0, 1], ['Preços para membros da loja e itens exclusivos', 0, 1], ['Cores para o seu tema da Shiqi', 0, 1], ['Insígnia Plus no seu perfil', 1, 1], ['Vídeos de fundo personalizados', 1, 1], ['Sons personalizados em qualquer lugar', 0, 1], ['Sons de entrada personalizados', 0, 1], ['Entre em até 200 servidores', 0, 1], ['Mensagens mais longas, de até 4000 caracteres', 0, 1], ['3 Passes de amigo Plus', 0, 1], ['Mantenha as recompensas de decoração de avatar de missão por mais tempo', 0, 1]];
 const perkArt = (k) => `<span class="sperk-art a-${k}" aria-hidden="true"></span>`;
 const cell = (v) => (v === 1 ? tickI : v === 0 ? crossI : `<b>${esc(v)}</b>`);
 const wm = (n, s) => `<span class="swm">${esc(n)}${s ? `<small>${esc(s)}</small>` : ''}</span>`;
-page({ id: 'plus', label: 'Square Plus', title: 'Square Plus', icon: 'plus', kw: 'plano assinatura plus',
+page({ id: 'plus', label: 'Shiqi Plus', title: 'Shiqi Plus', icon: 'plus', kw: 'plano assinatura plus',
   render() {
     const ins = (cls) => `<button type="button" class="splus-btn ${cls || ''}" data-sa="pay">Inscrever-se</button>`;
-    return `<div class="splus-hero"><span class="spk k1"></span><span class="spk k2"></span><span class="spk k3"></span><h2>DESBLOQUEIE UM MUNDO DE VANTAGENS COM SQUARE PLUS</h2><p>Planos a partir de R$ 8,90/mês. Cancele a qualquer momento</p><div class="splus-actions"><button type="button" class="splus-btn" data-sa="pay">${wm('Inscrever-se')}</button><button type="button" class="splus-btn ghost" data-sa="pay">Presentear Plus</button></div></div>
-<div class="splus-plans"><div class="splan b1"><div class="swmw">${wm('SQUARE', 'BASIC')}<p>R$ 8,90 / mês</p></div><ul><li>${tickI}50MB uploads</li><li>${tickI}Emoji personalizado em qualquer lugar</li><li>${tickI}Super-reações ilimitadas</li><li>${tickI}Insígnia Plus especial no seu perfil</li></ul>${ins('out')}</div>
-<div class="splan b2"><div class="swmw">${wm('SQUARE', 'PLUS')}<p>R$ 24,99 / mês</p></div><ul><li>${tickI}1GB uploads</li><li>${tickI}Emoji personalizado em qualquer lugar</li><li>${tickI}Super-reações ilimitadas</li><li>${tickI}Transmissão de vídeo em HD</li><li>${tickI}2 impulsos de servidor</li><li>${tickI}Perfis personalizados e muito mais!</li></ul>${ins('solid')}</div></div>
+    return `<div class="splus-hero"><span class="spk k1"></span><span class="spk k2"></span><span class="spk k3"></span><h2>DESBLOQUEIE UM MUNDO DE VANTAGENS COM SHIQI PLUS</h2><p>Planos a partir de R$ 8,90/mês. Cancele a qualquer momento</p><div class="splus-actions"><button type="button" class="splus-btn" data-sa="pay">${wm('Inscrever-se')}</button><button type="button" class="splus-btn ghost" data-sa="pay">Presentear Plus</button></div></div>
+<div class="splus-plans"><div class="splan b1"><div class="swmw">${wm('SHIQI', 'BASIC')}<p>R$ 8,90 / mês</p></div><ul><li>${tickI}50MB uploads</li><li>${tickI}Emoji personalizado em qualquer lugar</li><li>${tickI}Super-reações ilimitadas</li><li>${tickI}Insígnia Plus especial no seu perfil</li></ul>${ins('out')}</div>
+<div class="splan b2"><div class="swmw">${wm('SHIQI', 'PLUS')}<p>R$ 24,99 / mês</p></div><ul><li>${tickI}1GB uploads</li><li>${tickI}Emoji personalizado em qualquer lugar</li><li>${tickI}Super-reações ilimitadas</li><li>${tickI}Transmissão de vídeo em HD</li><li>${tickI}2 impulsos de servidor</li><li>${tickI}Perfis personalizados e muito mais!</li></ul>${ins('solid')}</div></div>
 <h3 class="splus-h3">Vantagens Plus favoritas</h3>
 <div class="sperks">${PERKS.map((p) => `<div class="sperk">${perkArt(p[2])}<b>${esc(p[0])}</b><small>${esc(p[1])}</small></div>`).join('')}</div>
 <h3 class="splus-h3 left">Escolha o plano mais adequado para você.</h3>
-<div class="scmp"><div class="scmp-h"><b>Preços e funcionalidades</b>${wm('SQUARE', 'BASIC')}<div class="pop"><em>MAIS POPULAR</em>${wm('SQUARE', 'PLUS')}</div></div>
+<div class="scmp"><div class="scmp-h"><b>Preços e funcionalidades</b>${wm('SHIQI', 'BASIC')}<div class="pop"><em>MAIS POPULAR</em>${wm('SHIQI', 'PLUS')}</div></div>
 <div class="scmp-r"><span>Preço</span><b>R$ 8,90/mês</b><b>R$ 24,99/mês</b></div>${CMP.map((r) => `<div class="scmp-r"><span>${esc(r[0])}</span><i>${cell(r[1])}</i><i>${cell(r[2])}</i></div>`).join('')}</div>
 <div class="splus-foot"><button type="button" class="splus-btn" data-sa="pay">Inscrever-se</button><button type="button" class="splus-btn ghost" data-sa="pay">Presentear Plus</button></div>`;
   }
 });
-SET.acts.pay = () => toast('Pagamentos ainda não estão disponíveis na Square.');
+SET.acts.pay = () => toast('Pagamentos ainda não estão disponíveis na Shiqi.');
 
 /* ============================================================ IMPULSO */
 page({ id: 'boost', label: 'Impulso de servidor', title: 'Impulso de servidor', icon: 'boost', kw: 'boost nível servidor',
@@ -343,7 +343,7 @@ page({ id: 'boost', label: 'Impulso de servidor', title: 'Impulso de servidor', 
     const gem = '<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l7 4v8l-7 8-7-8V6z" fill="#E040A0"/><path d="M12 2l7 4-7 4-7-4z" fill="#F58AC8"/></svg>';
     const tr = (a, b, c, d) => `<div class="sbt-r"><span>${a}</span><b>${b}</b><b>${c}</b><b>${d}</b></div>`;
     const ok = tickI;
-    const faq = [['O que é um impulso de servidor?', 'É uma forma de apoiar um servidor e liberar vantagens para todos os membros dele.'], ['Como eu impulsiono um servidor?', 'Quando os impulsos estiverem disponíveis, você escolherá o servidor e confirmará. Ainda não é possível.'], ['Posso impulsionar um servidor várias vezes?', 'Sim, quando os impulsos chegarem à Square, cada impulso extra ajudará o servidor a subir de nível.'], ['Posso continuar impulsionando um servidor depois que ele chegar ao nível 3?', 'Sim. Impulsos extras continuam ajudando o servidor.'], ['O que são “vantagens adicionais” e como diferem dos níveis?', 'São vantagens opcionais que o servidor pode liberar além das dos níveis. Ainda não existem na Square.'], ['Quanto custam as novas vantagens adicionais?', 'Os preços ainda não foram definidos.'], ['As vantagens adicionais estão substituindo o sistema atual de nível dos servidores?', 'Não. Os dois sistemas vão existir lado a lado.'], ['As vantagens adicionais usam impulsos separados do nível do meu servidor?', 'Ainda não foi definido.'], ['As vantagens adicionais são uma compra única, ou precisam de impulsos contínuos?', 'Ainda não foi definido.']];
+    const faq = [['O que é um impulso de servidor?', 'É uma forma de apoiar um servidor e liberar vantagens para todos os membros dele.'], ['Como eu impulsiono um servidor?', 'Quando os impulsos estiverem disponíveis, você escolherá o servidor e confirmará. Ainda não é possível.'], ['Posso impulsionar um servidor várias vezes?', 'Sim, quando os impulsos chegarem à Shiqi, cada impulso extra ajudará o servidor a subir de nível.'], ['Posso continuar impulsionando um servidor depois que ele chegar ao nível 3?', 'Sim. Impulsos extras continuam ajudando o servidor.'], ['O que são “vantagens adicionais” e como diferem dos níveis?', 'São vantagens opcionais que o servidor pode liberar além das dos níveis. Ainda não existem na Shiqi.'], ['Quanto custam as novas vantagens adicionais?', 'Os preços ainda não foram definidos.'], ['As vantagens adicionais estão substituindo o sistema atual de nível dos servidores?', 'Não. Os dois sistemas vão existir lado a lado.'], ['As vantagens adicionais usam impulsos separados do nível do meu servidor?', 'Ainda não foi definido.'], ['As vantagens adicionais são uma compra única, ou precisam de impulsos contínuos?', 'Ainda não foi definido.']];
     return `<div class="sboost-top"><div><h2 class="sh2 big">${gem} Impulsos de servidor</h2><p class="sdesc">Impulsionar um servidor desbloqueia vantagens para todos nesse servidor. Você pode gerenciar seus impulsos aqui (adicionar, remover, cancelar — só não se esqueça do tempo de espera de 7 dias). <a class="lnk" href="#" data-sa="soon">Saiba mais</a></p></div><button type="button" class="svid" data-sa="soon" aria-label="Como os impulsos funcionam? Reproduzir vídeo"><b>Como os impulsos funcionam?</b><span class="play"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z" fill="#1D1D22"/></svg></span></button></div>
 ${sv.length ? `<b class="sgl big">Estes servidores precisam de um impulso</b><div class="sbsl">${sv.slice(0, 10).map((s) => `<div class="sbsv"><span class="stl" style="background:${esc(s.tile || '#C9B8F0')}">${esc(s.ini || '')}</span><span class="stx"><b>${esc(s.name)}</b><small class="sgem">${gem.replace('20', '12')} Nenhum impulso</small></span><button type="button" class="sbtn" data-sa="soon">${gem.replace('20', '14')} Impulsionar esse servidor</button></div>`).join('')}</div>` : ''}
 <div class="sbt">${tr('', '', '', '').replace('<span></span><b></b><b></b><b></b>', '<span>Qualidade de áudio</span><b>128kbps</b><b>256kbps</b><b>384kbps</b>')}${tr('Limite de tamanho dos envios', '10MB', '50MB', '100MB')}${tr('Assentos no palco de vídeo', '50', '150', '300')}${tr('Ícone animado do servidor', ok, ok, ok)}${tr('Plano de fundo do convite do servidor', ok, ok, ok)}${tr('Faixa do servidor', crossI, 'Estática', 'Com animação')}${tr('Ícones de cargos personalizados', crossI, ok, ok)}${tr('Link de convite personalizado', crossI, crossI, ok)}</div>
@@ -358,7 +358,7 @@ ${sv.length ? `<b class="sgl big">Estes servidores precisam de um impulso</b><di
 page({ id: 'subs', label: 'Assinaturas', title: 'Assinaturas', icon: 'subs', kw: 'plano crédito',
   render() {
     return `${h2('sb-a', 'Suas assinaturas', 'Estas são suas assinaturas atuais. Elas são cobradas no mesmo ciclo de cobrança. Você pode alterar qualquer uma delas a qualquer momento.')}
-${box(`<span class="sdice">${dice}</span><b>${paid() ? 'Square Plus (concedido pela equipe)' : 'Você não tem assinaturas ativas'}</b>`, 'row')}
+${box(`<span class="sdice">${dice}</span><b>${paid() ? 'Shiqi Plus (concedido pela equipe)' : 'Você não tem assinaturas ativas'}</b>`, 'row')}
 ${h2('sb-b', 'Crédito de assinatura', 'Quando você aceita um presente enquanto tem uma assinatura ativa, resgata uma promoção ou se aceita um presente diferente da sua assinatura atual, ele aparece aqui como crédito.')}
 ${box(`<span class="sdice">${dice}</span><b>Você não tem créditos para usar</b>`, 'row')}
 <hr class="shr">`;
@@ -381,7 +381,7 @@ page({ id: 'activity', label: 'Privacidade nas atividades', title: 'Privacidade 
   render() {
     const off = SET.getState('actOff') || {};
     return `${h2('ac', 'Privacidade nas atividades', 'Controle como sua atividade de jogo e app é compartilhada — o que é visível e quem a vê.')}
-${tg('act_share', 'Compartilhar minha atividade', 'Permite que amigos e servidores vejam o que você está fazendo na Square, como a música que está ouvindo.')}
+${tg('act_share', 'Compartilhar minha atividade', 'Permite que amigos e servidores vejam o que você está fazendo na Shiqi, como a música que está ouvindo.')}
 ${servers().length ? `<b class="sgl">Compartilhar atividade com estes servidores</b>${servers().map((s) => `<div class="srow sub"><div class="stx"><b>${esc(s.name)}</b></div><button type="button" class="stg${off[s.id] ? '' : ' on'}" role="switch" aria-checked="${!off[s.id]}" data-sa="act-srv" data-id="${esc(s.id)}" aria-label="${esc(s.name)}"><i></i></button></div>`).join('')}` : ''}`;
   }
 });
@@ -391,10 +391,10 @@ const APPS = [['Riot Games', '#D32F2F'], ['Battle.net', '#1D6FD8'], ['Bluesky', 
 page({ id: 'apps', label: 'Apps conectados', title: 'Apps conectados', icon: 'apps', kw: 'conexões contas steam spotify',
   subs: [{ id: 'ap-con', label: 'Conexões' }, { id: 'ap-auth', label: 'Aplicativos autorizados' }],
   render() {
-    return `${h2('ap-con', 'Conexões', 'Estas são contas de outras plataformas. Conectá-las aqui pode desbloquear novos recursos na Square, como a capacidade de compartilhar o que você está ouvindo atualmente, receber pagamentos de forma segura e muito mais.')}
+    return `${h2('ap-con', 'Conexões', 'Estas são contas de outras plataformas. Conectá-las aqui pode desbloquear novos recursos na Shiqi, como a capacidade de compartilhar o que você está ouvindo atualmente, receber pagamentos de forma segura e muito mais.')}
 <b class="sgl">Adicionar uma nova conexão</b>
 <div class="sapps">${APPS.map((a) => `<button type="button" class="sapp" data-sa="connect" data-id="${esc(a[0])}" title="${esc(a[0])}" aria-label="Conectar ${esc(a[0])}" style="--c:${a[1]}"><span>${esc(a[0].charAt(0))}</span></button>`).join('')}</div>
-<div class="sempty"><b>Sem conexões</b><small>Conecte suas contas para desbloquear integrações especiais da Square</small></div>
+<div class="sempty"><b>Sem conexões</b><small>Conecte suas contas para desbloquear integrações especiais da Shiqi</small></div>
 ${hr()}${h2('ap-auth', 'Aplicativos autorizados', 'Apps que você autorizou a acessar sua conta aparecem aqui.')}
 <div class="sempty"><b>Nenhum aplicativo autorizado</b><small>Quando você autorizar um app, ele aparece nesta lista.</small></div>`;
   }
@@ -402,6 +402,6 @@ ${hr()}${h2('ap-auth', 'Aplicativos autorizados', 'Apps que você autorizou a ac
 SET.acts.connect = (t) => toast('Conectar ' + t.dataset.id + ' ainda não está disponível.');
 
 page({ id: 'dev', label: 'Desenvolvedor', title: 'Desenvolvedor', icon: 'dev', kw: 'api id modo desenvolvedor',
-  render() { return `${h2('dv', 'Desenvolvedor', 'Ferramentas para quem constrói em cima da Square.')}${tg('dev_mode', 'Modo desenvolvedor', 'Mostra identificadores (IDs) em locais como o cartão de perfil. Ainda não existe uma API pública da Square.')}`; }
+  render() { return `${h2('dv', 'Desenvolvedor', 'Ferramentas para quem constrói em cima da Shiqi.')}${tg('dev_mode', 'Modo desenvolvedor', 'Mostra identificadores (IDs) em locais como o cartão de perfil. Ainda não existe uma API pública da Shiqi.')}`; }
 });
 })();

@@ -235,7 +235,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await page.goto(base);
   await page.waitForSelector('.home h1');
   ok('home abre na raiz', /Converse, jogue/.test(await page.textContent('.home h1')));
-  ok('home: marca Square.', (await page.textContent('.home header a')).includes('Square.'));
+  ok('home: marca Shiqi', (await page.textContent('.home header a')).includes('Shiqi'));
   await page.screenshot({ path: OUT + '/0-home.png', fullPage: true });
   await page.click('.home nav a[data-act="soon"]');
   await page.waitForSelector('#toast .toast');
@@ -294,20 +294,20 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   ok('barra do usuário mostra o nome do perfil', ((await page.getAttribute('.ub-me', 'aria-label')) || '').includes('Tester Um'));
   ok('menu tem trilho, coluna, barra do usuário e Ativo agora', (await page.locator('.x-rail, .x-col, .x-ub, .x-act').count()) === 4);
   const colTxt = await page.textContent('.x-col');
-  ok('coluna tem Amigos, Square Plus, Loja, Missões e Mensagens diretas', ['Amigos', 'Square Plus', 'Loja', 'Missões', 'Mensagens diretas', 'Encontre ou comece uma conversa'].every((t) => colTxt.includes(t)));
-  ok('DM oficial da Square aparece', /OFICIAL/.test(colTxt) && /Mensagem Oficial da Square/.test(colTxt));
+  ok('coluna tem Amigos, Shiqi Plus, Loja, Missões e Mensagens diretas', ['Amigos', 'Shiqi Plus', 'Loja', 'Missões', 'Mensagens diretas', 'Encontre ou comece uma conversa'].every((t) => colTxt.includes(t)));
+  ok('DM oficial da Shiqi aparece', /OFICIAL/.test(colTxt) && /Mensagem Oficial da Shiqi/.test(colTxt));
   ok('trilho tem Criar, Explorar e Baixar', (await page.locator('.x-rail .rt.act').count()) === 3);
   ok('Ativo agora mostra "está quieto"', /Por enquanto, está quieto/.test(await page.textContent('.x-act')));
   ok('sem amigos: a lista convida a adicionar', /ainda não tem amigos/.test(await page.textContent('#flist')));
   await page.waitForTimeout(600);
   await page.screenshot({ path: OUT + '/2-app.png' });
-  // páginas Loja / Missões / Square oficial
+  // páginas Loja / Missões / Shiqi oficial
   await page.click('.cn:has-text("Loja")');
   await page.waitForSelector('.lj-h');
   const lh = await page.textContent('.lj-h');
   ok('Loja abre com abas Destaques, Navegar, Loja de Pontos e Lojas do jogo', ['Destaques', 'Navegar', 'Loja de Pontos', 'Lojas do jogo'].every((t) => lh.includes(t)));
   await page.click('[data-act="go-official"]');
-  ok('mensagem oficial da Square abre e não aceita resposta', /Bem-vindo/.test(await page.textContent('.x-chat')) && (await page.locator('.x-chat .cbar input[disabled]').count()) === 1);
+  ok('mensagem oficial da Shiqi abre e não aceita resposta', /Bem-vindo/.test(await page.textContent('.x-chat')) && (await page.locator('.x-chat .cbar input[disabled]').count()) === 1);
   await page.click('.cn:has-text("Amigos")');
   // status: Disponível / Ausente / Não perturbe / Invisível
   await page.click('.ub-me');
@@ -358,7 +358,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   // criar servidor em passos (primeiro servidor)
   await page.click('[data-act="srv-new"]');
   await page.waitForSelector('.modal.sn');
-  ok('primeiro servidor: "Crie seu primeiro servidor na Square" com molde e convite', /Crie seu primeiro servidor/.test(await page.textContent('.modal.sn')) && /Começar de um molde/.test(await page.textContent('.modal.sn')) && /Já tem um convite/.test(await page.textContent('.modal.sn')));
+  ok('primeiro servidor: "Crie seu primeiro servidor na Shiqi" com molde e convite', /Crie seu primeiro servidor/.test(await page.textContent('.modal.sn')) && /Começar de um molde/.test(await page.textContent('.modal.sn')) && /Já tem um convite/.test(await page.textContent('.modal.sn')));
   await page.click('[data-act="sn-tpl"][data-k="own"]');
   ok('passo 2: "Conte-nos mais sobre o seu servidor"', /Conte-nos mais/.test(await page.textContent('.modal.sn')));
   await page.click('.sn-back');
@@ -505,7 +505,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
     if (k === 'frame') await page.screenshot({ path: OUT + '/3c-moldura.png' });
     await page.click('#perfroot .pmf [data-pf="mclose"] >> nth=0');
   }
-  // modo prévia do Square Plus
+  // modo prévia do Shiqi Plus
   await page.click('#perfroot [data-pf="pvon"]');
   await page.click('#perfroot [data-pf="decor"]');
   await page.click('#perfroot .mgrid.sc .mit >> nth=1');
@@ -513,7 +513,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await page.click('#perfroot .pmf [data-pf="mapply"]');
   ok('prévia: decoração aparece no cartão', (await page.locator('#perfroot .pcard .mpd .ja').count()) > 0);
   await page.click('#perfroot .pf-save [data-pf="save"]');
-  ok('prévia: salvar pede assinatura ou sair da prévia', /Assinar o Square Plus/.test(await page.textContent('#perfroot')) && /Sair do modo prévia/.test(await page.textContent('#perfroot')));
+  ok('prévia: salvar pede assinatura ou sair da prévia', /Assinar o Shiqi Plus/.test(await page.textContent('#perfroot')) && /Sair do modo prévia/.test(await page.textContent('#perfroot')));
   await page.screenshot({ path: OUT + '/3e-previa.png' });
   await page.click('#perfroot .pm [data-pf="pvoff"]');
   ok('sair da prévia tira os itens', (await page.locator('#perfroot .pcard .mpd .ja').count()) === 0 && (await page.locator('#perfroot .pf-save').count()) === 0);
@@ -553,7 +553,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   ok('salvar grava bio, status e cor no banco', world.profiles[0].bio === 'Minha bio de teste' && world.profiles[0].status_text === 'Programando' && world.profiles[0].accent.toLowerCase() === '#78be9d');
   await page.click('#perfroot [data-pf="close"]');
   ok('fechar o editor', (await page.locator('#perfroot .pwin').count()) === 0);
-  // loja, missões e Square Plus
+  // loja, missões e Shiqi Plus
   await page.click('.x-rail .rt.home');
   await page.click('.cn:has-text("Loja")');
   await page.waitForSelector('#lj .jhero');
@@ -583,9 +583,9 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await page.waitForSelector('#lj .jqg');
   ok('Missões lista os cartões', (await page.locator('#lj .jq').count()) >= 12);
   await page.screenshot({ path: OUT + '/4d-missoes.png' });
-  await page.click('.cn:has-text("Square Plus")');
+  await page.click('.cn:has-text("Shiqi Plus")');
   await page.waitForSelector('#lj .jp-hero');
-  ok('Square Plus mostra planos e comparação', /ESCOLHA SEU PLANO/.test(await page.textContent('#lj')) && (await page.locator('#lj .jtr').count()) > 10);
+  ok('Shiqi Plus mostra planos e comparação', /ESCOLHA SEU PLANO/.test(await page.textContent('#lj')) && (await page.locator('#lj .jtr').count()) > 10);
   await page.screenshot({ path: OUT + '/4e-plus.png', fullPage: false });
   // celular: nenhuma tela pode ter rolagem horizontal
   for (const [w, h] of [[360, 740], [768, 1024]]) {
@@ -600,7 +600,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
     await go(''); await wide('Início');
     await go('Loja'); await wide('Loja');
     await go('Missões'); await wide('Missões');
-    await go('Square Plus'); await wide('Plus');
+    await go('Shiqi Plus'); await wide('Plus');
   }
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.click('.x-rail .rt[data-act="srv-open"] >> nth=0');
@@ -766,7 +766,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   // amigos e conversas privadas (menu novo)
   await page.click('.x-rail .rt.home');
   await page.waitForSelector('#flist');
-  ok('ícone da Square no trilho volta para Amigos', /Amigos/.test(await page.textContent('.x-tt')));
+  ok('ícone da Shiqi no trilho volta para Amigos', /Amigos/.test(await page.textContent('.x-tt')));
   await page.click('[data-act="ftab"][data-k="add"]');
   await page.fill('#af-user', '@Marina');
   await page.fill('#af-note', 'Oi, sou eu!');
@@ -879,7 +879,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await page.waitForSelector('#setroot .set');
   ok('Configurações abrem pela engrenagem da barra do usuário', (await page.locator('#setroot .snavb').count()) >= 16 && /Informações da conta/.test(await page.textContent('#setroot .scontent')));
   const navText = await page.textContent('#setroot .snavl');
-  ok('menu lateral tem Conta, Dados, Mensagens, Notificações, Plus, Voz, Aparência, Apps, Desenvolvedor e Sair', ['Conta', 'Privacidade e segurança', 'Permissões de mensagens', 'Notificações', 'Square Plus', 'Impulso de servidor', 'Voz e vídeo', 'Aparência', 'Acessibilidade', 'Sistema', 'Idioma e Horário', 'Apps conectados', 'Desenvolvedor', 'Sair'].every((t) => new RegExp(t).test(navText)));
+  ok('menu lateral tem Conta, Dados, Mensagens, Notificações, Plus, Voz, Aparência, Apps, Desenvolvedor e Sair', ['Conta', 'Privacidade e segurança', 'Permissões de mensagens', 'Notificações', 'Shiqi Plus', 'Impulso de servidor', 'Voz e vídeo', 'Aparência', 'Acessibilidade', 'Sistema', 'Idioma e Horário', 'Apps conectados', 'Desenvolvedor', 'Sair'].every((t) => new RegExp(t).test(navText)));
   ok('e-mail aparece escondido até clicar em Mostrar', /\*+@/.test(await page.textContent('#setroot .semail')));
   await page.click('#setroot [data-sa="show-email"]');
   ok('Mostrar revela o e-mail', !/\*{3}/.test(await page.textContent('#setroot .semail')));
@@ -918,7 +918,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   await page.click('#setroot [data-sa="modal-close"]');
   await page.click('#setroot [data-sa="page"][data-id="plus"]'); await page.click('#setroot .splus-hero [data-sa="pay"]');
   await page.waitForSelector('#toast .toast');
-  ok('Square Plus: pagamento avisa que ainda não existe', /ainda não/.test(await page.textContent('#toast')));
+  ok('Shiqi Plus: pagamento avisa que ainda não existe', /ainda não/.test(await page.textContent('#toast')));
   await page.keyboard.press('Escape');
   ok('Esc fecha as Configurações', (await page.locator('#setroot .set').count()) === 0);
 

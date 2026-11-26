@@ -1,4 +1,4 @@
-/* Square. — Configurações (janela própria). Design claro e translúcido do projeto. */
+/* Shiqi. — Configurações (janela própria). Design claro e translúcido do projeto. */
 body.set-open{overflow:hidden}
 #setroot{position:fixed;inset:0;z-index:60}
 div.sback{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:28px;background:rgba(29,29,34,.42);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
@@ -189,7 +189,7 @@ button.sback:hover,.sclose:hover{background:rgba(29,29,34,.08)}
 .skk{display:flex;gap:4px}
 .skk kbd{min-width:26px;padding:3px 7px;border-radius:6px;background:#fff;border:1px solid rgba(29,29,34,.16);border-bottom-width:2px;font:700 10.5px Inter,sans-serif;text-align:center;color:var(--ink2)}
 
-/* ---- Square Plus (planos) ---- */
+/* ---- Shiqi Plus (planos) ---- */
 .splus-hero{position:relative;overflow:hidden;margin:0 0 18px;padding:44px 24px 32px;border-radius:22px;text-align:center;background:linear-gradient(135deg,#D6C8F0 0%,#F9D0DA 55%,#C4E4EE 100%)}
 .splus-hero h2{margin:0 auto 12px;max-width:440px;font-family:'Plus Jakarta Sans',Inter,sans-serif;font-size:28px;font-weight:800;line-height:1.12;letter-spacing:-.02em}
 .splus-hero p{margin:0 0 20px;color:var(--ink2)}

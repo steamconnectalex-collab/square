@@ -1,4 +1,4 @@
-# Square.
+# Shiqi.
 
 Plataforma de chat e comunidade em português. Site estático na Vercel, backend no Supabase, e-mails pelo Resend.
 

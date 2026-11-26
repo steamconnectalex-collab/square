@@ -2,7 +2,7 @@
 'use strict';
 
 /* =====================================================================
-   Square. — Perfil do usuário (editor). Abre por "Editar perfil" (window.SQ_PERFIL.open()).
+   Shiqi. — Perfil do usuário (editor). Abre por "Editar perfil" (window.SQ_PERFIL.open()).
    Grava no banco: nome exibido, status, bio, cor da faixa e foto.
    Guardado só neste navegador (por conta): pronomes, "última música", nota, widgets e fotos recentes.
    Decorações, efeitos, molduras e placas são itens da Loja; como ainda não há compra, ficam bloqueados.
@@ -59,18 +59,18 @@ function leftHTML() {
   const slot = (act, inner, cls, msg) => `<button type="button" class="pslot ${cls || ''}" data-pf="${act}"${msg ? ` data-msg="${esc(msg)}"` : ''}>${inner}</button>`;
   return `<aside class="pf-left" aria-label="Editar perfil">
   <div class="pf-lh"><button type="button" class="pf-prof" data-pf="profmenu" aria-haspopup="true" aria-expanded="${!!P.profMenu}">Perfil principal ${ic(I.d, 14, 'currentColor', 2.2)}</button><button type="button" class="hov sq pf-col" data-pf="collapse" aria-label="${P.collapsed ? 'Mostrar' : 'Recolher'} editor" title="${P.collapsed ? 'Mostrar' : 'Recolher'}">${ic(P.collapsed ? I.rr : I.ll, 17, '#55555F', 2)}</button>
-  ${P.profMenu ? `<div class="pop pf-pm" role="menu"><button type="button" class="pi" data-pf="profmenu"><span class="tx"><b>Perfil principal</b></span></button><button type="button" class="pi" data-pf="soon" data-msg="Perfis por servidor chegam em breve, junto com o Square Plus"><span class="tx"><b>Perfis por servidor</b><small>Square Plus</small></span></button></div>` : ''}</div>
+  ${P.profMenu ? `<div class="pop pf-pm" role="menu"><button type="button" class="pi" data-pf="profmenu"><span class="tx"><b>Perfil principal</b></span></button><button type="button" class="pi" data-pf="soon" data-msg="Perfis por servidor chegam em breve, junto com o Shiqi Plus"><span class="tx"><b>Perfis por servidor</b><small>Shiqi Plus</small></span></button></div>` : ''}</div>
   <div class="pf-ls">
-  <button type="button" class="pf-prev${P.pv ? ' on' : ''}" data-pf="${P.pv ? 'pvoff' : 'pvon'}">${ic(I.coin, 15, '#fff', 1.8)} ${P.pv ? 'Sair da prévia' : 'Prévia do Square Plus'}</button>
+  <button type="button" class="pf-prev${P.pv ? ' on' : ''}" data-pf="${P.pv ? 'pvoff' : 'pvon'}">${ic(I.coin, 15, '#fff', 1.8)} ${P.pv ? 'Sair da prévia' : 'Prévia do Shiqi Plus'}</button>
   <h4>Placa de identificação</h4>${slot('plate', `<span class="pplate"><i class="pdot"></i><i class="pbar"></i><span class="padd">${ic(I.plus, 13, '#1D1D22', 2.4)}</span></span>`, 'wide')}
   <h4>Avatar e decorações</h4><div class="pf-two">${slot('img', `<span class="pcell">${decAv(64)}</span>`)}${slot('decor', `<span class="pcell dash">${avatarBox(56, 'dim')}<span class="padd c">${ic(I.plus, 13, '#1D1D22', 2.4)}</span></span>`)}</div>
   <h4>Cor da faixa</h4><div class="pf-colwrap"><button type="button" class="pcolor" data-pf="picker" style="background:${esc(P.accent)}" aria-label="Escolher a cor da faixa" aria-expanded="${!!P.picker}"></button>${P.picker ? pickerHTML() : ''}</div>
   <h4>Efeitos de perfil e molduras</h4><div class="pf-two">${slot('effect', `<span class="pcell card">${ic(I.plus, 13, '#1D1D22', 2.4)}</span>`)}${slot('frame', `<span class="pcell card">${ic(I.plus, 13, '#1D1D22', 2.4)}</span>`)}</div>
   <h4>Estilo do nome exibido <em class="pnew">NOVO</em></h4><small class="phint">Experimente a fonte de um jogo de aventura</small>
-  ${slot('soon', `<span class="pstyle">${esc(P.name || 'nome')}</span>`, 'wide', 'Os estilos de nome chegam com o Square Plus')}
-  <div class="pf-lock">${ic(I.lock, 16, '#1D1D22', 2)}<h5>Eleve seu visual, somente com o Square Plus</h5>
+  ${slot('soon', `<span class="pstyle">${esc(P.name || 'nome')}</span>`, 'wide', 'Os estilos de nome chegam com o Shiqi Plus')}
+  <div class="pf-lock">${ic(I.lock, 16, '#1D1D22', 2)}<h5>Eleve seu visual, somente com o Shiqi Plus</h5>
     <h4>Tema de perfil</h4><span class="pthemeb"><i></i><i></i></span><h4>Faixa do perfil</h4><span class="pbanner"></span><h4>Avatar animado</h4><span class="panim">${avatarBox(56, 'dim')}</span>
-    <button type="button" class="pf-plus" data-pf="plus">${ic(I.coin, 15, 'currentColor', 1.8)} Obter o Square Plus</button></div>
+    <button type="button" class="pf-plus" data-pf="plus">${ic(I.coin, 15, 'currentColor', 1.8)} Obter o Shiqi Plus</button></div>
   </div></aside>`;
 }
 
@@ -149,10 +149,10 @@ function itemsModal(kind) {
   const locked = !!sel && !P.pv, isPlus = m.sel && m.sel.startsWith('plus:');
   return `<div class="pm wide" role="dialog" aria-modal="true" aria-label="${c[0]}"><div class="pmh"><h2>${c[0]}</h2><button type="button" class="hov sq" data-pf="mclose" aria-label="Fechar">${ic(I.x, 18, '#55555F', 2)}</button></div>
   <div class="pmc"><div class="pml"><h3>${c[1]}</h3><div class="mgrid">${none}</div>
-  ${extra.length ? `<h3>Exclusivo do Square Plus</h3><div class="mgrid">${extra.map((x) => tile(x, true)).join('')}</div>` : ''}
+  ${extra.length ? `<h3>Exclusivo do Shiqi Plus</h3><div class="mgrid">${extra.map((x) => tile(x, true)).join('')}</div>` : ''}
   <h3>${c[2]}</h3><div class="mgrid sc">${shopItems(kind).map((x) => tile(x)).join('')}</div></div>
-  <div class="pmr">${previewOf(kind, sel)}${sel ? `<div class="mdesc"><b>${esc(sel.n)}</b><span>${P.pv ? 'Modo prévia: só você vê, nada disso é salvo.' : isPlus ? 'Exclusivo do Square Plus. Assine para usar este item.' : 'Acesse a Loja para comprar e coletar este item.'}</span></div>` : ''}</div></div>
-  <div class="pmf"><button type="button" class="mbtn ghost" data-pf="mclose">Cancelar</button>${locked ? `<button type="button" class="mbtn" data-pf="${isPlus ? 'plus' : 'shop'}">${isPlus ? 'Obter o Square Plus' : 'Ir para a Loja'}</button>` : `<button type="button" class="mbtn" data-pf="${P.pv ? 'mapply' : 'mclose'}">Aplicar</button>`}</div></div>`;
+  <div class="pmr">${previewOf(kind, sel)}${sel ? `<div class="mdesc"><b>${esc(sel.n)}</b><span>${P.pv ? 'Modo prévia: só você vê, nada disso é salvo.' : isPlus ? 'Exclusivo do Shiqi Plus. Assine para usar este item.' : 'Acesse a Loja para comprar e coletar este item.'}</span></div>` : ''}</div></div>
+  <div class="pmf"><button type="button" class="mbtn ghost" data-pf="mclose">Cancelar</button>${locked ? `<button type="button" class="mbtn" data-pf="${isPlus ? 'plus' : 'shop'}">${isPlus ? 'Obter o Shiqi Plus' : 'Ir para a Loja'}</button>` : `<button type="button" class="mbtn" data-pf="${P.pv ? 'mapply' : 'mclose'}">Aplicar</button>`}</div></div>`;
 }
 function imgModal() {
   const rec = P.x.recents || [];
@@ -163,14 +163,14 @@ function imgModal() {
   <h3>Avatares Recentes</h3><small class="phint">Acesse seus envios de Avatar mais recentes 6.</small>
   <div class="prec">${Array.from({ length: 6 }, (_, i) => (rec[i] ? `<button type="button" class="prc" data-pf="recent" data-i="${i}" aria-label="Usar avatar recente ${i + 1}"><img src="${esc(rec[i])}" alt=""></button>` : `<span class="prc empty">${ic(I.user, 30, '#9A9AA7', 1.6)}</span>`)).join('')}</div>
   ${(me().avatar || P.pendingAvatar) ? '<button type="button" class="mbtn ghost sm" data-pf="rmavatar">Remover foto</button>' : ''}
-  <div class="pplus">Anime seu avatar com <a href="#" data-pf="plus">Square Plus</a><button type="button" class="pf-plus wh" data-pf="plus">${ic(I.coin, 14, 'currentColor', 1.8)} Obter o Square Plus</button></div></div></div>`;
+  <div class="pplus">Anime seu avatar com <a href="#" data-pf="plus">Shiqi Plus</a><button type="button" class="pf-plus wh" data-pf="plus">${ic(I.coin, 14, 'currentColor', 1.8)} Obter o Shiqi Plus</button></div></div></div>`;
 }
 function cropModal() {
   const c = P.crop;
   return `<div class="pm" role="dialog" aria-modal="true" aria-label="Editar imagem"><div class="pmh"><h2>Editar imagem</h2><button type="button" class="hov sq" data-pf="mclose" aria-label="Fechar">${ic(I.x, 18, '#55555F', 2)}</button></div>
   <div class="pmc one"><div class="pcrop"><canvas id="pf-cv" width="340" height="280" aria-label="Arraste para posicionar a imagem"></canvas></div>
   <div class="pzoom">${ic(I.img, 13, '#55555F', 1.8)}<input type="range" id="pf-zoom" min="100" max="400" value="${Math.round(c.z * 100)}" aria-label="Zoom">${ic(I.img, 19, '#55555F', 1.8)}<button type="button" class="hov sq" data-pf="rot" aria-label="Girar" title="Girar">${ic(I.rot, 17, '#55555F', 1.9)}</button></div>
-  <div class="pplus">Anime seu avatar com <a href="#" data-pf="plus">Square Plus</a><button type="button" class="pf-plus wh" data-pf="plus">${ic(I.coin, 14, 'currentColor', 1.8)} Obter o Square Plus</button></div></div>
+  <div class="pplus">Anime seu avatar com <a href="#" data-pf="plus">Shiqi Plus</a><button type="button" class="pf-plus wh" data-pf="plus">${ic(I.coin, 14, 'currentColor', 1.8)} Obter o Shiqi Plus</button></div></div>
   <div class="pmf split"><button type="button" class="plnk" data-pf="creset">Redefinir</button><span class="tsp"></span><button type="button" class="mbtn ghost" data-pf="mclose">Cancelar</button><button type="button" class="mbtn" data-pf="capply">Aplicar</button></div></div>`;
 }
 function widgetModal() {
@@ -187,7 +187,7 @@ function modalHTML() {
 
 function warnHTML() {
   if (!P.warn) return '';
-  return `<div class="pmback"><div class="pm" role="alertdialog" aria-modal="true" aria-label="Itens do modo prévia"><div class="pmh"><h2>Não dá para salvar com a prévia</h2></div><div class="pmc one"><p>Você está usando itens do Square Plus só para visualizar. Para salvar o perfil com eles, assine o Square Plus. Ou saia do modo prévia para salvar o resto.</p></div><div class="pmf"><button type="button" class="mbtn ghost" data-pf="pvoff">Sair do modo prévia</button><button type="button" class="mbtn" data-pf="plus">Assinar o Square Plus</button></div></div></div>`;
+  return `<div class="pmback"><div class="pm" role="alertdialog" aria-modal="true" aria-label="Itens do modo prévia"><div class="pmh"><h2>Não dá para salvar com a prévia</h2></div><div class="pmc one"><p>Você está usando itens do Shiqi Plus só para visualizar. Para salvar o perfil com eles, assine o Shiqi Plus. Ou saia do modo prévia para salvar o resto.</p></div><div class="pmf"><button type="button" class="mbtn ghost" data-pf="pvoff">Sair do modo prévia</button><button type="button" class="mbtn" data-pf="plus">Assinar o Shiqi Plus</button></div></div></div>`;
 }
 function saveBar() {
   if (!dirty() && !hasAp()) return '';
@@ -200,7 +200,7 @@ function paint() {
   const act = ae && ae.id && root.contains(ae) ? { id: ae.id, s: typeof ae.selectionStart === 'number' ? [ae.selectionStart, ae.selectionEnd] : null } : null;
   ['pf-scroll', 'pf-lscroll'].forEach((id) => { const e = document.getElementById(id); if (e) keep[id] = e.scrollTop; });
   root.innerHTML = `<div class="pback"><div class="pwin${P.collapsed ? ' col' : ''}" role="dialog" aria-modal="true" aria-label="Editar perfil"><button type="button" class="pclose" data-pf="close" aria-label="Fechar">${ic(I.x, 18, '#55555F', 2)}</button>
-  ${P.pv ? '<div class="pf-pvbar" role="status"><span>Modo prévia do Square Plus: só você vê, nada é salvo.</span><button type="button" class="plnk" data-pf="pvoff">Sair da prévia</button></div>' : ''}<div class="pcols" id="pf-scroll">${leftHTML()}<div class="pf-rest">${cardHTML()}${rightHTML()}</div></div>${saveBar()}</div>${modalHTML()}${warnHTML()}</div>`;
+  ${P.pv ? '<div class="pf-pvbar" role="status"><span>Modo prévia do Shiqi Plus: só você vê, nada é salvo.</span><button type="button" class="plnk" data-pf="pvoff">Sair da prévia</button></div>' : ''}<div class="pcols" id="pf-scroll">${leftHTML()}<div class="pf-rest">${cardHTML()}${rightHTML()}</div></div>${saveBar()}</div>${modalHTML()}${warnHTML()}</div>`;
   Object.keys(keep).forEach((id) => { const e = document.getElementById(id); if (e) e.scrollTop = keep[id]; });
   if (act) { const e = document.getElementById(act.id); if (e) { e.focus(); if (act.s && e.setSelectionRange) { try { e.setSelectionRange(act.s[0], act.s[1]); } catch (er) { /* tipo sem seleção */ } } } }
   if (P.modal && P.modal.k === 'crop') drawCrop();
@@ -285,7 +285,7 @@ function onClick(e) {
     case 'soon': toast(el.dataset.msg || 'Isso chega em breve'); break;
     case 'plus': goTo('plus'); break;
     case 'shop': goTo('shop'); break;
-    case 'plusgif': toast('Escolher GIF faz parte do Square Plus'); break;
+    case 'plusgif': toast('Escolher GIF faz parte do Shiqi Plus'); break;
     case 'profmenu': P.profMenu = !P.profMenu; paint(); break;
     case 'collapse': P.collapsed = !P.collapsed; paint(); break;
     case 'tab': P.tab = el.dataset.k; paint(); break;

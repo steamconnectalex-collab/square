@@ -1,4 +1,4 @@
-// Square — backend de acesso à conta (Edge Function "auth")
+// Shiqi — backend de acesso à conta (Edge Function "auth")
 // Rotas (todas POST, exceto /health): signup, verify, resend, login, login/totp, forgot, reset,
 // email/change/request, email/change/confirm,
 // account/deactivate, account/delete, mfa/recovery, mfa/disable

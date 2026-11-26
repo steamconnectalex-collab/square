@@ -4,10 +4,10 @@ window.SQ_HOME = `
 <div aria-hidden="true" style="position: absolute; top: -240px; left: -180px; width: 780px; height: 780px; border-radius: 50%; background: radial-gradient(closest-side, rgba(214,200,240,.55), rgba(214,200,240,0)); pointer-events: none"></div>
 <div style="position: relative; max-width: 1200px; margin: 0 auto; padding: 0 24px; box-sizing: border-box">
 <header style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 32px; padding: 24px 0">
-<a href="#home" aria-label="Square." style="display: flex; align-items: center; gap: 10px; padding: 7px 18px 7px 8px; background: rgba(255,255,255,.85); border: 1px solid rgba(29,29,34,.08); border-radius: 999px; text-decoration: none; color: #1D1D22; font-family: 'Plus Jakarta Sans', Inter, sans-serif; font-weight: 800; font-size: 18px; box-shadow: 0 8px 24px rgba(29,29,34,.07)">
+<a href="#home" aria-label="Shiqi" style="display: flex; align-items: center; gap: 10px; padding: 7px 18px 7px 8px; background: rgba(255,255,255,.85); border: 1px solid rgba(29,29,34,.08); border-radius: 999px; text-decoration: none; color: #1D1D22; font-family: 'Plus Jakarta Sans', Inter, sans-serif; font-weight: 800; font-size: 18px; box-shadow: 0 8px 24px rgba(29,29,34,.07)">
 <span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 11px; background: #44444C; display: flex; align-items: center; justify-content: center">
 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-8l-5 4v-4H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"></path></svg>
-</span> Square. </a>
+</span> Shiqi </a>
 <nav aria-label="Principal" style="flex: 1 1 auto; display: flex; flex-wrap: wrap; justify-content: center; gap: 0 28px">
 <a href="#home" data-act="soon" style="padding: 12px 0; color: #33333A; text-decoration: none; font-size: 15px; font-weight: 600">Baixar</a>
 <a href="#home" data-act="soon" style="padding: 12px 0; color: #33333A; text-decoration: none; font-size: 15px; font-weight: 600">Premium</a>
@@ -552,7 +552,7 @@ window.SQ_HOME = `
 <div style="max-width: 1200px; margin: 0 auto; padding: 72px 24px 0; box-sizing: border-box">
 <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 48px 32px">
 <div style="flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: 28px">
-<a href="#home" data-act="soon" aria-label="Square." style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 14px; background: #44444C">
+<a href="#home" data-act="soon" aria-label="Shiqi" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 14px; background: #44444C">
 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-8l-5 4v-4H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"></path></svg>
 </a>
 <div style="display: flex; flex-direction: column; gap: 10px">
@@ -614,11 +614,11 @@ window.SQ_HOME = `
 </div>
 </div>
 <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; margin-top: 56px; padding-top: 20px; border-top: 1px solid rgba(29,29,34,.1); font-size: 13px; color: #55555F">
-<span>© 2026 Square. Todos os direitos reservados.</span>
+<span>© 2026 Shiqi Todos os direitos reservados.</span>
 <span>Feito para quem joga junto.</span>
 </div>
 <div aria-hidden="true" style="margin-top: 32px; height: clamp(90px, 15vw, 220px); overflow: hidden">
-<div style="font-family: 'Plus Jakarta Sans', Inter, sans-serif; font-weight: 800; font-size: clamp(120px, 24vw, 340px); line-height: 1; letter-spacing: -0.04em; color: rgba(29,29,34,.08); white-space: nowrap">Square.</div>
+<div style="font-family: 'Plus Jakarta Sans', Inter, sans-serif; font-weight: 800; font-size: clamp(120px, 24vw, 340px); line-height: 1; letter-spacing: -0.04em; color: rgba(29,29,34,.08); white-space: nowrap">Shiqi</div>
 </div>
 </div>
 </footer>

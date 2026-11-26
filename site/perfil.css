@@ -1,4 +1,4 @@
-/* Square. — Editor de perfil (janela própria). Design claro e translúcido do projeto. */
+/* Shiqi. — Editor de perfil (janela própria). Design claro e translúcido do projeto. */
 body.perfil-open{overflow:hidden}
 #perfroot{position:fixed;inset:0;z-index:65}
 #perfroot[hidden]{display:none}
@@ -211,7 +211,7 @@ body.perfil-open{overflow:hidden}
   .pimg{height:150px}
 }
 
-/* modo prévia do Square Plus */
+/* modo prévia do Shiqi Plus */
 .pf-prev.on{background:#C77DBA}
 .pf-pvbar{display:flex;align-items:center;gap:12px;justify-content:center;padding:8px 14px;background:#EFE6FA;color:#3B3B96;font-size:13px;font-weight:600;flex-wrap:wrap}
 .pcard>.pvfx{border-radius:18px;overflow:hidden;z-index:0}
