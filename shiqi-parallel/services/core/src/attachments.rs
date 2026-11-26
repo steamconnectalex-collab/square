@@ -46,10 +46,7 @@ pub fn validate_image(
         Some(ImageFormat::Jpeg)
     } else if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
         Some(ImageFormat::Png)
-    } else if bytes.len() >= 12
-        && &bytes[0..4] == b"RIFF"
-        && &bytes[8..12] == b"WEBP"
-    {
+    } else if bytes.len() >= 12 && &bytes[0..4] == b"RIFF" && &bytes[8..12] == b"WEBP" {
         Some(ImageFormat::Webp)
     } else {
         None
@@ -112,9 +109,6 @@ mod tests {
     fn accepts_exact_storage_size_limit() {
         let mut jpeg = vec![0; MAX_ATTACHMENT_BYTES];
         jpeg[..3].copy_from_slice(&[0xFF, 0xD8, 0xFF]);
-        assert_eq!(
-            validate_image(&jpeg, "image/jpeg"),
-            Ok(ImageFormat::Jpeg)
-        );
+        assert_eq!(validate_image(&jpeg, "image/jpeg"), Ok(ImageFormat::Jpeg));
     }
 }
