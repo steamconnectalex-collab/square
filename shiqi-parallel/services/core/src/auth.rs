@@ -120,8 +120,7 @@ impl SupabaseJwtVerifier {
 
         let token = decode::<SupabaseClaims>(token, &decoding_key, &validation)
             .map_err(|_| AuthError::InvalidToken)?;
-        if uuid::Uuid::parse_str(&token.claims.sub).is_err()
-            || token.claims.role != "authenticated"
+        if uuid::Uuid::parse_str(&token.claims.sub).is_err() || token.claims.role != "authenticated"
         {
             return Err(AuthError::InvalidToken);
         }
@@ -142,8 +141,7 @@ impl SupabaseJwtVerifier {
         let mut cache = self.cache.write().await;
         if let Some(cached) = cache.as_ref() {
             let fresh = cached.expires_at > Instant::now();
-            let refresh_recent =
-                cached.refreshed_at.elapsed() < UNKNOWN_KID_REFRESH_COOLDOWN;
+            let refresh_recent = cached.refreshed_at.elapsed() < UNKNOWN_KID_REFRESH_COOLDOWN;
             if fresh && (!force_refresh || refresh_recent) {
                 return Ok(Arc::clone(&cached.keys));
             }
