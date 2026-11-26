@@ -1,4 +1,5 @@
 pub mod attachments;
+pub mod auth;
 
 use axum::{routing::get, Json, Router};
 use serde::Serialize;
