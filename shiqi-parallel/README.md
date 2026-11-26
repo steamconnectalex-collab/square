@@ -1,27 +1,30 @@
-# SHIQI — ambiente paralelo
+# SHIQI — migração paralela fiel ao original
 
-Esta pasta contém a nova implementação da SHIQI, isolada do projeto original.
+## Regra inegociável
+Esta pasta existe para migrar a tecnologia da SHIQI sem alterar sua experiência. O aplicativo original em `/site` é a fonte de verdade. Não redesenhar, simplificar, remover ou renomear telas, componentes, estilos, fluxos ou funcionalidades sem autorização expressa.
 
-## Princípios
-- Todo o trabalho desta versão fica dentro de `shiqi-parallel/`.
-- A branch de trabalho é `shiqi-parallel-dev`; não publicar nem mesclar na `main` sem autorização.
-- Não reutilizar banco, chaves, tokens, dados de usuários ou serviços de produção.
-- Começar com HTML, CSS e JavaScript sem build; reavaliar a arquitetura com evidências antes de adicionar frameworks ou serviços.
-- Interface e mensagens em português do Brasil.
+## Isolamento
+- Trabalhar somente na branch `shiqi-parallel-dev` e dentro de `shiqi-parallel/`.
+- Nunca alterar `main`, a publicação original, o banco original ou credenciais originais.
+- Serviços paralelos: projeto Vercel `shiqi-parallel`, projeto Supabase `ujdosskjycrdkcgsswfa`.
+- Nunca copiar dados de usuários nem chaves secretas.
+- Não promover para produção nem associar o domínio principal sem autorização.
 
-## Estrutura
-- `apps/web/`: protótipo web estático, pronto para Preview na Vercel.
-- `docs/ARCHITECTURE.md`: decisões e limites da arquitetura.
-- `task.md`: estado e próximos passos.
+## Fonte visual e funcional
+- O código original está em `site/` na raiz do repositório.
+- A cópia fiel para o Preview está em `apps/web/`: HTML, CSS, JS, páginas legais, favicon e configuração Vercel.
+- O conteúdo dos arquivos de interface foi copiado sem redesenho; somente `config.js` e a CSP foram ajustados para apontar ao Supabase paralelo.
+- A versão paralela deve manter os mesmos comportamentos, textos, navegação, componentes e aparência.
 
-## Rodar localmente
-Abra `apps/web/index.html` no navegador. Não há dependências ou etapa de build nesta primeira etapa.
+## Estado da migração
+- A interface original foi restaurada em `apps/web/`.
+- O frontend original usa HTML/CSS/JavaScript puros e um backend Supabase (Auth, PostgREST, Edge Function `auth`, Storage e Realtime).
+- O banco paralelo ainda contém um schema experimental simplificado de comunidades; ele NÃO representa o modelo completo da SHIQI e precisa ser substituído pelo schema fiel antes de testar o app conectado.
+- As 24 migrações versionadas originais não são um histórico totalmente autocontido: a migração 0002 documenta uma base anterior `servers`, `server_members`, `channels` e funções `create_server`/`is_server_member` que não está no diretório de migrações. Reconstruir essa base a partir do código e validar antes de aplicar.
+- A Edge Function original `auth` e o Resend paralelo ainda precisam ser implantados/configurados com credenciais exclusivas.
 
-## Estado atual
-- A autenticação por e-mail/senha usa o Supabase independente.
-- O cadastro cria automaticamente um perfil.
-- Usuários autenticados podem criar comunidades; cada comunidade recebe um canal `#geral`.
-- O banco tem RLS ativado para perfis, comunidades, membros, canais e mensagens.
-- Canais de texto e mensagens em tempo real já estão implementados para comunidades.
-- Mensagens diretas, amizades e chamadas de voz ainda não foram implementadas.
-- E-mail transacional próprio ainda não foi configurado; o fluxo depende das configurações de confirmação de e-mail do Supabase.
+## Arquitetura
+A tecnologia de destino deve ser decidida após mapear dependências e requisitos. Não migrar para React/Next.js, Rust ou outro framework por suposição. Se houver mudança de stack, comparar a interface e executar testes de regressão para provar equivalência.
+
+## Executar
+A raiz web da Vercel é `shiqi-parallel/apps/web`. A aplicação é estática e usa arquivos locais; abra `apps/web/index.html` para inspeção visual local.
