@@ -2,7 +2,7 @@
 
 > **Para a IA:** este arquivo é a fonte da verdade sobre o projeto. Leia tudo antes de começar e atualize **na hora** em que algo acontecer (regras completas em `agents.md`). Não duplique tarefas: procure aqui antes de adicionar.
 >
-> Última atualização: 2026-11-26 (segurança)
+> Última atualização: 2026-11-26 (domínio shiqi.com.br)
 
 ---
 
@@ -113,6 +113,8 @@ Fluxo de acesso: Home → "Entrar" → login (com painel de QR Code) → "Regist
 - **Correções de 2026-11-25 (pedido da pessoa):** (1) **barra do usuário** (canto inferior esquerdo) agora está presa ao fim da coluna esquerda, em vez de flutuar (acompanha zoom e tamanho da janela); botões e textos longos quebram linha em vez de passar para fora (`site/shell.css`). (2) **Volta de onde parou:** o site lembra tela/servidor/canal/conversa por conta (`sq.nav.<id>` no navegador) e reabre nela, no PC e no celular (`saveNav`/`fixSelection` em `app.js`). (3) **Foto em branco em Configurações** corrigida (usava o caminho em vez da imagem). (4) **Prévia do Square Plus** no editor de perfil: botão libera os itens da Loja só para ver (decoração, efeito, moldura, placa; "Aplicar" mostra no cartão); nada é salvo; ao tentar salvar aparece "Assinar o Square Plus" ou "Sair do modo prévia"; fechar o editor/configurações apaga a prévia. Testes 199 OK. Textos que passam do botão: apliquei uma regra geral; se ainda houver algum, mande print.
 
 - **Login novo (2026-11-25):** a tela de login perdeu o QR Code (agora só e-mail/usuário + senha). Nova opção discreta "Entrar com o código do autenticador": a pessoa digita e-mail/usuário + código de 6 números do Google Authenticator e entra sem senha, **só se a conta já ligou a verificação em duas etapas** (qualquer falha dá a mesma mensagem, para ninguém descobrir se há conta). Backend: rota `/login/totp` na função `auth` (versão 7 publicada; limites de tentativas). A ativação da 2FA (QR uma vez + 8 códigos de recuperação) já existia e agora aparece em Configurações > **Privacidade e segurança** > Segurança da conta (também continua em Conta). O login/aprovação por QR no backend e em `app.js` (`qr*`) ficaram sem uso na tela (podem ser apagados depois). Testes 201 OK. **Não testado ao vivo** (precisa de uma conta com 2FA ligada).
+
+- **2026-11-26 (tarde) — Domínio shiqi.com.br no ar + correções:** (1) DNS liberado: Vercel enxerga o registro A (`misconfigured: false`) e o Resend marcou o domínio como **verified** (DKIM, rsend, send). Função `auth` **v9** publicada com remetente padrão `Shiqi <nao-responda@shiqi.com.br>`, `SITE_URL` padrão `https://shiqi.com.br` e origens `shiqi.com.br`/`www` liberadas (CORS); e-mails agora saem com o nome Shiqi. (2) **Arquivo `supabase/functions/auth/index.ts` estava CORTADO no GitHub** (50 linhas, desde o commit 656d18c; o Supabase tinha a versão completa): restaurado a partir da versão publicada (v8) e conferido. (3) **Celular:** a lista de membros agora começa FECHADA (só abre no ícone de membros; no computador continua aberta); o site já lembrava a última tela/servidor/canal. (4) `desktop/main.js` e `offline.html` apontam para `https://shiqi.com.br/`; versão do app 1.0.2. Testes 201 OK. **Falta:** conferir o site em https://shiqi.com.br e testar cadastro com e-mail de amigo.
 
 ## Como publicar o site
 

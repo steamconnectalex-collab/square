@@ -3,7 +3,7 @@ const { app, BrowserWindow, Tray, Menu, session, shell, desktopCapturer, ipcMain
 const path = require('path');
 const fs = require('fs');
 
-const SITE = 'https://square-chat-silk.vercel.app/';
+const SITE = 'https://shiqi.com.br/';
 const HOST = new URL(SITE).host;
 const isMac = process.platform === 'darwin';
 

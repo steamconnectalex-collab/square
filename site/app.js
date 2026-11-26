@@ -861,7 +861,7 @@ function initApp() {
   SERVERS = [];
   A = {
     owner: uid, world: 'loading', werr: '', me: null, server: null, channel: null, voice: null, vpage: null, vst: {}, vfxOpen: false, muted: false, deafened: false,
-    panel: null, showMembers: true, onlineOpen: true, offlineOpen: true, draft: '', search: '', emojiOpen: false, menu: false,
+    panel: null, showMembers: !window.matchMedia('(max-width:1100px)').matches, onlineOpen: true, offlineOpen: true, draft: '', search: '', emojiOpen: false, menu: false,
     view: 'friends', ftab: 'all', af: { user: '', note: '', busy: false }, pop: null, drawer: false, csec: { text: false, voice: false }, devs: null, plan: 'free', gq: '', entered: false,
     threads: {}, rx: {}, tc: {}, rxPick: null, loaded: {}, loading: {}, more: {}, terr: {}, modal: null, poll: null, beat: null, tt: null, typing: {}, pollN: 0, friends: [], incoming: [], outgoing: [], known: {}, dmByUser: {}, dmUser: {}, blocked: new Set(), unread: {}, vrost: {}
   };
