@@ -4,6 +4,10 @@ Data da auditoria: 2026-11-26
 Branch: `shiqi-parallel-dev`
 Escopo: preparação isolada; nenhuma alteração no projeto original, em `main` ou em produção.
 
+## Decisão de escopo: música
+
+O usuário desistiu da funcionalidade de música. Excluir música do escopo do produto, schema alvo, testes e migração. A migration incompleta 0011 pode permanecer no repositório apenas como registro histórico, mas nunca deve ser aplicada. Não é necessário recuperar seu SQL. A remoção de referências/UI será feita somente na cópia paralela e preservando o restante da interface original.
+
 ## Decisão de segurança
 
 **Não aplicar em lote as migrations copiadas e não publicar a Edge Function de autenticação neste estado.**
@@ -18,69 +22,31 @@ O banco paralelo contém um schema mínimo de comunidades/chat que não é equiv
 5. O schema atual paralelo de `profiles` não é compatível com a definição da migration original 0001: campos obrigatórios e nomes/tipos diferem. A tabela `channels` também usa `community_id/channel_type`, enquanto o app original espera `server_id/kind`. Não tentar corrigir com renames ou drops sem um plano de compatibilidade.
 6. A Edge Function `supabase/functions/auth/index.ts` no branch paralelo é um stub de aproximadamente 50 linhas e termina após declarar a expressão de validação de e-mail. Não contém servidor HTTP, roteamento, handlers ou `Deno.serve`.
 7. **A fonte correspondente em `main` também é o mesmo stub incompleto** (com fallback de chave publicável e URL antigas). Portanto, não existe uma implementação completa dessa função no Git versionado que possa simplesmente ser copiada. As rotas descritas no cabeçalho e chamadas pelo frontend não estão implementadas nesse arquivo.
-8. O frontend original chama pelo menos `POST /signup` e `POST /login`; os fluxos adicionais anunciados no cabeçalho incluem verificação e reenvio de e-mail, TOTP, recuperação e redefinição de senha, alteração de e-mail, desativação/exclusão da conta e recuperação MFA.
+8. O frontend original chama endpoints de cadastro/login e também depende de fluxos de verificação, reenvio de e-mail, TOTP, QR e recuperação de senha; os contratos iniciais estão em `docs/AUTH_CONTRACT_INVENTORY.md`.
 9. A migration `0025_voz_10_participantes.sql` depende de colunas `muted`, `deafened`, `video` e `screen` adicionadas em `0023_estado_da_chamada.sql`. A sequência 0023 antes de 0025 é requisito. A migration 0025 não foi aplicada no banco paralelo.
-10. As migrations 0011 (música) e 0021 (eventos) são notas/resumos, não implementações completas. A sequência 0001–0025, isoladamente, não é um bootstrap reproduzível do banco original.
+10. A migration 0021 (eventos) é um resumo, não implementação completa. A migration 0011 (música) também é um resumo, mas música foi retirada do escopo pelo usuário e sua recuperação não é necessária.
 11. A auditoria de segurança do Supabase paralelo não retornou findings na consulta desta data. Isso não substitui testes funcionais, revisão das policies nem validação do schema.
 
 ## Restrições preservadas
 
 - Não tocar no projeto Supabase original nem no Supabase `ocfmaogjjvlqhueywrnz`.
 - Não alterar `main`, `site/`, `desktop/`, domínio principal ou produção.
-- Não substituir design, telas, componentes, fluxos ou regras de negócio.
+- Não substituir design, telas, componentes, fluxos ou regras de negócio, exceto a retirada da funcionalidade de música expressamente autorizada pelo usuário.
 - Não colocar `service_role`, segredos Resend ou outras credenciais privadas no navegador ou no Git.
-- Não criar contas por SQL em `auth.users`.
-- Não publicar Edge Functions antes de implementar e testar todos os contratos.
-- Não executar migrations históricas em lote no banco paralelo.
+- Não criar contas ou enviar e-mails sem preparação do fluxo e autorização específica.
+- Não aplicar migrations remotas enquanto schema, RLS, grants e dependências não forem comprovados.
+- Não executar o teste de voz com 10 participantes novamente, conforme instrução do usuário.
+- Não tentar contornar a janela de limite da Vercel para Preview.
 
+## Próximas ações
 
-## Contratos já identificados no frontend original
+1. Completar inventário de campos/operações e recuperar SQL ausente do schema base e eventos por fonte autorizada.
+2. Reconstruir auth com contratos explícitos e testes; o código versionado original é stub, não implementação funcional.
+3. Validar JWT do Supabase, ampliar testes e só depois integrar middleware Rust.
+4. Criar migrations incrementais compatíveis no projeto paralelo, sem apagar dados/objetos existentes e excluindo música.
+5. Executar regressão dos fluxos que permanecem no produto.
+6. Publicar Preview somente quando a limitação da Vercel permitir e houver autorização operacional.
 
-- Rotas HTTP chamadas pelo frontend de acesso: `/signup`, `/verify`, `/resend`, `/login`, `/login/totp`, `/forgot`, `/reset`, `/qr/create`, `/qr/info`, `/qr/poll` e `/qr/approve`.
-- Rotas adicionais declaradas no cabeçalho da função, mas que ainda precisam ser rastreadas até as telas/ações que as usam: `/email/change/request`, `/email/change/confirm`, `/account/deactivate`, `/account/delete`, `/mfa/recovery` e `/mfa/disable`.
-- RPCs já localizadas no código de configurações: `get_my_settings`, `save_my_settings`, `change_username`, `my_age_group` e `unsubscribe_marketing`.
-- A busca por chamadas diretas `.from(...)` não encontrou referências estáticas nos oito arquivos JS principais; isso indica que parte do acesso pode estar encapsulada em helpers/dinâmico e exige rastreamento adicional, não ausência de dependências.
-- Payloads e respostas de cada rota ainda precisam ser documentados individualmente antes de implementar/substituir o backend.
+## Estado desta auditoria
 
-## Plano de preparação
-
-### Fase A — inventário de contratos (em andamento)
-- Mapear todas as tabelas, colunas, funções RPC, triggers, policies, buckets e publicações Realtime usadas pelo frontend.
-- Identificar a definição histórica ausente de `servers/server_members/channels` e os contratos de criação/associação.
-- Mapear cada chamada HTTP da função `auth`, seus payloads, respostas e códigos de erro usados pela interface.
-- Recuperar uma implementação completa de autenticação de fonte autorizada; se não existir, reconstruí-la com testes de contrato, sem alterar a interface.
-
-### Fase B — schema paralelo compatível
-- Produzir migrations novas, aditivas e revisáveis, compatíveis com o schema paralelo já existente.
-- Manter as tabelas de comunidades atuais intactas; escolher explicitamente entre compatibilidade por colunas/visões ou schema isolado para servidores, após análise das consultas e policies.
-- Implementar RLS por recurso e relação, funções privilegiadas com `search_path` seguro e grants mínimos.
-- Recriar buckets e policies de Storage, triggers e tabelas auxiliares somente após inventário completo.
-- Aplicar primeiro em ambiente descartável/isolado e validar com queries de leitura e testes de permissão.
-
-### Fase C — autenticação
-- Definir contratos completos para signup, verify, resend, login, MFA/TOTP, recuperação, troca de e-mail e gestão de conta.
-- Configurar secrets apenas no Supabase paralelo; validar Resend sender e domínio sem expor a chave.
-- Testar JWT, expiração, sessão, rate limit persistente, códigos OTP, tentativas, cooldown, enumeração de contas e recuperação.
-- Não criar a conta de avaliação antes do fluxo seguro estar operacional.
-
-### Fase D — Rust
-- Manter Rust como serviço complementar até provar equivalência de autorização com Supabase Auth/RLS.
-- Adicionar testes de tokens assinados e casos negativos para issuer, audience, expiração, nbf, kid e rotação JWKS.
-- Validar upload com JWT e políticas Storage antes de expor endpoint; os validadores atuais ainda não fazem upload.
-- Não duplicar rate limits já impostos por triggers/RPC.
-- Manter Realtime e WebRTC existentes até medições justificarem substituição.
-
-### Fase E — regressão e segurança
-- Criar matriz de regressão para cada fluxo/tela original e comparar capturas/DOM/comportamentos com a versão paralela.
-- Testar cadastro, login, perfil, servidores, canais, mensagens, DMs, amizades, bloqueios, anexos, reações, threads, configurações, loja, QR, presença, MFA e conta.
-- Testar RLS com usuários distintos (owner, membro, não membro, anon) e confirmar negação por padrão.
-- Executar testes Rust, verificações estáticas, análise de dependências e Supabase Security Advisors.
-- Registrar riscos, resultados, rollback e critérios de aceite antes de qualquer proposta de promoção.
-
-## Fora do escopo desta rodada
-- Teste de carga da sala de voz com 10 participantes (já realizado pelo usuário).
-- Publicação do Preview Vercel enquanto o limite de deployments estiver bloqueado.
-- Qualquer merge para `main` ou publicação em produção.
-
-## Critério para considerar pronto
-Só recomendar implantação quando houver schema reproduzível e compatível, autenticação completa com testes de contrato, RLS/Storage validados, regressão funcional e visual aprovada, CI verde no commit final e plano de rollback testado.
+Nenhuma migration foi aplicada nesta etapa; nenhuma Edge Function foi publicada; nenhuma alteração foi feita no app original ou em produção.
