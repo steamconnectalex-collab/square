@@ -1,8 +1,4 @@
-use jsonwebtoken::{
-    decode, decode_header,
-    jwk::JwkSet,
-    Algorithm, DecodingKey, Validation,
-};
+use jsonwebtoken::{decode, decode_header, jwk::JwkSet, Algorithm, DecodingKey, Validation};
 use serde::Deserialize;
 use std::{
     env,
@@ -12,6 +8,7 @@ use std::{
 use tokio::sync::RwLock;
 
 const JWKS_CACHE_TTL: Duration = Duration::from_secs(10 * 60);
+const UNKNOWN_KID_REFRESH_COOLDOWN: Duration = Duration::from_secs(30);
 const HTTP_TIMEOUT: Duration = Duration::from_secs(5);
 
 #[derive(Debug, thiserror::Error)]
@@ -41,6 +38,7 @@ pub struct SupabaseClaims {
 struct CachedJwks {
     keys: Arc<JwkSet>,
     expires_at: Instant,
+    refreshed_at: Instant,
 }
 
 /// Verifies Supabase user access tokens using only public asymmetric JWKS keys.
@@ -86,17 +84,20 @@ impl SupabaseJwtVerifier {
 
     pub fn from_env() -> Result<Self, AuthError> {
         let url = env::var("SUPABASE_URL").map_err(|_| AuthError::InvalidConfig)?;
-        let audience = env::var("SUPABASE_JWT_AUDIENCE")
-            .unwrap_or_else(|_| "authenticated".to_owned());
+        let audience =
+            env::var("SUPABASE_JWT_AUDIENCE").unwrap_or_else(|_| "authenticated".to_owned());
         Self::new(&url, &audience)
     }
 
     pub async fn verify_bearer(&self, token: &str) -> Result<SupabaseClaims, AuthError> {
         let header = decode_header(token).map_err(|_| AuthError::InvalidToken)?;
-        if !matches!(header.alg, Algorithm::ES256 | Algorithm::RS256) {
+        if !is_supported_algorithm(header.alg) {
             return Err(AuthError::InvalidToken);
         }
-        let kid = header.kid.as_deref().filter(|value| !value.is_empty())
+        let kid = header
+            .kid
+            .as_deref()
+            .filter(|value| !value.is_empty())
             .ok_or(AuthError::InvalidToken)?;
 
         let keys = self.load_jwks(false).await?;
@@ -119,7 +120,9 @@ impl SupabaseJwtVerifier {
 
         let token = decode::<SupabaseClaims>(token, &decoding_key, &validation)
             .map_err(|_| AuthError::InvalidToken)?;
-        if token.claims.sub.trim().is_empty() || token.claims.role != "authenticated" {
+        if uuid::Uuid::parse_str(&token.claims.sub).is_err()
+            || token.claims.role != "authenticated"
+        {
             return Err(AuthError::InvalidToken);
         }
         Ok(token.claims)
@@ -128,31 +131,48 @@ impl SupabaseJwtVerifier {
     async fn load_jwks(&self, force_refresh: bool) -> Result<Arc<JwkSet>, AuthError> {
         if !force_refresh {
             let cache = self.cache.read().await;
-            if let Some(cached) = cache.as_ref().filter(|entry| entry.expires_at > Instant::now()) {
+            if let Some(cached) = cache
+                .as_ref()
+                .filter(|entry| entry.expires_at > Instant::now())
+            {
                 return Ok(Arc::clone(&cached.keys));
             }
         }
 
         let mut cache = self.cache.write().await;
-        if !force_refresh {
-            if let Some(cached) = cache.as_ref().filter(|entry| entry.expires_at > Instant::now()) {
+        if let Some(cached) = cache.as_ref() {
+            let fresh = cached.expires_at > Instant::now();
+            let refresh_recent =
+                cached.refreshed_at.elapsed() < UNKNOWN_KID_REFRESH_COOLDOWN;
+            if fresh && (!force_refresh || refresh_recent) {
                 return Ok(Arc::clone(&cached.keys));
             }
         }
 
-        let response = self.http.get(&self.jwks_url).send().await?.error_for_status()?;
+        let response = self
+            .http
+            .get(&self.jwks_url)
+            .send()
+            .await?
+            .error_for_status()?;
         let jwks: JwkSet = response.json().await?;
         if jwks.keys.is_empty() {
             return Err(AuthError::JwksUnavailable);
         }
 
         let keys = Arc::new(jwks);
+        let now = Instant::now();
         *cache = Some(CachedJwks {
             keys: Arc::clone(&keys),
-            expires_at: Instant::now() + JWKS_CACHE_TTL,
+            expires_at: now + JWKS_CACHE_TTL,
+            refreshed_at: now,
         });
         Ok(keys)
     }
+}
+
+fn is_supported_algorithm(algorithm: Algorithm) -> bool {
+    matches!(algorithm, Algorithm::ES256 | Algorithm::RS256)
 }
 
 #[cfg(test)]
@@ -161,12 +181,14 @@ mod tests {
 
     #[test]
     fn builds_project_pinned_issuer_and_jwks_url() {
-        let verifier = SupabaseJwtVerifier::new(
-            "https://example-project.supabase.co",
-            "authenticated",
-        ).expect("valid verifier configuration");
+        let verifier =
+            SupabaseJwtVerifier::new("https://example-project.supabase.co", "authenticated")
+                .expect("valid verifier configuration");
 
-        assert_eq!(verifier.issuer, "https://example-project.supabase.co/auth/v1");
+        assert_eq!(
+            verifier.issuer,
+            "https://example-project.supabase.co/auth/v1"
+        );
         assert_eq!(
             verifier.jwks_url,
             "https://example-project.supabase.co/auth/v1/.well-known/jwks.json"
@@ -175,7 +197,10 @@ mod tests {
 
     #[test]
     fn rejects_http_project_urls() {
-        assert!(SupabaseJwtVerifier::new("http://example-project.supabase.co", "authenticated").is_err());
+        assert!(
+            SupabaseJwtVerifier::new("http://example-project.supabase.co", "authenticated")
+                .is_err()
+        );
     }
 
     #[test]
@@ -185,8 +210,8 @@ mod tests {
 
     #[test]
     fn only_allows_asymmetric_algorithms() {
-        assert!(matches!(Algorithm::ES256, Algorithm::ES256 | Algorithm::RS256));
-        assert!(matches!(Algorithm::RS256, Algorithm::ES256 | Algorithm::RS256));
-        assert!(!matches!(Algorithm::HS256, Algorithm::ES256 | Algorithm::RS256));
+        assert!(is_supported_algorithm(Algorithm::ES256));
+        assert!(is_supported_algorithm(Algorithm::RS256));
+        assert!(!is_supported_algorithm(Algorithm::HS256));
     }
 }
