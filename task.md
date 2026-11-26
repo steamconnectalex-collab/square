@@ -135,6 +135,8 @@ Fluxo de acesso: Home → "Entrar" → login (com painel de QR Code) → "Regist
 
 ## Próximo passo
 
+(2026-11-26) **Renomear para Shiqi:** a pessoa decidiu que o nome da plataforma será **Shiqi** e o domínio **shiqi.com.br** (compra pelo Registro.br, feita pela própria pessoa). Depois da compra: (1) verificar o domínio no Resend (registros DNS no Registro.br) e definir o segredo `RESEND_FROM` (ex.: `Shiqi <nao-responda@shiqi.com.br>`) + `BRAND_NAME`; (2) apontar o domínio para o projeto da Vercel e atualizar `SITE_URL`/`EXTRA_ORIGINS` na função `auth`; (3) trocar o nome "Square." nos textos, e-mails, termos, app de computador e testes (ainda NÃO feito).
+
 (2026-11-22) Pessoa conferir Loja/Perfil no ar. Depois: decidir onde (ou se) voltam música, destaques e notícias; sistema de planos/Pontos/compras para liberar itens da Loja; remover do Supabase as tabelas de música se não voltarem.
 
 Pessoa conferir o novo menu principal no ar (desktop e celular) e dizer onde ficam música, servidores destaque, fixados e notícias. Pendente da pessoa: testar com duas contas reais (amizade, conversa privada, tempo real, foto, imagem, voz, banir) e os passos do painel (Vercel ↔ GitHub, senhas vazadas, domínio no Resend). Depois: GIFs/presentes, configurações, painel inicial com dados reais, servidor TURN se a voz falhar.
