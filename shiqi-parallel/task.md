@@ -31,3 +31,16 @@
 - [ ] O schema experimental de cinco tabelas está vazio, mas é insuficiente e incompatível com o app original; substituir pelo modelo completo antes de testar login/chat.
 - [ ] A conexão ao banco original `vjkqyqdabypdylhoupha` não está disponível na integração Supabase atual (sem permissão); será necessário acesso autorizado ou SQLs faltantes para espelhar o backend com segurança.
 - [ ] Nenhuma mudança na `main`, no Vercel original ou no domínio principal.
+
+## Adoção gradual de Rust — 2026-11-26
+- [x] Criado `shiqi-parallel/services/core` com Axum/Tokio, health/readiness, tracing e shutdown gracioso.
+- [x] Adicionado validador interno de anexos JPEG/PNG/WebP com limite de 3 MiB e testes unitários; ainda não exposto por HTTP nem ligado ao Storage.
+- [x] Criado workflow GitHub Actions para `cargo fmt`, `cargo test` e `cargo clippy`.
+- [x] Registrada auditoria técnica em `shiqi-parallel/docs/RUST_MIGRATION_AUDIT.md`.
+- [ ] Executar CI e corrigir qualquer falha de compilação/testes.
+- [ ] Implementar validação JWT/JWKS do Supabase e autorização por usuário antes de qualquer rota de negócio.
+- [ ] Recuperar o schema original completo; sem isso não ligar Rust ao banco.
+- [ ] Implementar upload/processamento de anexos autenticado e testar regressão.
+- [ ] Definir fila durável para jobs assíncronos após a paridade do banco.
+- [ ] Medir presença/Realtime e chamadas WebRTC reais antes de decidir por gateway/SFU.
+- [ ] Frontend, Electron, design e fluxos existentes permanecem sem alteração nesta etapa.
