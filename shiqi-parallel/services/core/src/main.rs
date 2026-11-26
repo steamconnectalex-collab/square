@@ -1,7 +1,10 @@
+mod attachments;
+
 use axum::{http::StatusCode, routing::get, Json, Router};
 use serde::Serialize;
 use std::{env, net::SocketAddr};
 use tokio::net::TcpListener;
+use tower_http::trace::TraceLayer;
 use tracing_subscriber::EnvFilter;
 
 #[derive(Serialize)]
@@ -17,9 +20,8 @@ async fn healthz() -> Json<HealthResponse> {
     })
 }
 
-// Until dependencies such as the database are connected, readiness means
-// only that the process has completed startup. Update this check when real
-// dependencies are introduced.
+// Until external dependencies are connected, readiness means only that the
+// process completed startup. It must be extended before business routes ship.
 async fn readyz() -> Result<Json<HealthResponse>, (StatusCode, Json<HealthResponse>)> {
     Ok(Json(HealthResponse {
         service: "shiqi-core",
@@ -41,7 +43,8 @@ async fn main() {
 
     let app = Router::new()
         .route("/healthz", get(healthz))
-        .route("/readyz", get(readyz));
+        .route("/readyz", get(readyz))
+        .layer(TraceLayer::new_for_http());
 
     let listener = TcpListener::bind(address)
         .await
