@@ -116,6 +116,20 @@ Fluxo de acesso: Home → "Entrar" → login (com painel de QR Code) → "Regist
 
 - **2026-11-26 (tarde) — Domínio shiqi.com.br no ar + correções:** (1) DNS liberado: Vercel enxerga o registro A (`misconfigured: false`) e o Resend marcou o domínio como **verified** (DKIM, rsend, send). Função `auth` **v9** publicada com remetente padrão `Shiqi <nao-responda@shiqi.com.br>`, `SITE_URL` padrão `https://shiqi.com.br` e origens `shiqi.com.br`/`www` liberadas (CORS); e-mails agora saem com o nome Shiqi. (2) **Arquivo `supabase/functions/auth/index.ts` estava CORTADO no GitHub** (50 linhas, desde o commit 656d18c; o Supabase tinha a versão completa): restaurado a partir da versão publicada (v8) e conferido. (3) **Celular:** a lista de membros agora começa FECHADA (só abre no ícone de membros; no computador continua aberta); o site já lembrava a última tela/servidor/canal. (4) `desktop/main.js` e `offline.html` apontam para `https://shiqi.com.br/`; versão do app 1.0.2. Testes 201 OK. **Falta:** conferir o site em https://shiqi.com.br e testar cadastro com e-mail de amigo.
 
+## Grande atualização da branch `shiqi-parallel-dev` (ChatGPT) — preparação (2026-11-26)
+
+**O que a branch tem hoje** (62 arquivos, 10.261 linhas, 36 commits, tudo de `alexssnw`; só mexe em `shiqi-parallel/` + 1 workflow): cópia do site em `shiqi-parallel/apps/web/` (apontando para o Supabase paralelo `ujdosskjycrdkcgsswfa`, CSP própria), serviço novo em **Rust** (`services/core`: verificador de JWT do Supabase, validação de anexos, Dockerfile), cópia das migrações 0001–0025 (sem as de música 0011/0012; **0025 é nova: salas de voz de 6 → 10 pessoas** com trava contra entradas simultâneas), e 6 documentos de auditoria (`docs/`). O `.github/workflows/shiqi-core.yml` só roda na própria branch (não dispara na `main`). Requisito dela: **mudar a tecnologia sem mudar design nem funções**; música saiu do escopo só da cópia.
+
+**Pontos de atenção antes de juntar com a `main`:**
+- [ ] A cópia do site é um **retrato antigo**: `app.js` e `shell.css` já diferem da `main` (a `main` ganhou a lista de membros fechada no celular, domínio shiqi.com.br, etc.). Nada dela deve sobrescrever `site/`.
+- [ ] O `index.ts` da função `auth` na branch é o **arquivo cortado (50 linhas)**; o correto é o da `main` (restaurado em 2026-11-26, função v9).
+- [ ] A migração **0025 (voz com 10)** não existe na `main`/Supabase original; a `main` e o app dizem 6. Decidir com a pessoa se sobe para 10 (e testar).
+- [ ] O banco paralelo tem schema experimental de 5 tabelas, incompatível; a base de servidores/canais/eventos (migração inicial) nunca esteve no Git — a pessoa pode precisar exportar só a **estrutura** do Supabase original (sem dados).
+- [ ] Nenhuma migração/função deve ser aplicada no Supabase original pela outra IA; Claude revisa e aplica.
+- [ ] Ao receber: `git diff --stat main...origin/shiqi-parallel-dev`, rodar `node tests/smoke.js`, abrir preview da Vercel e comparar telas; só depois decidir o merge com a pessoa.
+
+**Divisão combinada (a confirmar pela pessoa):** Claude = produção (`main`, Supabase/Vercel originais, domínio, e-mails, app de PC, testes); ChatGPT = migração paralela (`shiqi-parallel/`, Rust, auditorias). Regras completas em `agents.md` ("Trabalho em dupla").
+
 ## Como publicar o site
 
 **Desde 2026-11-19 a Vercel está ligada ao GitHub:** cada `git push` na `main` publica sozinho. Configuração do projeto `square-chat` (Vercel): Root Directory = `site`, sem Build Command e sem Output Directory. O `vercel.json` usado é o de `site/vercel.json`.
