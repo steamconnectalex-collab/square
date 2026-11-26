@@ -37,14 +37,14 @@
 - [x] Adicionado validador interno de anexos JPEG/PNG/WebP com limite de 3 MiB e testes unitários; ainda não exposto por HTTP nem ligado ao Storage.
 - [x] Criado workflow GitHub Actions para `cargo fmt`, `cargo test` e `cargo clippy`.
 - [x] Registrada auditoria técnica em `shiqi-parallel/docs/RUST_MIGRATION_AUDIT.md`.
-- [ ] Executar CI e corrigir qualquer falha de compilação/testes. As primeiras execuções falharam apenas em `cargo fmt --check`; o formato foi corrigido e uma nova execução está em andamento (testes e Clippy ainda não confirmados).
+- [ ] Executar CI e corrigir qualquer falha de compilação/testes. As primeiras execuções falharam em `cargo fmt --check`; após corrigir o formato, a CI avançou para `cargo test` e encontrou um erro de lifetime no refresh JWKS. Esse erro foi corrigido; aguardar nova execução para confirmar testes e Clippy.
 - [x] 2026-11-26 — Implementado módulo isolado de validação JWT Supabase via JWKS assimétrico (ES256/RS256), com `kid`, assinatura, issuer, audience, expiração, `nbf`, UUID de usuário, `role=authenticated`, cache e cooldown para `kid` desconhecido. Ainda não conectado a rotas de negócio.
 - [ ] Confirmar o algoritmo de assinatura ativo no projeto Supabase original; HS256 legado é rejeitado deliberadamente até existir configuração segura e autorizada.
 - [ ] Integrar middleware JWT às rotas Rust após recuperar schema e validar paridade.
 - [ ] Recuperar o schema original completo; sem isso não ligar Rust ao banco.
 - [ ] Implementar upload/processamento de anexos autenticado e testar regressão.
 - [ ] Definir fila durável para jobs assíncronos após a paridade do banco.
-- [x] 2026-11-26 — Preparada migração `0025_voz_10_participantes.sql` para elevar o limite de 6 para 10, com advisory locks para serializar entradas simultâneas e manter uma sala por usuário. Atualizados apenas texto/capacidade da UI original na cópia paralela.
+- [x] 2026-11-26 — Preparada migração `0025_voz_10_participantes.sql` para elevar o limite de 6 para 10, com advisory locks para serializar entradas/saídas simultâneas, evitar corridas entre `join`/`leave` e manter uma sala por usuário. Atualizados apenas texto/capacidade da UI original na cópia paralela.
 - [ ] Aplicar a migração somente no Supabase paralelo depois de reconstruir e validar o schema base; não foi aplicada no projeto original nem em produção.
 - [ ] Testar chamadas com 10 usuários reais. O WebRTC atual é P2P em malha completa (até 9 conexões por participante); avaliar CPU, upload, vídeo/tela e latência antes de liberar para produção.
 - [ ] Medir presença/Realtime e chamadas WebRTC reais antes de decidir por gateway/SFU.
