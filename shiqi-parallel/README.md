@@ -22,5 +22,6 @@ Abra `apps/web/index.html` no navegador. Não há dependências ou etapa de buil
 - O cadastro cria automaticamente um perfil.
 - Usuários autenticados podem criar comunidades; cada comunidade recebe um canal `#geral`.
 - O banco tem RLS ativado para perfis, comunidades, membros, canais e mensagens.
-- Mensagens em tempo real e DMs ainda não foram implementadas.
+- Canais de texto e mensagens em tempo real já estão implementados para comunidades.
+- Mensagens diretas, amizades e chamadas de voz ainda não foram implementadas.
 - E-mail transacional próprio ainda não foi configurado; o fluxo depende das configurações de confirmação de e-mail do Supabase.
