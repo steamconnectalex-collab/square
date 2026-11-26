@@ -2,7 +2,7 @@
 
 > **Para a IA:** este arquivo é a fonte da verdade sobre o projeto. Leia tudo antes de começar e atualize **na hora** em que algo acontecer (regras completas em `agents.md`). Não duplique tarefas: procure aqui antes de adicionar.
 >
-> Última atualização: 2026-11-25 (app para computador)
+> Última atualização: 2026-11-26 (segurança)
 
 ---
 
@@ -72,6 +72,7 @@ Fluxo de acesso: Home → "Entrar" → login (com painel de QR Code) → "Regist
 - [x] 2026-11-23 — **Tema escuro (Aparência):** opções Claro / Escuro / Automático (acompanha o aparelho) e "Sincronizar tema" (desligado = escolha vale só neste aparelho). Feito por inversão de cores da página com fotos, avatares, capas e artes da Loja protegidos (`html[data-theme=dark]` em `style.css`; lógica em `settings.js`). Aplicado antes de carregar para não piscar claro. Testes: 166 OK.
 - [x] 2026-11-23 — **Etapa B (configurações do navegador):** spoilers `||texto||` (clicar / sempre / modero), links clicáveis com selo do site, enviar imagem só quando clicar ("Quando o envio é feito diretamente"), GIF animado ou parado (primeiro quadro), botão de enviar sempre visível, entrada de chat simples (esconde botões extras), modo desenvolvedor (Copiar ID do usuário e do servidor), servidores favoritos (menu do servidor; ficam no topo do trilho), busca em todas as DMs, duração mínima dos avisos, atraso das notificações, sensibilidade do microfone (Personalizado/Isolamento/Estúdio) e detecção de voz avançada, aviso ao trocar de canal de voz, som de entrada por servidor, emojis sem animação. Testes: 169 OK. **GIF** ainda precisa liberar `image/gif` no bucket (migração da Etapa C).
 - [x] 2026-11-16 — **Etapa 2:** site completo (home + login + app) publicado na Vercel em https://square-chat-silk.vercel.app (deployment `dpl_2wsLZ3h1f7CT3kGt3w8N5rdQS6KS`, commit `495cab0` do GitHub). Conferido: `index.html`, `app.js` e `home.js` no ar são idênticos, byte a byte, aos do repositório.
+- **Segurança antes de liberar para amigos (2026-11-26):** análise feita. **Blindagem aplicada:** (1) migração `0024_seguranca_grants.sql` aplicada: `anon`/`authenticated` perderam todo acesso a `mfa_recovery`, `email_codes`, `qr_sessions`, `rate_hits` (só o backend usa); (2) função `auth` v8: recusa senhas que apareceram em vazamentos (consulta anônima ao Have I Been Pwned; no cadastro e na redefinição), limite real de 10 KB no corpo, usuários criados marcados `via: square`, rotas de QR Code removidas do backend (e o código morto do QR no backend apagado); (3) `site/vercel.json`: `Strict-Transport-Security` e `Cross-Origin-Opener-Policy`; (4) `app.js` mostra o erro `pwned_password` no campo senha. Testes 201 OK. **Pendências para os amigos testarem:** domínio verificado no Resend (hoje o e-mail só chega ao dono da conta Resend — amigos NÃO recebem o código de cadastro), depois definir o segredo `RESEND_FROM`; verificar se o cadastro direto pela API do Supabase Auth (sem passar pela função `auth`) burla idade/termos e, se sim, desligar "Allow new users to sign up" não serve (a função usa admin) — checar no painel; proteção contra senhas vazadas nativa do Supabase exige plano Pro (a função já cobre o cadastro e a redefinição).
 
 ## Análise do projeto (2026-11-17)
 

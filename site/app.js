@@ -636,7 +636,7 @@ async function doRegister() {
     go('verify');
   } catch (e) {
     r.busy = false;
-    const m = { email_taken: 'email', invalid_email: 'email', username_taken: 'user', invalid_username: 'user', weak_password: 'pass', invalid_birth_date: 'dob', too_young: 'dob', terms_required: 'terms' }[e.error];
+    const m = { email_taken: 'email', invalid_email: 'email', username_taken: 'user', invalid_username: 'user', weak_password: 'pass', pwned_password: 'pass', invalid_birth_date: 'dob', too_young: 'dob', terms_required: 'terms' }[e.error];
     if (m) r.srv = { [m]: e.message }; else r.err = e.message || 'Não foi possível criar a conta agora.';
     if (S.view === 'register') render();
   }
