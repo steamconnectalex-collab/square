@@ -5,7 +5,7 @@ Branch: `shiqi-parallel-dev`
 
 ## Regra de compatibilidade
 
-O frontend original em HTML/CSS/JavaScript é a referência visual e funcional. Nenhuma rota do frontend, componente, estilo, fluxo de navegação ou regra de negócio será alterada por esta etapa.
+O frontend original em HTML/CSS/JavaScript é a referência visual e funcional. Nenhuma rota do frontend, componente, estilo, fluxo de navegação ou regra de negócio será alterada por esta etapa, exceto a retirada da funcionalidade de música expressamente autorizada pelo usuário. Nenhuma parte da música será migrada para Rust.
 
 ## Achados confirmados no código e nas migrações
 
@@ -23,7 +23,7 @@ O frontend original em HTML/CSS/JavaScript é a referência visual e funcional. 
 ## Limitações que bloqueiam migração completa
 
 1. A cópia de migrações ainda depende de estruturas preexistentes não versionadas, incluindo `servers`, `server_members`, `channels` e funções auxiliares.
-2. Os arquivos 0011 (música) e 0021 (eventos) são resumos, não SQL executável completo.
+2. A migration 0021 (eventos) é um resumo, não SQL executável completo. A migration 0011 (música) também é um resumo, mas sua recuperação está dispensada porque a funcionalidade foi retirada do escopo.
 3. A integração não tem acesso autorizado ao projeto Supabase original. O banco paralelo de cinco tabelas não é paridade do banco de produção.
 4. Os testes de fumaça existentes não equivalem a testes de carga, segurança de JWT, upload real ou chamadas de voz com duas pessoas reais.
 
@@ -45,11 +45,4 @@ O validador ainda não está exposto por uma rota e não grava arquivos. Isso é
 3. Implementar upload/proxy de mídia com contexto do usuário, limites de bytes e autorização; executar testes de regressão de anexos.
 4. Só então considerar processamento assíncrono durável (fila persistida e retries), sem jobs em memória que se percam em reinícios.
 5. Avaliar rate limiting distribuído somente para rotas novas, mantendo os limites atuais do banco.
-6. Medir Realtime/presença e voz antes de decidir por gateway ou SFU.
-
-## Segurança
-
-- Nenhuma chave `service_role` no navegador ou no repositório.
-- Não confiar em `X-Forwarded-For` sem uma lista explícita de proxies confiáveis.
-- Não usar rate limit em memória como controle de abuso distribuído.
-- Não ignorar RLS nem executar consultas com privilégios elevados sem contexto de usuário.
+6. Medir Realtime/presença e voz antes de considerar gateway WebSocket/SFU.
