@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f7fb">
+  <meta name="description" content="SHIQI — seu espaço, do seu jeito.">
+  <title>SHIQI — seu espaço, do seu jeito</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#" aria-label="SHIQI início"><span class="brand-mark">s</span><span>shiqi</span></a>
+      <div class="workspace-label">ESPAÇO PESSOAL</div>
+      <nav class="main-nav" aria-label="Navegação principal">
+        <a class="nav-item active" href="#inicio"><span class="nav-icon">⌂</span> Início</a>
+        <a class="nav-item" href="#mensagens"><span class="nav-icon">▤</span> Mensagens</a>
+        <a class="nav-item" href="#comunidades"><span class="nav-icon">◈</span> Comunidades</a>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="profile">
+          <div class="avatar">S</div>
+          <div class="profile-copy"><strong>Seu perfil</strong><span>Configure sua conta</span></div>
+          <span class="more">···</span>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main-content" id="inicio">
+      <header class="topbar">
+        <div class="breadcrumb">Seu espaço <span>/</span> <strong>Início</strong></div>
+        <div class="top-actions"><button class="icon-button" aria-label="Notificações">♧</button><button class="help-button" id="helpButton">Ajuda</button></div>
+      </header>
+
+      <section class="welcome">
+        <div class="eyebrow"><span class="status-dot"></span> UM NOVO JEITO DE SE CONECTAR</div>
+        <h1>Seu espaço.<br><span>Do seu jeito.</span></h1>
+        <p>Converse, compartilhe ideias e encontre sua comunidade. Tudo começa aqui.</p>
+        <button class="primary-button" id="exploreButton">Conhecer a SHIQI <span>↗</span></button>
+        <div class="orb orb-one"></div><div class="orb orb-two"></div>
+        <div class="hero-symbol">s<span>.</span></div>
+      </section>
+
+      <section class="section-heading">
+        <div><span class="eyebrow muted">COMECE POR AQUI</span><h2>O que você quer fazer?</h2></div>
+        <span class="quiet-label">PRIMEIROS PASSOS</span>
+      </section>
+
+      <section class="action-grid" aria-label="Primeiros passos">
+        <article class="action-card">
+          <div class="card-icon violet">◈</div><div class="card-copy"><h3>Criar uma comunidade</h3><p>Reúna pessoas em um espaço com a sua identidade.</p></div><span class="card-arrow">↗</span>
+        </article>
+        <article class="action-card">
+          <div class="card-icon blue">▤</div><div class="card-copy"><h3>Iniciar uma conversa</h3><p>Fale com amigos e mantenha tudo por perto.</p></div><span class="card-arrow">↗</span>
+        </article>
+        <article class="action-card">
+          <div class="card-icon amber">⌘</div><div class="card-copy"><h3>Personalizar seu perfil</h3><p>Deixe seu espaço com a sua personalidade.</p></div><span class="card-arrow">↗</span>
+        </article>
+      </section>
+      <footer class="footer"><span>SHIQI <span class="footer-dot">•</span> Um espaço para estar junto.</span><span class="prototype-tag">PRÉVIA DE DESENVOLVIMENTO</span></footer>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="./app.js"></script>
+</body>
+</html>
