@@ -61,3 +61,19 @@ $$;
 
 revoke all on function public.voice_join(uuid) from public, anon;
 grant execute on function public.voice_join(uuid) to authenticated;
+
+-- Serializa a saída com voice_join para uma resposta atrasada de "sair"
+-- não remover uma entrada recém-criada em outra sala.
+create or replace function public.voice_leave() returns void
+language plpgsql security definer set search_path = '' as $$
+declare
+  uid uuid := auth.uid();
+begin
+  if uid is null then
+    return;
+  end if;
+
+  perform pg_advisory_xact_lock(hashtextextended('shiqi:voice:user:' || uid::text, 0));
+  delete from public.voice_members where user_id = uid;
+end;
+$$;
