@@ -9,7 +9,7 @@ Escopo: leitura do frontend original em `main/site`, migrations versionadas em `
 O usuário confirmou que desistiu da funcionalidade de música. Portanto:
 - Música está **fora do escopo do produto e da migração**.
 - Não é necessário recuperar o SQL ausente da migration `0011_musica_base.sql`.
-- A migration 0011 será tratada como arquivo histórico/arquivado e **não será aplicada** ao banco paralelo nem incluída no schema alvo.
+- As migrations copiadas 0011 e 0012 foram excluídas da pasta paralela para evitar aplicação acidental; os originais em `main` permanecem intactos.
 - Referências de música encontradas no frontend serão identificadas para exclusão apenas na cópia paralela, sem tocar em `main/site` e sem remover recursos não relacionados.
 - Não apagar objetos/tabelas remotos por enquanto; não há dados a migrar nem necessidade de operações destrutivas para simplesmente deixar a funcionalidade fora do produto.
 
@@ -84,7 +84,7 @@ As migrations `0001`–`0010`, `0012`–`0020`, `0022`–`0025` contêm SQL vers
 1. **Schema base de servidores:** `0002_chat_e_perfil.sql` declara que as tabelas `servers`, `server_members`, `channels` e funções `create_server` / `is_server_member` já existiam em uma migration anterior chamada `servidores_e_canais`, mas o SQL dessa migration base não está versionado no diretório.
 2. **Eventos:** `0021_eventos.sql` é apenas um resumo; não contém o SQL completo de `server_events`, `event_interest` e das funções de eventos.
 
-A migration `0011_musica_base.sql` também é apenas um resumo, mas sua recuperação foi dispensada pelo usuário porque música foi retirada do escopo. Ela não é bloqueador.
+As migrations 0011 e 0012 foram excluídas somente da cópia paralela. Os arquivos originais em `main` não foram alterados. A recuperação do SQL de música está dispensada.
 
 ## Divergências confirmadas entre original e banco paralelo
 
@@ -98,10 +98,11 @@ Não tentar corrigir essas diferenças com renames, drops ou migrations antigas 
 ## Próximas etapas técnicas seguras
 
 1. Completar o mapa de campos e operações lendo as chamadas e componentes do frontend original, sem editar esses arquivos.
-2. Recuperar o SQL ausente do schema base de servidores e eventos por histórico Git autorizado ou export/documentação disponibilizada pelo proprietário do banco original. A recuperação do SQL de música está dispensada.
+2. Recuperar o SQL ausente do schema base de servidores e eventos por histórico Git autorizado ou export/documentação disponibilizada pelo proprietário do banco original. A recuperação do SQL de música está dispensada. O histórico Git consultado não contém o SQL base.
 3. Montar um schema alvo completo e versionado, com plano de compatibilidade para o banco paralelo atual, excluindo música.
 4. Revisar constraints, RLS, grants, funções SECURITY DEFINER, Storage policies e publicações Realtime.
-5. Só depois preparar migrations incrementais e validar em ambiente paralelo isolado, com aprovação antes de qualquer aplicação remota.
+5. Se não houver outra fonte autorizada, solicitar ao proprietário um dump SQL somente de estrutura (sem dados) do banco original, incluindo schemas public/private, funções, policies, triggers, grants e configuração Realtime/Storage.
+6. Só depois preparar migrations incrementais e validar em ambiente paralelo isolado, com aprovação antes de qualquer aplicação remota.
 
 ## Critério de aceite
 
