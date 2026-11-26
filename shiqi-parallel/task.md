@@ -15,6 +15,7 @@
 - [x] README e arquitetura corrigidos para registrar preservação visual/funcional como requisito obrigatório.
 
 ## Em andamento
+- [ ] 2026-11-26 — Iniciada a etapa 1 da sequência aprovada pelo usuário: fechar a matriz funcional da SHIQI, mapeando telas, operações, RPCs, tabelas, estados e critérios de regressão. Escopo fechado: sem novas funcionalidades; QR fora desta etapa; música excluída; preservar UI e funções restantes.
 - [x] 2026-11-26 — Inventário de dependências do schema documentado em `docs/SCHEMA_DEPENDENCY_INVENTORY.md`.
 - [x] 2026-11-26 — Contratos iniciais de autenticação documentados em `docs/AUTH_CONTRACT_INVENTORY.md`.
 - [x] 2026-11-26 — Música excluída do escopo: migrations 0011 e 0012 removidas somente da pasta paralela; originals em `main` preservados.
