@@ -17,5 +17,10 @@ Esta pasta contém a nova implementação da SHIQI, isolada do projeto original.
 ## Rodar localmente
 Abra `apps/web/index.html` no navegador. Não há dependências ou etapa de build nesta primeira etapa.
 
-## Estado
-A interface atual é apenas a fundação visual. Login, chat, comunidades, banco e envio de e-mails ainda não estão conectados.
+## Estado atual
+- A autenticação por e-mail/senha usa o Supabase independente.
+- O cadastro cria automaticamente um perfil.
+- Usuários autenticados podem criar comunidades; cada comunidade recebe um canal `#geral`.
+- O banco tem RLS ativado para perfis, comunidades, membros, canais e mensagens.
+- Mensagens em tempo real e DMs ainda não foram implementadas.
+- E-mail transacional próprio ainda não foi configurado; o fluxo depende das configurações de confirmação de e-mail do Supabase.
