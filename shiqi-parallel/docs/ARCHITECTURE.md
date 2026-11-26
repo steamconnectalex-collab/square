@@ -1,34 +1,37 @@
-# Arquitetura — SHIQI paralela
+# Arquitetura — migração paralela SHIQI
 
-## Auditoria do projeto de referência
-A versão atual do repositório usa HTML/CSS/JavaScript sem build no site, Supabase (PostgreSQL, Auth/Edge Functions e Realtime), Resend para e-mail e Electron para desktop. Há um histórico extenso de migrações e regras de segurança. Isso é referência funcional, não autorização para copiar dados ou credenciais.
+## Requisito prioritário e inegociável
+Migrar tecnologia sem alterar o produto. A interface e as funcionalidades existentes são contrato: aparência, layout, espaçamentos, tipografia, ícones, cores, navegação, textos, animações, fluxos e comportamentos devem permanecer equivalentes ao original. Nenhuma simplificação ou redesign sem autorização expressa.
 
-## Decisão inicial
-1. Manter a primeira interface em HTML/CSS/JavaScript puro para validar a experiência sem adicionar complexidade.
-2. Manter todo o código novo sob `shiqi-parallel/`.
-3. Criar serviços separados para a SHIQI quando a necessidade estiver definida:
-   - Supabase novo para autenticação, banco, storage e políticas RLS.
-   - Resend com chave própria e acesso mínimo de envio.
-   - Vercel com projeto separado e Root Directory `shiqi-parallel/apps/web`.
-4. Não reutilizar o projeto Vercel `square-chat`, o projeto Supabase existente, chaves publicáveis/secretas, nem credenciais Resend da versão de referência.
-5. Não adotar Rust por antecipação. Primeiro medir os requisitos de presença, mensagens e chamadas; se WebSocket persistente exigir serviço dedicado, avaliar Rust/Tokio/Axum como serviço independente.
+## Fonte de verdade
+- Frontend original: `/site` na raiz do repositório.
+- Protótipos de design: `/design`.
+- Backend original: `/supabase/functions/auth`.
+- Modelo de dados e segurança: `/supabase/migrations` mais a base inicial descrita no rodapé da migração 0002.
+- Desktop: `/desktop` (Electron).
+- Testes de regressão: `/tests/smoke.js`.
 
-## Segurança e publicação
-- Nenhum segredo no Git ou no navegador.
-- RLS em todas as tabelas expostas; políticas por usuário/membro e testes negativos.
-- Ambientes de Preview separados; nenhuma publicação em produção ou domínio principal nesta etapa.
-- Excluir a pasta não remove recursos externos. Vercel, Supabase, Resend e domínios deverão ser excluídos/desconectados separadamente se o projeto for abandonado.
+## Isolamento
+- Toda a implementação paralela fica em `shiqi-parallel/`, branch `shiqi-parallel-dev`.
+- Vercel independente: projeto `shiqi-parallel`, Root Directory `shiqi-parallel/apps/web`.
+- Supabase independente: `ujdosskjycrdkcgsswfa`, região `sa-east-1`.
+- Não reutilizar banco, usuários, dados, chaves secretas ou serviços de produção.
+- Não alterar o projeto Vercel original, domínio principal nem branch `main`.
 
-## Base de dados criada
-- `profiles`: perfil público vinculado a `auth.users`, com username e nome de exibição.
-- `communities`: espaços com proprietário e slug.
-- `community_members`: membros e papéis owner/admin/member; criação de comunidade insere o proprietário automaticamente.
-- `channels`: canais textuais e de voz por comunidade.
-- `messages`: mensagens em canais, com autor e timestamps.
-- Todas as tabelas públicas acima têm RLS habilitado. Helpers de autorização vivem no schema `private`, fora da API exposta.
-- O signup cria o perfil por trigger no banco; o frontend nunca recebe chave `service_role`.
+## Auditoria técnica
+O original usa HTML/CSS/JS sem build, Supabase Auth/PostgREST/Realtime/Storage e uma Edge Function Deno para cadastro com código, login, QR, recuperação e segurança de conta. O app também tem amizades, DMs, servidores, canais de texto/voz, membros, moderação, arquivos, reações, eventos, tópicos, configurações, loja, perfil e cliente Electron.
 
-## Próximas decisões
-- Confirmar organização e custo antes de criar um projeto Supabase.
-- Confirmar o domínio/remetente que será usado no ambiente de testes antes de configurar e-mail.
-- Definir o primeiro fluxo funcional (conta, comunidade, canais e mensagens) após validar a base visual.
+## Estado do trabalho
+- `apps/web/` recebeu cópia fiel dos arquivos originais da pasta `site/`.
+- `config.js` aponta para o Supabase paralelo e usa apenas chave publicável.
+- `vercel.json` foi ajustado para permitir conexão somente ao Supabase paralelo.
+- O schema experimental de cinco tabelas ainda existe no Supabase paralelo. Ele não é compatível com o frontend original; não declarar a migração funcional até substituir pelo modelo real.
+- A migração 0002 assume que `servers`, `server_members`, `channels`, `create_server` e `is_server_member` já existiam; essa base precisa ser reconstituída e validada. Não executar as migrações às cegas.
+
+## Plano obrigatório
+1. Restaurar e comparar os arquivos originais (feito na cópia web inicial).
+2. Inventariar todas as chamadas REST/RPC, buckets, Realtime, rotas da Edge Function e funcionalidades do Electron.
+3. Reconstruir o banco paralelo com o modelo completo e as mesmas políticas/constraints.
+4. Implantar a Edge Function e serviços de e-mail com segredos exclusivos do ambiente paralelo.
+5. Executar testes de regressão funcionais e visuais, comparando telas e fluxos com o original.
+6. Só então decidir/implementar a mudança de tecnologia alvo, sem alterar a experiência.
