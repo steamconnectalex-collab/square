@@ -19,7 +19,7 @@
 - [x] 2026-11-26 — Inventário de dependências do schema documentado em `docs/SCHEMA_DEPENDENCY_INVENTORY.md`.
 - [x] 2026-11-26 — Contratos iniciais de autenticação documentados em `docs/AUTH_CONTRACT_INVENTORY.md`.
 - [x] 2026-11-26 — Música excluída do escopo: migrations 0011 e 0012 removidas somente da pasta paralela; originals em `main` preservados.
-- [ ] Completar matriz de campos, filtros e operações de todos os recursos restantes.
+- [ ] Completar/revisar matriz de paridade funcional em `docs/FEATURE_PARITY_MATRIX.md`, detalhando campos, filtros, estados e critérios de regressão. Primeira versão criada em 2026-11-26; ainda precisa de cruzamento integral com handlers e testes.
 - [ ] Recuperar SQL ausente da base de servidores/canais e dos eventos por fonte Git autorizada ou material fornecido pelo proprietário. Histórico Git acessível já pesquisado sem localizar o SQL base.
 - [ ] Reconciliar o schema paralelo de cinco tabelas com o modelo alvo sem drops/renames destrutivos.
 - [ ] Reconstruir e testar contratos de autenticação; o arquivo versionado atual é apenas stub.
@@ -48,3 +48,9 @@
 3. Recuperar a migration base ausente de servidores e eventos; pedir ao usuário dump SQL somente de estrutura (sem dados) se não houver fonte Git autorizada.
 4. Corrigir e testar autenticação antes de conectar a UI.
 5. Expandir testes de JWT e middleware Rust; validar algoritmo e chaves antes da integração.
+### 2026-11-26 — Início da execução da sequência aprovada
+- **Escopo confirmado pelo usuário:** não criar novas funcionalidades; executar as etapas na ordem aprovada; preservar design e recursos existentes, com música excluída e QR fora do escopo.
+- **Etapa 1 iniciada:** leitura integral de `task.md` e `agents.md` da raiz e do acompanhamento paralelo; inspeção estática dos scripts principais da cópia paralela.
+- **Entregue nesta sessão:** primeira versão de `docs/FEATURE_PARITY_MATRIX.md` com áreas funcionais, contratos observados, dependências, bloqueios e lacunas de teste. Nenhum arquivo de interface, banco remoto, produção ou `main` foi alterado.
+- **Achados iniciais:** o app paralelo referencia as tabelas e RPCs do produto original, mas o Supabase paralelo continua com cinco tabelas incompatíveis; autenticação versionada continua stub; `tests/smoke.js` na raiz aponta para `../site` (site original), portanto não valida a cópia paralela.
+- **Próximo passo:** completar o cruzamento da matriz com todos os handlers e estados, separar persistência real de preferências locais/itens “em breve”, e elaborar a lista de regressão antes de marcar a etapa 1 concluída.
