@@ -101,14 +101,13 @@ impl SupabaseJwtVerifier {
             .ok_or(AuthError::InvalidToken)?;
 
         let keys = self.load_jwks(false).await?;
-        let jwk = match keys.find(kid) {
-            Some(key) => key,
-            None => {
-                let refreshed = self.load_jwks(true).await?;
-                refreshed.find(kid).ok_or(AuthError::InvalidToken)?
-            }
+        let decoding_key = if let Some(jwk) = keys.find(kid) {
+            DecodingKey::from_jwk(jwk).map_err(|_| AuthError::InvalidToken)?
+        } else {
+            let refreshed = self.load_jwks(true).await?;
+            let jwk = refreshed.find(kid).ok_or(AuthError::InvalidToken)?;
+            DecodingKey::from_jwk(jwk).map_err(|_| AuthError::InvalidToken)?
         };
-        let decoding_key = DecodingKey::from_jwk(jwk).map_err(|_| AuthError::InvalidToken)?;
 
         let mut validation = Validation::new(header.alg);
         validation.set_issuer(&[self.issuer.as_str()]);
