@@ -33,6 +33,15 @@ O banco paralelo contém um schema mínimo de comunidades/chat que não é equiv
 - Não publicar Edge Functions antes de implementar e testar todos os contratos.
 - Não executar migrations históricas em lote no banco paralelo.
 
+
+## Contratos já identificados no frontend original
+
+- Rotas HTTP chamadas pelo frontend de acesso: `/signup`, `/verify`, `/resend`, `/login`, `/login/totp`, `/forgot`, `/reset`, `/qr/create`, `/qr/info`, `/qr/poll` e `/qr/approve`.
+- Rotas adicionais declaradas no cabeçalho da função, mas que ainda precisam ser rastreadas até as telas/ações que as usam: `/email/change/request`, `/email/change/confirm`, `/account/deactivate`, `/account/delete`, `/mfa/recovery` e `/mfa/disable`.
+- RPCs já localizadas no código de configurações: `get_my_settings`, `save_my_settings`, `change_username`, `my_age_group` e `unsubscribe_marketing`.
+- A busca por chamadas diretas `.from(...)` não encontrou referências estáticas nos oito arquivos JS principais; isso indica que parte do acesso pode estar encapsulada em helpers/dinâmico e exige rastreamento adicional, não ausência de dependências.
+- Payloads e respostas de cada rota ainda precisam ser documentados individualmente antes de implementar/substituir o backend.
+
 ## Plano de preparação
 
 ### Fase A — inventário de contratos (em andamento)
