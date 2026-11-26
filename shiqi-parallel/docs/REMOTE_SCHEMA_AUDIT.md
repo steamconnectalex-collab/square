@@ -106,3 +106,38 @@ Foram encontrados índices de PK e índices de apoio para canais por servidor/po
 ## Estado desta etapa
 
 Auditoria remota somente leitura. Nenhuma migration criada ou aplicada, nenhuma Edge Function publicada, nenhum dado copiado e nenhum objeto alterado.
+
+
+## Storage e Realtime — consulta complementar
+
+### Buckets originais
+
+| Bucket | Público | Limite | MIME permitidos |
+|---|---:|---:|---|
+| `attachments` | sim | 3 MiB | JPEG, PNG, WebP, GIF |
+| `avatars` | sim | 1 MiB | JPEG, PNG, WebP |
+
+Policies de `storage.objects` observadas:
+- `attachments`: SELECT, INSERT e DELETE apenas no primeiro nível de pasta igual ao UUID do usuário autenticado.
+- `avatars`: SELECT, INSERT, DELETE e UPDATE apenas no primeiro nível de pasta igual ao UUID do usuário autenticado.
+- Não foi encontrada policy de UPDATE para `attachments`.
+- A leitura pública dos arquivos decorre da configuração dos buckets públicos; as policies acima continuam definindo as operações autenticadas.
+
+### Realtime
+
+A publicação `supabase_realtime` inclui exatamente:
+- `public.friendships`
+- `public.messages`
+- `public.voice_members`
+
+O paralelo precisa reproduzir essa publicação para manter o comportamento em tempo real que o frontend espera. Não habilitar indiscriminadamente todas as tabelas.
+
+## Auditoria de permissões das funções
+
+Consulta de privilégios efetivos confirmou que as funções públicas de aplicação (por exemplo, `create_server`, `open_dm`, `voice_join`, `toggle_reaction`) são executáveis por `authenticated`, não por `anon`. Funções internas de backend como `purge_user_data`, `rate_check`, `verify_email_code`, `revoke_user_sessions`, `get_auth_user_by_email` e `get_login_email_by_username` são executáveis por `service_role`, não por `authenticated`.
+
+**Ponto de segurança a revisar antes de replicar:** a consulta de privilégios efetivos também indicou execução por `anon` em algumas funções do schema `private`, incluindo `private.dm_allowed` e `private.is_dm_member`. Isso pode decorrer de grants herdados via PUBLIC. Não alterei o original. Antes de copiar as permissões, precisamos confirmar ACLs explícitas e decidir grants mínimos no destino. Funções de trigger aparecem com execução efetiva ampla, mas não devem ser expostas como RPC de aplicação.
+
+## Contagem corrigida
+
+O catálogo original retornou 22 tabelas públicas no total: 19 tabelas fora da funcionalidade de música e 3 tabelas de música (`music_favorites`, `playlists`, `playlist_tracks`). Todas as 22 têm RLS habilitado. O paralelo contém cinco tabelas públicas com RLS habilitado, mas seus contratos não são equivalentes ao original.
