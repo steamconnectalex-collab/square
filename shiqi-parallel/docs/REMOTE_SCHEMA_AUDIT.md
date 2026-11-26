@@ -212,3 +212,14 @@ A função implantada usa Supabase Auth Admin e cliente anon, funções RPC inte
 ## Próximo passo técnico
 
 Com as definições SQL recuperadas, a próxima etapa é comparar cada RPC/tabela/coluna com as chamadas reais no frontend original e com as rotas da Edge Function, depois montar um plano de migrations incrementais para o banco paralelo. O banco paralelo ainda tem cinco tabelas incompatíveis; nenhuma delas será apagada ou renomeada nesta fase. Nenhuma migration remota foi aplicada.
+
+
+### Resultado do rastreamento do QR no repositório original
+
+A busca no código original confirmou que `site/app.js` realmente chama:
+- `POST /qr/create` ao abrir o painel QR no login;
+- `POST /qr/poll` a cada 2 segundos para acompanhar o status;
+- `POST /qr/info` no dispositivo que vai aprovar;
+- `POST /qr/approve` para aceitar ou negar.
+
+A lista completa de Edge Functions do projeto original, porém, contém somente `auth`; não existe uma Edge Function separada chamada `qr`. O arquivo de testes `tests/smoke.js` simula respostas dessas rotas, mas isso não comprova que o backend real as implementa. Portanto, QR login é uma dependência real da interface, mas sua implementação remota não foi localizada nesta auditoria. O recurso precisa ser tratado como pendência funcional de alta prioridade, e não removido nem considerado operacional. Não alterei o frontend.
