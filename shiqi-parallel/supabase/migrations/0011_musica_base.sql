@@ -1,4 +1,0 @@
--- Square. — música, base (registro de duas migrações já aplicadas no Supabase: "musica_favoritas_e_playlists" e "musica_limites_corrigidos").
--- Tabelas: music_favorites (favoritas), playlists, playlist_tracks (coluna "position"). Cada pessoa só mexe nas suas (política *_own).
--- Limites (gatilhos em schema private): 500 favoritas, 30 playlists por pessoa, 200 faixas por playlist.
--- O SQL completo está no histórico de migrações do Supabase (supabase_migrations.schema_migrations).
