@@ -2,29 +2,28 @@
 
 Última atualização: 2026-11-26
 
+## Requisito central
+**Migrar tecnologia sem mudar design, layout, identidade visual, navegação ou qualquer funcionalidade do aplicativo original.** O diretório `site/` da raiz é a fonte de verdade. Nenhum redesign, simplificação ou remoção de função sem autorização expressa.
+
 ## Concluído
-- [x] Criada a branch isolada `shiqi-parallel-dev`.
-- [x] Criada a pasta `shiqi-parallel/`.
-- [x] Registrada a auditoria inicial e as regras de isolamento.
-- [x] Criada a primeira fundação visual estática, sem ligação com serviços reais.
+- [x] Branch isolada `shiqi-parallel-dev` e pasta `shiqi-parallel/`.
+- [x] Projeto Vercel paralelo `shiqi-parallel`, Root Directory `shiqi-parallel/apps/web`.
+- [x] Projeto Supabase paralelo `ujdosskjycrdkcgsswfa`, região São Paulo.
+- [x] Copiados para `apps/web/` os arquivos originais do site: `index.html`, `app.js`, CSS, módulos JS, páginas legais, favicon e demais recursos.
+- [x] `config.js` aponta para o Supabase paralelo, com chave publicável exclusiva.
+- [x] CSP atualizada para permitir conexão ao Supabase paralelo, não ao projeto original.
+- [x] README e arquitetura corrigidos para registrar preservação visual/funcional como requisito obrigatório.
 
 ## Em andamento
-- [x] 2026-11-26 — Criado projeto Vercel independente `shiqi-parallel` (Root Directory `shiqi-parallel/apps/web`), sem domínio próprio.
-- [x] 2026-11-26 — Primeira prévia publicada: https://shiqi-parallel.vercel.app (deployment `dpl_CM2GT6vCigETMKWAeitLNSFn9cFo`). O deployment foi classificado pela Vercel como `production` dentro do projeto NOVO `shiqi-parallel`; não está ligado ao projeto/domínio `square-chat` nem ao domínio `shiqi.com.br`.
-- [ ] Ligar automaticamente o projeto Vercel novo ao mesmo repositório com Root Directory correto. O primeiro deploy foi enviado diretamente por SHA; pushes futuros ainda não estão confirmados como automáticos.
-- [x] 2026-11-26 — Criado Supabase independente `shiqi-parallel` em São Paulo (`sa-east-1`), projeto `ujdosskjycrdkcgsswfa`; cotação de criação US$ 0,00/mês.
-- [ ] Preparar credencial Resend exclusiva para testes (não reutilizar chave existente).
-- [x] 2026-11-26 — Criado schema inicial: perfis, comunidades, membros, canais e mensagens.
-- [x] 2026-11-26 — RLS ativado em todas as cinco tabelas; funções auxiliares movidas para schema privado; auditoria de segurança sem findings.
-- [x] 2026-11-26 — Adicionada criação automática de perfil após cadastro no Supabase Auth.
-- [x] 2026-11-26 — Interface conectada à autenticação por e-mail/senha e criação de comunidades com canal `#geral`.
-- [x] 2026-11-26 — Publicado Preview atualizado: https://shiqi-parallel-git-shiqi-parallel-dev-steamconnectalex-9536.vercel.app (deployment `dpl_iigwSgpVBoYkV2YnPriAftqiQTcS`).
-- [x] 2026-11-26 — Preview atualizado com o chat de comunidades: https://shiqi-parallel-git-shiqi-parallel-dev-steamconnectalex-9536.vercel.app (deployment `dpl_4ioMPc4K6FWLbTDixZA93oyF9hne`).
+- [ ] Publicar Preview com os arquivos originais restaurados e validar visualmente.
+- [ ] Auditar o schema original e reconstruir o schema paralelo completo.
+- [ ] A migração 0002 assume uma base inicial não versionada no diretório: `servers`, `server_members`, `channels`, `create_server` e `is_server_member`. Reconstruir antes de aplicar as migrações.
+- [ ] Copiar e implantar a Edge Function original `auth` no Supabase paralelo.
+- [ ] Configurar e-mail com chave Resend exclusiva para testes.
+- [ ] Copiar/ajustar os testes e executar regressão de todos os fluxos existentes.
+- [ ] Definir a tecnologia de destino após a auditoria; não presumir Next.js/React/Rust.
 
-## Próximos passos
-- [ ] Testar cadastro, confirmação de e-mail, login e criação de comunidade no Preview.
-- [ ] Configurar deploy automático da branch `shiqi-parallel-dev` (atualmente o Preview é publicado por deployment direto; a conexão Git automática ainda não está comprovada).
-- [x] 2026-11-26 — Implementada lista de canais, histórico das últimas 100 mensagens, envio e atualização em tempo real no chat da comunidade.
-- [ ] Implementar mensagens diretas e amizades.
-- [ ] Configurar e-mail transacional com credencial Resend exclusiva e SMTP/Auth, sem reutilizar credenciais da versão original.
-- [ ] Rever avisos de performance após haver tráfego real; os índices ainda aparecem como não utilizados porque o banco está vazio.
+## Correção de rumo registrada
+- [x] 2026-11-26 — O primeiro protótipo genérico não correspondia ao aplicativo original. Foi substituído como base pela cópia fiel dos arquivos de `site/`. Não considerar o protótipo antigo como produto nem como referência de design.
+- [ ] O schema experimental de cinco tabelas é insuficiente e incompatível com o app original; não usar como base funcional.
+- [ ] Nenhuma mudança na `main`, no Vercel original ou no domínio principal.
