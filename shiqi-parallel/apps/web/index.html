@@ -24,7 +24,7 @@
       <div class="sidebar-bottom">
         <div class="profile">
           <div class="avatar">S</div>
-          <div class="profile-copy"><strong>Seu perfil</strong><span>Configure sua conta</span></div>
+          <div class="profile-copy"><strong id="profileName">Visitante</strong><span id="profileStatus">Entre para começar</span></div>
           <span class="more">···</span>
         </div>
       </div>
@@ -33,7 +33,7 @@
     <main class="main-content" id="inicio">
       <header class="topbar">
         <div class="breadcrumb">Seu espaço <span>/</span> <strong>Início</strong></div>
-        <div class="top-actions"><button class="icon-button" aria-label="Notificações">♧</button><button class="help-button" id="helpButton">Ajuda</button></div>
+        <div class="top-actions"><button class="icon-button" aria-label="Notificações">♧</button><button class="help-button" id="authButton">Entrar</button></div>
       </header>
 
       <section class="welcome">
@@ -51,20 +51,43 @@
       </section>
 
       <section class="action-grid" aria-label="Primeiros passos">
-        <article class="action-card">
-          <div class="card-icon violet">◈</div><div class="card-copy"><h3>Criar uma comunidade</h3><p>Reúna pessoas em um espaço com a sua identidade.</p></div><span class="card-arrow">↗</span>
-        </article>
-        <article class="action-card">
-          <div class="card-icon blue">▤</div><div class="card-copy"><h3>Iniciar uma conversa</h3><p>Fale com amigos e mantenha tudo por perto.</p></div><span class="card-arrow">↗</span>
-        </article>
-        <article class="action-card">
-          <div class="card-icon amber">⌘</div><div class="card-copy"><h3>Personalizar seu perfil</h3><p>Deixe seu espaço com a sua personalidade.</p></div><span class="card-arrow">↗</span>
-        </article>
+        <button class="action-card action-button" id="createCommunityButton" type="button"><div class="card-icon violet">◈</div><div class="card-copy"><h3>Criar uma comunidade</h3><p>Reúna pessoas em um espaço com a sua identidade.</p></div><span class="card-arrow">↗</span></button>
+        <button class="action-card action-button" id="startConversationButton" type="button"><div class="card-icon blue">▤</div><div class="card-copy"><h3>Iniciar uma conversa</h3><p>Fale com amigos e mantenha tudo por perto.</p></div><span class="card-arrow">↗</span></button>
+        <button class="action-card action-button" id="editProfileButton" type="button"><div class="card-icon amber">⌘</div><div class="card-copy"><h3>Personalizar seu perfil</h3><p>Deixe seu espaço com a sua personalidade.</p></div><span class="card-arrow">↗</span></button>
       </section>
+      <section class="community-section" id="comunidades"><div class="section-heading"><div><span class="eyebrow muted">SEUS ESPAÇOS</span><h2>Suas comunidades</h2></div></div><div id="communityList" class="community-list"><p class="empty-state">Entre na SHIQI para ver suas comunidades.</p></div></section>
       <footer class="footer"><span>SHIQI <span class="footer-dot">•</span> Um espaço para estar junto.</span><span class="prototype-tag">PRÉVIA DE DESENVOLVIMENTO</span></footer>
     </main>
   </div>
+  <dialog class="modal" id="authDialog" aria-labelledby="authTitle">
+    <form class="modal-card" id="authForm">
+      <button class="modal-close" type="button" data-close="authDialog" aria-label="Fechar">×</button>
+      <span class="eyebrow muted">BEM-VINDO À SHIQI</span><h2 id="authTitle">Entre no seu espaço</h2><p class="modal-intro" id="authIntro">Acesse sua conta para continuar.</p>
+      <label class="field" id="displayNameField">Nome de exibição<input id="displayName" type="text" maxlength="60" autocomplete="name" placeholder="Como devemos chamar você?"></label>
+      <label class="field" id="usernameField">Nome de usuário<input id="username" type="text" maxlength="24" autocomplete="username" placeholder="ex.: alex_01"></label>
+      <label class="field">E-mail<input id="email" type="email" required autocomplete="email" placeholder="voce@email.com"></label>
+      <label class="field">Senha<input id="password" type="password" required minlength="8" autocomplete="current-password" placeholder="Mínimo de 8 caracteres"></label>
+      <button class="primary-button modal-submit" id="authSubmit" type="submit">Entrar</button>
+      <p class="modal-switch"><span id="authSwitchText">Ainda não tem conta?</span> <button type="button" id="authModeButton">Criar conta</button></p>
+      <p class="form-message" id="authMessage" role="status"></p>
+    </form>
+  </dialog>
+
+  <dialog class="modal" id="communityDialog" aria-labelledby="communityTitle">
+    <form class="modal-card" id="communityForm">
+      <button class="modal-close" type="button" data-close="communityDialog" aria-label="Fechar">×</button>
+      <span class="eyebrow muted">CRIE SEU ESPAÇO</span><h2 id="communityTitle">Nova comunidade</h2><p class="modal-intro">Dê um nome ao espaço que vai reunir sua comunidade.</p>
+      <label class="field">Nome da comunidade<input id="communityName" type="text" required minlength="2" maxlength="80" placeholder="Minha comunidade"></label>
+      <label class="field">Descrição<textarea id="communityDescription" maxlength="500" rows="3" placeholder="Sobre o que é sua comunidade?"></textarea></label>
+      <button class="primary-button modal-submit" type="submit">Criar comunidade</button>
+      <p class="form-message" id="communityMessage" role="status"></p>
+    </form>
+  </dialog>
+
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./config.js"></script>
   <script src="./app.js"></script>
+  <script src="./auth.js"></script>
 </body>
 </html>
