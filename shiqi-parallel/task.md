@@ -12,10 +12,10 @@
 
 ## Bloqueios atuais (27/11/2026)
 - O limite de 10 participantes por voz agora tem locks transacionais por usuário e sala no SQL canônico e no draft; a proteção foi verificada estaticamente, mas ainda depende de teste concorrente em PostgreSQL. 
-- Anexos agora estão preparados para bucket privado, signed URLs de 60s e policy por acesso à mensagem nos SQLs/draft/frontend. Falta teste de integração com usuários reais e validação runtime do helper/Storage antes de liberar cutover.
+- Anexos estão configurados no destino: bucket `attachments` privado, signed URLs de 60s e policy por acesso à mensagem. Falta teste de integração com usuários reais e validação runtime do helper/Storage antes de conectar a UI.
 - A validação de runtime dos SQLs segue pendente após o cutover. O helper `private.shares_server_with` foi endurecido para considerar apenas amizades aceitas; a verificação estática cobre o helper, mas não substitui teste RLS com dois usuários.
 - Os fluxos MFA ainda não foram executados contra Supabase Auth; a correção foi estática. O comportamento de revogação de sessões ao excluir um fator verificado exige novo login no desligamento e sessão nova após recuperação.
-- Leitura do Supabase restabelecida em 2026-11-27 usando a conexão `Primary`; projeto `ujdosskjycrdkcgsswfa` confirmado `ACTIVE_HEALTHY`. A falha anterior era a conexão incorreta (`shiqi` apontava para o projeto antigo). O preflight atualizado foi executado somente com SELECT e todos os 18 checks booleanos retornaram true. Nenhum DDL/DML foi executado.
+- Leitura e escrita do Supabase paralelo confirmadas via conexão `Primary`; projeto `ujdosskjycrdkcgsswfa` estava `ACTIVE_HEALTHY`. A falha anterior era a conexão incorreta (`shiqi` apontava para o projeto antigo). O preflight pré-cutover passou 18/18; a migration canônica foi aplicada e o pós-check estrutural passou.
 - A validação de parser/runtime em PostgreSQL isolado foi dispensada pelo usuário. A migration foi aplicada com sucesso em transação no projeto paralelo; os fluxos runtime de Auth/JWT/RLS/Storage/Realtime ainda precisam de testes de integração antes de conectar a UI.
 - A Vercel continua com a última implantação READY, mas ela aponta para o commit 1a6f6706, anterior às alterações recentes de frontend. A proteção SSO está habilitada. Não disparar novo deploy enquanto a restrição/janela de limite registrada no projeto não terminar.
 - O smoke test existente na raiz aponta para o site original e não valida a cópia paralela; não foi executado para evitar testar/altear o alvo errado.
@@ -33,7 +33,7 @@
 - [x] 2026-11-27 — Corrigido voice_join para o limite aprovado de 10 participantes (a referência canônica ainda estava em 6).
 - [x] 2026-11-27 — Corrigida ACL de funções: schema private com USAGE para authenticated/service_role e as seis RPCs internas de conta/autenticação com EXECUTE somente para service_role.
 - [x] 2026-11-27 — Criado CUTOVER_PREFLIGHT.sql (somente leitura), com verificações de tabelas/dados, colisões, trigger Auth, pgcrypto, Realtime, Storage, índices, funções e papéis.
-- [x] 2026-11-27 — Montado CUTOVER_DRAFT.sql em transação, com renomeação das cinco tabelas prototype, renomeação de índices legados, remoção do trigger Auth conflitante e criação do schema canônico completo. É somente rascunho de revisão, não aplicado.
+- [x] 2026-11-27 — Montado e aplicado `CUTOVER_DRAFT.sql` em transação pela migration `shiqi_canonical_schema_cutover`; cinco tabelas prototype preservadas como `legacy_*`, índices antigos renomeados, trigger Auth prototype removido e schema canônico completo instalado. Relatório em `docs/CUTOVER_EXECUTION_REPORT.md`.
 - [x] 2026-11-27 — Criados CUTOVER_SNAPSHOT.sql e CUTOVER_ROLLBACK_PLAN.md. O rollback continua bloqueado até teste transacional em PostgreSQL isolado e revisão final das dependências.
 - [x] 2026-11-27 — Corrigidos dois pontos na referência canônica: voice_join agora respeita o limite aprovado de 10 participantes; ACL concede USAGE do schema private aos papéis que precisam executar policies/helpers e EXECUTE service_role às seis RPCs internas de autenticação/conta.
 - [x] 2026-11-27 — Revisão estática cruzada dos SQLs canônicos, ACLs, funções, triggers, Storage, Realtime e dependências: 18 tabelas, 17 policies, 45 RPCs públicas, 13 funções privadas e 46 referências de colunas verificadas.
@@ -56,7 +56,7 @@
 - [x] 2026-11-27 — Edge Function Auth completa restaurada em `shiqi-parallel/supabase/functions/auth/index.ts` a partir da fonte versionada na raiz; origens antigas de produção removidas, URL padrão ajustada para o projeto paralelo e chave anon exigida por variável de ambiente. Sem deploy.
 - [ ] Validar contratos da Edge Function Auth restaurada, dependências, JWT e variáveis de ambiente antes de conectar a UI. Revisão estática MFA concluída em 2026-11-27; testes de runtime continuam pendentes.
 - [ ] Completar testes JWT assinados/negativos e validar algoritmo/chaves do projeto destino antes de integrar middleware.
-- [ ] Preparar migrations incrementais, RLS, grants, Storage e Realtime; não aplicar remotamente sem revisão.
+- [ ] Testar em runtime os contratos de Auth/JWT, RLS, RPCs, Storage, Realtime e concorrência antes de conectar a UI; qualquer migration incremental futura exige revisão própria.
 - [ ] Regressão de todos os fluxos que permanecem no produto.
 - [ ] Preview Vercel depois que a janela de limite terminar; não contornar limite.
 
@@ -66,7 +66,7 @@
 - Das 59 funções, 58 são SECURITY DEFINER; todas usam `SET search_path TO ''`.
 - Draft transacional BEGIN/COMMIT; revisão estática não encontrou `DROP ... CASCADE` nem `TRUNCATE` de nível superior.
 - Supabase Advisors: zero alertas de segurança e saúde; cinco INFO de índices não utilizados em tabelas prototype vazias.
-- Limite: nenhuma validação PostgreSQL runtime, Auth/JWT, Storage, Realtime ou concorrência real. Nenhum DDL/DML remoto foi executado.
+- Limite da auditoria pré-cutover: não houve validação runtime de Auth/JWT, Storage, Realtime ou concorrência real antes da aplicação. A migration foi posteriormente aplicada; os testes de integração permanecem pendentes.
 - Removido um GRANT redundante de USAGE do schema `private` no ACL canônico e no draft; reexecutado o harness estático após a correção, com resultado OK. Ambos mantêm uma única concessão de USAGE, 59 REVOKEs e 52 GRANTs de função válidos.
 - Cruzamento adicional: 30 RPCs distintas usadas pelo frontend têm definição canônica; 13 tabelas REST referenciadas existem; draft e referências coincidem em 18/18 RLS, 17 policies, sete policies Storage e duas policies Realtime.
 - Próximo: continuar revisão final dos contratos de banco e preparar a versão final revisável da migration/rollback, mantendo execução remota bloqueada.
@@ -81,7 +81,7 @@
 - Não alterar `main`, `site/`, `desktop/`, domínio principal ou produção.
 - Preservar visual, navegação e funções restantes.
 - Não repetir o teste de voz com 10 participantes, já realizado pelo usuário.
-- Não aplicar migration no banco paralelo até schema compatível e plano revisado.
+- Não executar rollback destrutivo no banco paralelo até que o plano seja testado e revisado. Não alterar o projeto original/produção.
 - Não publicar Edge Function, criar usuário de teste ou enviar e-mail sem preparação e autorização específicas.
 - Não acessar o Supabase original sem acesso explicitamente concedido.
 
