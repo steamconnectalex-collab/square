@@ -15,6 +15,20 @@ WHERE table_schema='public'
   AND table_name IN ('profiles','communities','community_members','channels','messages')
 ORDER BY table_name, grantee, privilege_type;
 
+-- Grants explícitos de tabela incluindo grantee PUBLIC (role_table_grants não o lista).
+SELECT table_name, grantee, privilege_type, is_grantable
+FROM information_schema.table_privileges
+WHERE table_schema='public'
+  AND table_name IN ('profiles','communities','community_members','channels','messages')
+ORDER BY table_name, grantee, privilege_type;
+
+-- Grants de sequences: o cutover revoga anon/authenticated em TODAS as sequences
+-- do schema public, inclusive qualquer sequence ligada ao protótipo.
+SELECT sequence_name, grantee, privilege_type, is_grantable
+FROM information_schema.sequence_privileges
+WHERE sequence_schema='public'
+ORDER BY sequence_name, grantee, privilege_type;
+
 -- 2) Privilégios por coluna (não são restaurados por REVOKE de tabela).
 SELECT table_name, column_name, grantee, privilege_type, is_grantable
 FROM information_schema.column_privileges
