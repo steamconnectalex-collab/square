@@ -6,8 +6,8 @@
 **Migrar tecnologia sem mudar design, layout, identidade visual, navegação ou qualquer funcionalidade do aplicativo original que permaneça no escopo.** O diretório `site/` da raiz é a fonte de verdade. Música foi explicitamente retirada do produto pelo usuário e poderá ser removida somente da cópia paralela. Nenhuma outra simplificação/remoção de função sem autorização expressa.
 
 ## Em andamento agora
-- [ ] Revisar rollback/snapshot após os novos objetos de Storage e Realtime; continuar auditoria final de mensagens/DMs. Policies de sinalização privada de voz restauradas e preflight ampliado; anexos privados, bloqueios de leitura em DMs e locks transacionais implementados. Teste estático passou em harness em memória; validação PostgreSQL local dispensada; não aplicar DDL remoto.
-- [x] 2026-11-27 — Ampliado o snapshot para incluir grants de tabela concedidos a PUBLIC e privilégios de todas as sequences; o plano de rollback agora inclui remoção das sete policies Storage do cutover e restauração dos grants de sequence. Removidos grants duplicados do draft.
+- [ ] Etapa final do banco: revisar contratos SQL canônicos/RLS/ACL/Storage/Realtime, validar dependências e fechar a migration revisável. Snapshot e comparação documental do rollback concluídos em 2026-11-27; preflight atualizado passou 18/18. Continuar somente com leitura e revisão estática; não aplicar DDL/DML remoto.
+- [x] 2026-11-27 — Snapshot corrigido executado integralmente em consultas separadas e comparado com o rollback: ACLs de tabela/coluna/sequence/schema, policies, triggers, handler Auth, índices, constraints, Realtime, Storage, migrations e helpers conferidos. Baseline resumido salvo em `docs/CUTOVER_SNAPSHOT_BASELINE.md`. Preflight atualizado: 18/18 checks booleanos passaram. Rollback permanece não executável até teste transacional isolado e revisão final das dependências.
 
 ## Bloqueios atuais (27/11/2026)
 - O limite de 10 participantes por voz agora tem locks transacionais por usuário e sala no SQL canônico e no draft; a proteção foi verificada estaticamente, mas ainda depende de teste concorrente em PostgreSQL. 
@@ -27,7 +27,7 @@
 - [x] 2026-11-27 — Endurecida a concorrência de `voice_join`: locks transacionais por usuário e sala evitam que entradas simultâneas ultrapassem 10 participantes ou mantenham o mesmo usuário em duas salas. Atualizados SQL canônico, draft e teste estático.
 - [x] 2026-11-27 — Corrigida exposição de perfis por amizade pendente: `private.shares_server_with()` agora só reconhece amizades com `status = 'accepted'`, tanto no helper canônico quanto no `CUTOVER_DRAFT.sql`. O helper alimenta `profiles_select_visible` e `profiles_full`; a correção impede que uma solicitação pendente seja tratada como amizade para liberar perfil. Adicionada verificação ao teste estático de contrato.
 - [x] 2026-11-27 — Corrigida a consulta de ACLs do snapshot: removida a referência à visão inexistente `information_schema.sequence_privileges`; agora usa `pg_class`/`aclexplode` para capturar grants de tabelas, colunas e sequences, inclusive PUBLIC e privilégios PG17. Incluída também a ACL dos schemas `private`/`public`.
-- [x] 2026-11-27 — Leitura real do projeto paralelo restabelecida via `Primary`; projeto confirmado ACTIVE_HEALTHY. Os 17 checks do preflight retornaram true: cinco tabelas prototype vazias, zero usuários Auth, nomes livres, pgcrypto disponível, Realtime somente em `public.messages`, sem buckets/policies Storage conflitantes e sem colisões de funções/índices.
+- [x] 2026-11-27 — Leitura real do projeto paralelo restabelecida via `Primary`; projeto confirmado ACTIVE_HEALTHY. Os 18 checks do preflight retornaram true: cinco tabelas prototype vazias, zero usuários Auth, nomes livres, pgcrypto disponível, Realtime somente em `public.messages`, sem buckets/policies Storage conflitantes e sem colisões de funções/índices.
 - [x] 2026-11-27 — Capturadas definições exatas do trigger `auth.users` e do handler `private.handle_new_user()`. ACLs atuais identificadas: grants amplos de tabela para anon/authenticated nas cinco tabelas prototype; UPDATE por coluna para authenticated em 13 colunas; nenhuma sequence em `public`; nenhuma ACL de sequence para restaurar.
 - [x] 2026-11-27 — Corrigido voice_join para o limite aprovado de 10 participantes (a referência canônica ainda estava em 6).
 - [x] 2026-11-27 — Corrigida ACL de funções: schema private com USAGE para authenticated/service_role e as seis RPCs internas de conta/autenticação com EXECUTE somente para service_role.
@@ -107,8 +107,7 @@
 - Iniciada a etapa 2 apenas como planejamento e recuperação de schema; nenhum SQL/DDL foi executado nem aplicado remotamente.
 
 ### 2026-11-26 — Continuação da etapa 1 (inspeção do app principal)
-- Cruzadas as rotinas de loadWorld, mensagens/histórico, Realtime/polling, reações, tópicos, busca/menções, servidores/canais/convites, amizades/DMs/bloqueios, eventos e voz com as tabelas/RPCs correspondentes.
-- Confirmado que favoritos de servidores e várias preferências ficam em localStorage; modais, navegação e controles visuais são estado local. Ações de negócio continuam delegadas a REST/RPC/RLS.
+- Cruzadas as rotinas de loadWorld, mensagens/histórico, Realtime/polling, reações, tópicos, busca/menções, servidores/canais/convites, amizades/DMs/bloqueios, eventos e voz com as tabelas/RPCs correspondentes.- Confirmado que favoritos de servidores e várias preferências ficam em localStorage; modais, navegação e controles visuais são estado local. Ações de negócio continuam delegadas a REST/RPC/RLS.
 - Confirmado que a integração depende do schema original, inclusive messages bigint/thread_of, DMs e tabelas sociais ausentes no banco paralelo atual.
 - QR permaneceu fora da inspeção e música fora do escopo. Nenhuma interface, funcionalidade, banco remoto ou produção foi alterada.
 
@@ -217,8 +216,7 @@
 
 
 ### 2026-11-26 — Continuação da recuperação das RPCs canônicas
-- Relidos `task.md` e `agents.md` da raiz, além do acompanhamento paralelo e do plano de reconciliação.
-- Consultado o catálogo do projeto original somente com SELECT e extraídas as definições completas de 40 funções públicas não relacionadas a música/QR, em lotes menores para evitar truncamento.
+- Relidos `task.md` e `agents.md` da raiz, além do acompanhamento paralelo e do plano de reconciliação.- Consultado o catálogo do projeto original somente com SELECT e extraídas as definições completas de 40 funções públicas não relacionadas a música/QR, em lotes menores para evitar truncamento.
 - Criados na branch `shiqi-parallel-dev`:
   - `docs/CANONICAL_SOCIAL_PROFILE_RPCS.sql` — amizades, DMs, bloqueios, perfil e configurações (15 definições, incluindo sobrecarga).
   - `docs/CANONICAL_MODERATION_EVENTS_VOICE_RPCS.sql` — moderação, reações, eventos, voz, exploração e destaques (17 definições).
@@ -328,6 +326,13 @@
 - Atualizado `CUTOVER_ROLLBACK_PLAN.md` no commit `61dcd4a` com os achados e a correção. Nenhum DDL/DML remoto, migration, deploy ou alteração de produção foi executado.
 - Próximo passo: executar o snapshot corrigido em consultas separadas e conferir todas as seções, revisar o rollback contra as ACLs reais e buscar um PostgreSQL isolado para validação de parser/runtime. O draft continua proibido de execução até validação e aprovação explícita.
 
+### 2026-11-27 — Validação integral do snapshot e início da etapa final do banco
+- Reexecutadas, em consultas independentes e somente leitura, todas as seções de `CUTOVER_SNAPSHOT.sql`; nenhuma consulta apresentou erro.
+- Estado confirmado: cinco tabelas prototype e `auth.users` com zero linhas; proprietários das cinco tabelas `postgres`; 13 grants explícitos de UPDATE por coluna para `authenticated`; zero sequences em `public`; `private` com USAGE apenas para `authenticated` (owner `postgres`); publicação Realtime apenas em `public.messages`; nenhum bucket ou policy Storage e nenhuma policy em `realtime.messages`.
+- Capturados os cinco grupos de policies RLS prototype, três triggers, 13 índices, constraints, cinco migrations e cinco helpers privados. O trigger Auth e o corpo integral de `private.handle_new_user()` foram lidos.
+- Reexecutado `CUTOVER_PREFLIGHT.sql`: 18/18 checks booleanos passaram, incluindo nomes livres, pgcrypto, buckets, Storage, Realtime, índices e funções.
+- Supabase Advisors: zero avisos de segurança e zero de saúde. Cinco avisos INFO de índices não utilizados referem-se às tabelas prototype vazias; não remover índices por esse motivo.
+- Atualizados snapshot/rollback e acompanhamento. Etapa final do banco iniciada: revisão de dependências, contratos, RLS, ACL, Storage e Realtime. Nenhum DDL/DML remoto foi executado.
 
 ### 2026-11-27 — Complemento do snapshot de permissões de schema
 - A revisão do draft revelou mais um objeto afetado pelo cutover: a ACL do schema `private` é redefinida (REVOKE USAGE para PUBLIC/anon/authenticated/service_role e GRANT para authenticated/service_role). O snapshot anterior não capturava ACL de schema.
