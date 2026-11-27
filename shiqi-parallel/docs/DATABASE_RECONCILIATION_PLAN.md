@@ -387,3 +387,17 @@ A documentação canônica foi cruzada por contagem e referências:
 - Referências de buckets e Realtime agora têm SQL próprio e validação de configuração.
 
 **Limite:** revisão estática, sem compilação/execução PostgreSQL. O acesso de leitura ao Supabase paralelo foi negado pelo conector nesta sessão. A próxima fase continua sendo consolidar migration/rollback revisáveis e validar em ambiente PostgreSQL isolado; não executar DDL remoto até concluir isso.
+
+## 12. Draft de cutover e validação de segurança — 27/11/2026
+
+Foram corrigidos dois defeitos nas referências canônicas antes da montagem da migration:
+- `public.voice_join(uuid)` agora usa limite 10, conforme decisão aprovada para o projeto paralelo (a extração original estava em 6).
+- A ACL agora concede USAGE do schema `private` a `authenticated` e `service_role`, necessário para executar helpers chamados diretamente pelas policies; as seis RPCs internas de autenticação/conta recebem EXECUTE apenas de `service_role`.
+
+Novos artefatos:
+- `docs/CUTOVER_PREFLIGHT.sql`: consultas somente leitura e checks de colisões, dados, Auth, pgcrypto, Realtime, Storage, índices, funções e papéis.
+- `docs/CUTOVER_SNAPSHOT.sql`: coleta de grants de tabela/coluna, policies, triggers, índices, constraints, Storage, Realtime e definições do handler prototype para preparar rollback.
+- `docs/CUTOVER_DRAFT.sql`: montagem transacional de revisão. Preserva as cinco tabelas prototype com nomes `legacy_*`, renomeia índices antigos para liberar nomes canônicos, remove o trigger Auth que conflita com o signup explícito da Edge Function e cria as 18 tabelas, índices, funções, triggers, RLS, ACL, buckets, policies Storage e Realtime.
+- `docs/CUTOVER_ROLLBACK_PLAN.md`: ordem e condições para rollback seguro; ainda não é SQL executável.
+
+**Bloqueios mantidos:** o conector Supabase negou operações de leitura nesta sessão; não foi possível executar o preflight/snapshot nem confirmar o estado atual. O ambiente local não dispõe de PostgreSQL/psql/Docker para parser e ensaio isolado. O rollback executável não pode ser finalizado sem snapshot real, especialmente a definição exata do trigger Auth e ACLs anteriores. Nenhum SQL/DDL foi executado no projeto remoto.
