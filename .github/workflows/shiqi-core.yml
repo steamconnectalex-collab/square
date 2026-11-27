@@ -5,6 +5,8 @@ on:
     branches: [shiqi-parallel-dev]
     paths:
       - "shiqi-parallel/services/core/**"
+      - "shiqi-parallel/apps/web/**"
+      - "shiqi-parallel/tests/**"
       - ".github/workflows/shiqi-core.yml"
   pull_request:
     branches: [shiqi-parallel-dev]
@@ -46,6 +48,22 @@ jobs:
             esac
           done <<< "$algorithms"
           echo "JWKS algorithm compatibility check passed."
+
+  web-contract:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: shiqi-parallel
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check frontend JavaScript syntax
+        run: node --check apps/web/app.js
+      - name: Check frontend/Rust upload contract
+        run: node tests/rust-frontend-contract.js
+
   rust:
     runs-on: ubuntu-latest
     defaults:
