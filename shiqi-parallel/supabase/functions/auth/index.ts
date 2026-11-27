@@ -338,6 +338,9 @@ async function login(body: Record<string, unknown>, ip: string) {
       if (clearError) throw new HttpError(503, "mfa_unavailable", "Não foi possível concluir a recuperação da verificação em duas etapas. Tente novamente.");
       const { error: factorError } = await admin.auth.admin.mfa.deleteFactor({ id: factor.id, userId: data.user.id });
       if (factorError) throw new HttpError(503, "mfa_unavailable", "Não foi possível desligar a verificação em duas etapas. Entre novamente com seu código do aplicativo ou tente mais tarde.");
+      // A exclusão do fator verificado encerra as sessões existentes no Supabase.
+      // Gere uma sessão nova depois da exclusão para não devolver um token revogado.
+      s = await mintSession(email);
       mfaOff = true;
     } else {
       const v = await mfaVerify(s, factor.id, totp);
