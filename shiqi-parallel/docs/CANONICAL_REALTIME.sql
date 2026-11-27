@@ -42,3 +42,14 @@ BEGIN
   END LOOP;
 END
 $migration$;
+
+-- Sinalização WebRTC em canal privado: somente membros atuais do servidor
+-- dono do canal voice podem ler e publicar mensagens de broadcast.
+DROP POLICY IF EXISTS voice_topic_select ON realtime.messages;
+DROP POLICY IF EXISTS voice_topic_insert ON realtime.messages;
+CREATE POLICY voice_topic_select ON realtime.messages
+  FOR SELECT TO authenticated
+  USING (extension = 'broadcast' AND private.can_voice_topic((SELECT realtime.topic())));
+CREATE POLICY voice_topic_insert ON realtime.messages
+  FOR INSERT TO authenticated
+  WITH CHECK (extension = 'broadcast' AND private.can_voice_topic((SELECT realtime.topic())));
