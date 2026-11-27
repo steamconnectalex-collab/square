@@ -95,7 +95,30 @@ Contagem corrigida do alvo: **18 tabelas**, excluindo explicitamente `qr_session
 
 Lacunas confirmadas após leitura dos arquivos: SQL completo de `servidores_e_canais` e SQL executável de eventos. Outros arquivos versionados ainda precisam ser cruzados com o estado vivo e com as dependências para detectar diferenças entre o SQL do Git e o banco de referência.
 
-## 7. Resultado desta sessão
+## 7. Recuperação adicional do banco original (26/11/2026)
+
+Foram consultadas definições vivas no catálogo PostgreSQL do projeto original, em modo somente leitura, para preencher as duas lacunas que não estão no Git.
+
+### Schema base de servidores/canais recuperado
+Tabelas e campos confirmados:
+- `servers`: id UUID, name, owner_id, created_at, is_public false, level 1.
+- `server_members`: server_id, user_id, role ('owner'|'member'), joined_at; chave primária composta.
+- `channels`: id UUID, server_id anulável, name, kind ('text'|'voice'|'dm'), position, created_at. Canal DM exige server_id NULL; canais de servidor usam FK com cascade.
+- Regras: nome do servidor 2–40; nome do canal 1–30; level 1–10.
+- `create_server(p_name)`: autentica usuário, limita 10 servidores por proprietário, cria servidor, associação owner e canais Geral/Sala principal.
+- `is_server_member(uuid)`: verifica associação do usuário autenticado.
+- RLS: servers e server_members só visíveis a membros; channels visíveis a membros do servidor ou membros DM (helper privado).
+
+### SQL completo de eventos recuperado
+- `server_events`: id, server_id, creator_id, title, description, place, starts_at, created_at; limites title 2–80, description 500, place 80.
+- `event_interest`: event_id, user_id, created_at; chave primária composta.
+- RPCs completas recuperadas: `create_event` (só dono, data futura com tolerância de 5 min, máximo 25 eventos futuros), `delete_event` (só dono), `toggle_event_interest` (membro).
+- Policies de leitura limitadas a membros do servidor; funções SECURITY DEFINER com search_path vazio.
+
+### Confirmação importante
+O banco original foi consultado apenas com SELECT de metadados/definições. Nenhuma tabela, dado, função, grant, policy, migration ou configuração foi modificada.
+
+## 8. Resultado desta sessão
 
 - Etapa 1 fechada por inspeção estática em `FEATURE_PARITY_MATRIX.md`.
 - Etapa 2 iniciada em modo de auditoria e planejamento.
