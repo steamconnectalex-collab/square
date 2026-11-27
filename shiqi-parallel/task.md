@@ -452,3 +452,10 @@
 - A leitura direta do endpoint público JWKS não pôde ser feita pelo ambiente de ferramentas desta sessão; isso não foi tratado como confirmação do algoritmo.
 - Adicionado ao workflow `.github/workflows/shiqi-core.yml` um job independente, sem secrets, que consulta o JWKS público do projeto paralelo, registra somente metadados não secretos (`kid`, `kty`, `alg`, `crv`) e falha se encontrar algoritmo/tipo de chave fora de ES256/RS256.
 - Aguardando execução do GitHub Actions para concluir a compatibilidade real. Até lá, o verificador Rust não deve ser conectado ao tráfego.
+
+
+### 2026-11-27 — Algoritmo real confirmado e teste ES256 (em andamento)
+- O job `supabase-jwks` do run `45999692243` consultou o endpoint real e confirmou uma chave `EC / P-256 / ES256` (kid `62230fa8-2ce5-42ab-9438-34f57a83718c`). Nenhum material de chave foi impresso.
+- O verificador já aceita ES256 e usa `DecodingKey::from_jwk`; foi adicionado teste unitário com fixture EC P-256 exclusiva de testes para confirmar desserialização de JWKS no formato Supabase, seleção por `kid` e validação de JWT ES256 assinado.
+- Commit do teste: `fb239df8676c610db9e548f5442e19c8e7cced15`. Aguardando CI (fmt/test/clippy). A fixture não é a chave real do projeto.
+- Ainda não conectar ao tráfego até o CI confirmar e até definir a etapa de integração/implantação sem misturar com a Edge Function Auth pendente.
