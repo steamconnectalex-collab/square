@@ -47,6 +47,13 @@
 3. Recuperar a migration base ausente de servidores e eventos; pedir ao usuário dump SQL somente de estrutura (sem dados) se não houver fonte Git autorizada.
 4. Corrigir e testar autenticação antes de conectar a UI.
 5. Expandir testes de JWT e middleware Rust; validar algoritmo e chaves antes da integração.
+### 2026-11-26 — Recuperação de migrations versionadas para etapa 2
+- Inspecionados os diretórios de migrations na raiz e na cópia paralela da branch. Os SQLs originais 0001–0024 estão na raiz; a cópia paralela omite 0011/0012 (música) e contém a exceção de voz 0025.
+- Lidos integralmente 0001, 0002, 0003, 0005, 0021 e 0024. 0002 contém a estrutura de mensagens e helpers, mas apenas resume a migration-base `servidores_e_canais`; 0021 é resumo, não SQL executável de eventos.
+- Confirmada contagem de 18 tabelas-alvo sem música e sem QR. QR não será reconstruído.
+- Atualizados `docs/DATABASE_RECONCILIATION_PLAN.md` e `docs/SCHEMA_DEPENDENCY_INVENTORY.md` com os achados e lacunas.
+- Nenhum banco remoto foi alterado; nenhum SQL/DDL executado.
+
 ### 2026-11-26 — Etapa 2: auditoria do destino e plano inicial
 - Consultados somente metadados do Supabase paralelo: tabelas/colunas/FKs, histórico de migrations, policies, funções, triggers, grants, buckets e publicação Realtime.
 - Confirmadas incompatibilidades em profiles/channels/messages e que communities/community_members são modelo próprio. Cinco tabelas estão vazias; cinco migrations já constam no histórico remoto.
