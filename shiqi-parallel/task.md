@@ -20,7 +20,7 @@
 - [x] 2026-11-26 — Contratos iniciais de autenticação documentados em `docs/AUTH_CONTRACT_INVENTORY.md`.
 - [x] 2026-11-26 — Música excluída do escopo: migrations 0011 e 0012 removidas somente da pasta paralela; originals em `main` preservados.
 - [x] Matriz de paridade funcional concluída em `docs/FEATURE_PARITY_MATRIX.md` em 2026-11-26, incluindo rotas, ações, persistência, contratos e critérios de regressão. Execução dos testes fica para a etapa de regressão.
-- [ ] **Etapa 2 — planejamento/reconciliação do banco:** recuperar SQL ausente da base de servidores/canais e eventos por fonte Git autorizada; confirmar definições no projeto original autorizado; propor reconciliação do schema paralelo de cinco tabelas com o modelo alvo sem drops/renames destrutivos. Nenhum DDL será aplicado antes da revisão do plano.
+- [ ] **Etapa 2 — planejamento/reconciliação do banco:** plano inicial criado em `docs/DATABASE_RECONCILIATION_PLAN.md`. Auditoria somente leitura confirmou cinco tabelas incompatíveis e vazias, cinco migrations remotas, ausência de RPCs do app original, ausência de buckets e Realtime apenas em messages; políticas são do modelo communities e há grants amplos a anon que exigem hardening. Próximo: recuperar SQL base ausente, fechar dependências e revisar estratégia sem DDL.
 - [ ] Reconstruir e testar contratos de autenticação; o arquivo versionado atual é apenas stub.
 - [ ] Completar testes JWT assinados/negativos e validar algoritmo/chaves do projeto destino antes de integrar middleware.
 - [ ] Preparar migrations incrementais, RLS, grants, Storage e Realtime; não aplicar remotamente sem revisão.
@@ -47,6 +47,13 @@
 3. Recuperar a migration base ausente de servidores e eventos; pedir ao usuário dump SQL somente de estrutura (sem dados) se não houver fonte Git autorizada.
 4. Corrigir e testar autenticação antes de conectar a UI.
 5. Expandir testes de JWT e middleware Rust; validar algoritmo e chaves antes da integração.
+### 2026-11-26 — Etapa 2: auditoria do destino e plano inicial
+- Consultados somente metadados do Supabase paralelo: tabelas/colunas/FKs, histórico de migrations, policies, funções, triggers, grants, buckets e publicação Realtime.
+- Confirmadas incompatibilidades em profiles/channels/messages e que communities/community_members são modelo próprio. Cinco tabelas estão vazias; cinco migrations já constam no histórico remoto.
+- Detectados: nenhum bucket no destino; Realtime apenas para messages; nenhuma RPC pública do app original; policies de communities; concessões diretas amplas a anon que precisam ser revistas/revogadas no hardening.
+- Criado `docs/DATABASE_RECONCILIATION_PLAN.md` com inventário, estratégia sem perda, fases, decisões pendentes e bloqueio explícito de DDL até revisão.
+- Nenhum SQL/DDL, migration, grant, bucket, policy, trigger, função, Realtime, dado ou Edge Function foi alterado.
+
 ### 2026-11-26 — Fechamento da etapa 1 e início da etapa 2
 - Etapa 1 encerrada por inspeção estática: telas, rotas, grupos de ações, persistência local, REST/RPC, Storage, Realtime, APIs do navegador e placeholders foram registrados na matriz.
 - Confirmado adapter de perfil: saveProfile faz PATCH em profiles; avatar é JPEG 256×256 no bucket avatars, com remoção do objeto anterior; anexos usam attachments e messages.attachment_path/attachment_alt.
