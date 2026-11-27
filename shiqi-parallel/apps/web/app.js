@@ -814,7 +814,7 @@ function ensureAttachmentUrl(path) {
     const token = await freshToken();
     if (!token || !userId) throw new Error('not_authenticated');
     const objectPath = path.split('/').map(encodeURIComponent).join('/');
-    const base = C.SUPABASE_URL.replace(/\\/+$/, '');
+    const base = C.SUPABASE_URL.endsWith('/') ? C.SUPABASE_URL.slice(0, -1) : C.SUPABASE_URL;
     const response = await fetch(base + '/storage/v1/object/sign/attachments/' + objectPath, {
       method: 'POST',
       headers: { apikey: C.SUPABASE_KEY, authorization: 'Bearer ' + token, 'content-type': 'application/json' },
@@ -823,7 +823,7 @@ function ensureAttachmentUrl(path) {
     if (!response.ok) throw new Error('attachment_unavailable');
     const data = await response.json(), signed = data && (data.signedURL || data.signedUrl);
     if (!signed || !S.session || !S.session.user || S.session.user.id !== userId) throw new Error('attachment_unavailable');
-    return /^https?:\\/\\//i.test(signed)
+    return signed.indexOf('http://') === 0 || signed.indexOf('https://') === 0
       ? signed
       : base + '/storage/v1' + (signed.charAt(0) === '/' ? signed : '/' + signed);
   })().then((url) => {
@@ -866,7 +866,7 @@ function msgBody(m) {
   let img = '';
   if (m.img) {
     const u = attUrl(m.img), alt = SPV2('img_desc') && m.alt ? m.alt : 'Imagem enviada';
-    const gif = /\\.gif(\\?|$)/i.test(m.img), still = gif && SPV2('play_gifs') === false;
+    const gif = /\.gif(\?|$)/i.test(m.img), still = gif && SPV2('play_gifs') === false;
     if (!u) {
       const state = attachmentUrlCache.get(m.img);
       img = `<span class="attpending">${state && state.failed ? 'Imagem indisponível' : 'Carregando imagem…'}</span>`;
