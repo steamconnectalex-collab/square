@@ -223,3 +223,30 @@ A busca no código original confirmou que `site/app.js` realmente chama:
 - `POST /qr/approve` para aceitar ou negar.
 
 A lista completa de Edge Functions do projeto original, porém, contém somente `auth`; não existe uma Edge Function separada chamada `qr`. O arquivo de testes `tests/smoke.js` simula respostas dessas rotas, mas isso não comprova que o backend real as implementa. Portanto, QR login é uma dependência real da interface, mas sua implementação remota não foi localizada nesta auditoria. O recurso precisa ser tratado como pendência funcional de alta prioridade, e não removido nem considerado operacional. Não alterei o frontend.
+
+
+## Extração de definições SQL em lotes — 26/11/2026
+
+A extração que antes excedia o limite de saída foi refeita em consultas pequenas, diretamente em `pg_get_functiondef`, no projeto original e somente com SELECT. Foram recuperadas sem truncamento as definições das **13 funções privadas e 45 assinaturas públicas** do escopo (incluindo as duas sobrecargas de `send_friend_request`). O conjunto consultado excluiu música. QR não foi pesquisado nesta retomada, conforme a decisão de escopo vigente.
+
+Grupos cujos corpos foram recuperados:
+- Privadas: helpers de autorização e membership (`can_post`, `can_voice_topic`, `dm_allowed`, `is_channel_member`, `is_channel_owner`, `is_dm_member`, `shares_server_with`), triggers (`accept_on_reply`, `check_thread_parent`, `messages_rate_limit`, `touch_edited_at`, `touch_profile`) e moderação (`remove_from_server`).
+- Públicas: criação e entrada em servidores/canais/convites; exploração, destaque e fixação; amizades, bloqueios e DMs; moderação; eventos; perfil, presença e configurações; reações; voz; e rotinas internas de autenticação/limite de tentativas.
+
+### Regras e pontos de atenção confirmados nos corpos
+
+- `create_server`: limite de 10 por proprietário; cria associação owner e canais Geral/Sala principal.
+- `create_channel`: somente proprietário; tipos text/voice; nome até 30; máximo 30 canais.
+- `join_server` e `join_public_server`: limite de 20 servidores por usuário e respeito a banimentos.
+- `create_invite`: gera código aleatório; a validade e máximo de usos são defaults/constraints da tabela.
+- `send_friend_request`: verifica bloqueios, preferências de recebimento, amigos em comum/servidor compartilhado e limite de pedidos pendentes.
+- `open_dm`: exige amizade aceita ou servidor compartilhado; respeita bloqueios e preferências de DM, podendo criar estado request.
+- `toggle_reaction`: requer permissão para postar no canal, limita emoji a 16 caracteres e até 20 emojis distintos por mensagem.
+- `create_event`: somente proprietário, título 2–80, descrição até 500, local até 80, até 25 eventos futuros.
+- `voice_set_state`: ensurdecer força microfone mutado.
+- **Exceção obrigatória do destino:** a função viva original `voice_join` limita a 6 participantes. A branch paralela tem decisão aprovada de 10; a futura definição do destino deve usar 10, não copiar o limite 6.
+- Rotinas internas como `purge_user_data`, `rate_check`, `verify_email_code`, `revoke_user_sessions`, `get_auth_user_by_email` e `get_login_email_by_username` não devem receber EXECUTE público/anon por conveniência; grants serão definidos individualmente.
+
+A extração dos corpos está completa para o inventário listado. Ainda falta transformar os corpos e os metadados exatos em migrations revisadas e cruzá-los com policies, constraints, índices, grants e chamadas frontend. **Isso não significa que o schema esteja pronto.**
+
+Nenhuma tabela, função, policy, grant, trigger, bucket, publicação Realtime, usuário, dado ou Edge Function foi alterado. Nenhum DDL foi executado.
