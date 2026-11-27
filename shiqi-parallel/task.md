@@ -491,3 +491,11 @@
 - CORS estrito foi adicionado para permitir apenas a origem configurada em `SHIQI_ALLOWED_ORIGIN`, métodos POST/OPTIONS e headers necessários ao upload. Sem origem válida, requisições cross-origin ficam desabilitadas.
 - Run atual para CORS: `46004512804`, aguardando resultado. Não conectar frontend nem implantar até CI verde e definição do host do serviço.
 - Frontend permanece sem alteração; nenhum deploy ou alteração remota de Storage foi feito.
+
+
+### 2026-11-27 — Acesso GitHub Railway liberado
+- O usuário autorizou a instalação do GitHub App Railway para o repositório `steamconnectalex-collab/square`.
+- Conectada a fonte do serviço Railway `shiqi-core` à branch `shiqi-parallel-dev` (sem pin de commit; deploys da branch serão acompanhados automaticamente).
+- Deployment inicial `566fe457-7c58-448b-8b85-9cbc18172004` iniciado. Estado observado: `BUILDING`; Dockerfile e contexto foram carregados e a etapa `cargo build --release` começou.
+- Ainda não há domínio público nem URL validada. Próximo passo: concluir build, gerar domínio, validar health/readiness e autenticação.
+- Sem alteração em `main`, produção, frontend ou Supabase.
