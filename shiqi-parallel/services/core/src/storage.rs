@@ -195,10 +195,14 @@ mod tests {
                 }
             }),
         );
-        let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind mock Storage");
+        let listener = TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("bind mock Storage");
         let address = listener.local_addr().expect("mock Storage address");
         let server = tokio::spawn(async move {
-            axum::serve(listener, app).await.expect("mock Storage server");
+            axum::serve(listener, app)
+                .await
+                .expect("mock Storage server");
         });
 
         let proxy = StorageProxy::new_test(&format!("http://{address}"), "sb_publishable_test")
@@ -216,7 +220,11 @@ mod tests {
 
         server.abort();
         assert!(result.is_ok(), "Storage response should be forwarded");
-        let captured = received.lock().expect("capture lock").clone().expect("request received");
+        let captured = received
+            .lock()
+            .expect("capture lock")
+            .clone()
+            .expect("request received");
         assert_eq!(captured.0, "Bearer user-access-jwt");
         assert_eq!(captured.1, "sb_publishable_test");
         assert_eq!(captured.2, "image/jpeg");
