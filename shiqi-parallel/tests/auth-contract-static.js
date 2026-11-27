@@ -21,6 +21,7 @@ const triggersSql = read('docs/CANONICAL_TRIGGERS.sql');
 const moderationRpcSql = read('docs/CANONICAL_MODERATION_EVENTS_VOICE_RPCS.sql');
 const privateSql = read('docs/CANONICAL_PRIVATE_FUNCTIONS.sql');
 const aclSql = read('docs/CANONICAL_FUNCTION_ACL.sql');
+const draftSql = read('docs/CUTOVER_DRAFT.sql');
 const rlsSql = read('docs/CANONICAL_RLS_POLICIES.sql');
 
 const routes = [
@@ -60,11 +61,23 @@ assert.equal(count(tablesSql, 'create table public.'), 18, 'Contagem inesperada 
 assert.equal(count(rlsSql, 'enable row level security'), 18, 'Todas as tabelas devem ter RLS.');
 assert.equal(count(rlsSql, 'create policy '), 17, 'Contagem inesperada de policies.');
 assert.equal(count(aclSql.toLowerCase(), 'revoke execute on function '), 58, 'A ACL deve revogar as 58 assinaturas.');
+const sharesHelper = privateSql.slice(
+  privateSql.indexOf('function private.shares_server_with('),
+  privateSql.indexOf('create or replace function private.touch_edited_at')
+);
+assert.ok(sharesHelper.includes("f.status = 'accepted'"),
+  'shares_server_with deve ignorar solicitações de amizade pendentes.');
+const draftSharesHelper = draftSql.slice(
+  draftSql.indexOf('function private.shares_server_with('),
+  draftSql.indexOf('create or replace function private.touch_edited_at')
+);
+assert.ok(draftSharesHelper.includes("f.status = 'accepted'"),
+  'O cutover draft deve preservar a proteção contra amizades pendentes.');
 
 assert.ok(auth.includes('factorError') && auth.includes('clearError'), 'Erros de operação MFA não estão sendo verificados.');
 assert.ok(auth.includes('s = await mintSession(email)'), 'Recuperação MFA deve emitir sessão nova após excluir o fator.');
 assert.ok(ui.includes('api().logout(); // o Supabase encerra as sessões'),
   'A interface deve encerrar a sessão local após desligar MFA.');
 
-console.log('SHIQI Auth static contract: OK (13 rotas, 18 tabelas/RLS, 17 policies, 58 ACL revokes).');
+console.log('SHIQI static contract: OK (13 rotas Auth, 18 tabelas/RLS, 17 policies, 58 ACL revokes, privacidade de perfil).');
 console.log('Atenção: teste estático; não valida Deno, JWT, Supabase Auth, PostgreSQL ou envio de e-mail.');
