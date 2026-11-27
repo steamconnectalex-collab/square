@@ -299,3 +299,16 @@ Foram recuperados e salvos em arquivos SQL de referência:
 Os triggers dependem de `messages`, `dm_members` e `profiles`; não criar antes das tabelas.
 
 Os arquivos são referências reconstruídas do catálogo original, não migrations executáveis isoladamente. A auditoria agora tem os corpos de helpers privados e os triggers reais; faltam os corpos públicos das RPCs e a ACL/grants finais para produzir o pacote transacional completo.
+
+
+## 19. Primeiras RPCs públicas reconstruídas
+
+As definições reais de `create_server`, `create_channel`, `create_invite`, `join_server` e `join_public_server` foram extraídas novamente por assinatura e registradas em `docs/CANONICAL_SERVER_RPCS.sql`.
+
+Regras confirmadas nos corpos:
+- criar servidor: nome 2–40; máximo 10 por proprietário; cria associação owner e canais Geral/Sala principal;
+- criar canal: apenas proprietário; text/voice; nome 1–30; máximo 30 canais;
+- convite: apenas membro; código aleatório; defaults da tabela controlam validade de 7 dias e 50 usos;
+- entrar por convite/público: respeita banimento e limite de 20 servidores por usuário; uso de convite é incrementado com lock da linha.
+
+Este é o primeiro grupo de RPCs públicas. Ainda faltam funções de amizade/DM, perfil/configurações, exploração, moderação, eventos, reações, presença, voz e rotinas internas. O arquivo não é migration completa nem foi aplicado.
