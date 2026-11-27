@@ -16,7 +16,7 @@
 - O smoke test existente na raiz aponta para o site original e não valida a cópia paralela; não foi executado para evitar testar/altear o alvo errado.
 
 ## Concluído
-- [x] 2026-11-27 — Corrigida a consulta de ACLs do snapshot: removida a referência à visão inexistente `information_schema.sequence_privileges`; agora usa `pg_class`/`aclexplode` para capturar grants de tabelas, colunas e sequences, inclusive PUBLIC e privilégios PG17.
+- [x] 2026-11-27 — Corrigida a consulta de ACLs do snapshot: removida a referência à visão inexistente `information_schema.sequence_privileges`; agora usa `pg_class`/`aclexplode` para capturar grants de tabelas, colunas e sequences, inclusive PUBLIC e privilégios PG17. Incluída também a ACL dos schemas `private`/`public`.
 - [x] 2026-11-27 — Leitura real do projeto paralelo restabelecida via `Primary`; projeto confirmado ACTIVE_HEALTHY. Os 17 checks do preflight retornaram true: cinco tabelas prototype vazias, zero usuários Auth, nomes livres, pgcrypto disponível, Realtime somente em `public.messages`, sem buckets/policies Storage conflitantes e sem colisões de funções/índices.
 - [x] 2026-11-27 — Capturadas definições exatas do trigger `auth.users` e do handler `private.handle_new_user()`. ACLs atuais identificadas: grants amplos de tabela para anon/authenticated nas cinco tabelas prototype; UPDATE por coluna para authenticated em 13 colunas; nenhuma sequence em `public`; nenhuma ACL de sequence para restaurar.
 - [x] 2026-11-27 — Corrigido voice_join para o limite aprovado de 10 participantes (a referência canônica ainda estava em 6).
@@ -317,3 +317,11 @@
 - O cruzamento das ACLs mostrou grants amplos de tabela a `anon` e `authenticated` nas cinco tabelas prototype; grants de UPDATE por coluna para authenticated em 13 colunas; nenhum grant a PUBLIC observado; nenhuma sequence no schema public. O catálogo mostra também o privilégio PG17 MAINTAIN, não exibido pelas views information_schema usadas antes.
 - Atualizado `CUTOVER_ROLLBACK_PLAN.md` no commit `61dcd4a` com os achados e a correção. Nenhum DDL/DML remoto, migration, deploy ou alteração de produção foi executado.
 - Próximo passo: executar o snapshot corrigido em consultas separadas e conferir todas as seções, revisar o rollback contra as ACLs reais e buscar um PostgreSQL isolado para validação de parser/runtime. O draft continua proibido de execução até validação e aprovação explícita.
+
+
+### 2026-11-27 — Complemento do snapshot de permissões de schema
+- A revisão do draft revelou mais um objeto afetado pelo cutover: a ACL do schema `private` é redefinida (REVOKE USAGE para PUBLIC/anon/authenticated/service_role e GRANT para authenticated/service_role). O snapshot anterior não capturava ACL de schema.
+- Consulta somente leitura ao catálogo `pg_namespace` confirmou: schema `private` pertence a postgres; USAGE concedido somente a authenticated; nenhum USAGE para anon, service_role ou PUBLIC. Schema `public` tem USAGE para PUBLIC/anon/authenticated/service_role e CREATE/USAGE do owner pg_database_owner.
+- Adicionada captura de ACLs dos schemas private/public a `CUTOVER_SNAPSHOT.sql` (commit `95c1871`) e etapa explícita de restauração ao rollback (commit `8859ff3`).
+- Ferramentas locais verificadas: Node.js 22/npm 10 disponíveis; psql, postgres, Docker e Podman não estão instalados. Supabase não possui branches de desenvolvimento existentes. Uma branch Supabase isolada custa US$ 0,01344 por hora; não criar sem aprovação expressa do usuário.
+- Próximo passo: validar a execução integral do snapshot corrigido em seções separadas, concluir a revisão das operações do draft que alteram estado (ACL, trigger, Realtime, Storage) e pedir aprovação somente se for necessário criar a branch isolada para testes PostgreSQL.
