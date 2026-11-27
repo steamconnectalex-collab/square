@@ -196,6 +196,7 @@ declare me uuid := auth.uid(); n int;
 begin
   if me is null then raise exception 'not_authenticated'; end if;
   if not exists (select 1 from public.server_events e join public.server_members sm on sm.server_id = e.server_id where e.id = p_event and sm.user_id = me) then raise exception 'not_member'; end if;
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('shiqi:event-interest:' || p_event::text || ':' || me::text, 0));
   delete from public.event_interest where event_id = p_event and user_id = me;
   get diagnostics n = row_count;
   if n > 0 then return false; end if;
