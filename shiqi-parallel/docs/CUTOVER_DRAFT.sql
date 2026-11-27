@@ -110,6 +110,36 @@ BEGIN
     END IF;
   END LOOP;
 
+  IF EXISTS (
+    SELECT left('legacy_' || idx.relname, 63)
+    FROM pg_index ix
+    JOIN pg_class tbl ON tbl.oid=ix.indrelid
+    JOIN pg_namespace ns ON ns.oid=tbl.relnamespace
+    JOIN pg_class idx ON idx.oid=ix.indexrelid
+    WHERE ns.nspname='public'
+      AND tbl.relname IN ('profiles','communities','community_members','channels','messages')
+    GROUP BY left('legacy_' || idx.relname, 63)
+    HAVING count(*) > 1
+  ) THEN
+    RAISE EXCEPTION 'SHIQI preflight: dois índices prototype gerariam o mesmo nome legacy truncado';
+  END IF;
+
+  IF (SELECT count(*) FROM supabase_migrations.schema_migrations) <> 5
+     OR EXISTS (
+       SELECT 1 FROM unnest(ARRAY[
+         'shiqi_initial_community_chat_schema',
+         'shiqi_harden_rls_and_private_helpers',
+         'shiqi_optimize_profile_rls',
+         'shiqi_auth_profile_triggers',
+         'shiqi_tighten_column_permissions'
+       ]) expected(name)
+       WHERE NOT EXISTS (
+         SELECT 1 FROM supabase_migrations.schema_migrations m WHERE m.name=expected.name
+       )
+     ) THEN
+    RAISE EXCEPTION 'SHIQI preflight: histórico de migrations remoto diverge das cinco migrations prototype auditadas';
+  END IF;
+
   IF to_regclass('public.messages_id_seq') IS NOT NULL THEN
     RAISE EXCEPTION 'SHIQI preflight: sequence public.messages_id_seq já existe';
   END IF;
