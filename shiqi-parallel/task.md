@@ -248,3 +248,9 @@
 - CANONICAL_FUNCTION_ACL.sql agora revoga EXECUTE explicitamente nas 58 assinaturas (45 public + 13 private), revoga USAGE do schema private e reaplica somente as permissões allow-list. Antes havia apenas comentário para revogação; corrigido.
 - Não foi possível rodar parser PostgreSQL/TypeScript nesta sessão: psql, Deno, sqlfluff e pg_format não estão instalados. Os arquivos não devem ser tratados como compilados/testados; validação em branch descartável e runtime Deno permanece obrigatória.
 - Commits: ef1fff0 (ordem de helpers), 76a9546 (revogação de ACL), f57bdaef (registro no plano).
+
+### 2026-11-26 — Checklist de validação pós-migration
+
+- Criado docs/POST_MIGRATION_VALIDATION.sql com consultas somente leitura para validar as 18 tabelas, RLS, 18 policies, 45 RPCs públicas, 13 funções privadas, Storage, Realtime, remoção do trigger Auth prototype e exclusão de música/QR.
+- O checklist ainda não foi executado porque a migration não foi aplicada. A etapa requer primeiro validar o pacote em banco descartável/branch de desenvolvimento.
+- Commit: c8d36ac (checklist); 720af91 (plano).
