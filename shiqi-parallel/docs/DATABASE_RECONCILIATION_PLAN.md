@@ -354,3 +354,11 @@ A versão 10 contém as rotas signup, verify, resend, login, login/totp, forgot,
 O código recuperado não contém service-role secret nem chave secreta embutida. A chave publishable fallback é pública por natureza. Segredos permanecem no Supabase e não foram copiados. Não houve deploy nem alteração de configuração no projeto original ou paralelo.
 
 A versão v10 é agora a referência de backend, substituindo a cópia truncada de 2.259 bytes que estava versionada. Próximo trabalho: revisar compatibilidade das RPCs/tabelas/Storage, executar verificação estática e testes de contrato sem tocar produção. Não ligar o frontend paralelo nem publicar até concluir a validação.
+
+## 23. Revisão estática de ordem e revogação de ACL (26/11/2026)
+
+A leitura cruzada dos arquivos SQL identificou uma dependência de criação: private.can_post é LANGUAGE SQL e chama private.dm_allowed. O bloco dm_allowed foi movido para antes de can_post em CANONICAL_PRIVATE_FUNCTIONS.sql, evitando falha de resolução no CREATE FUNCTION.
+
+Também foi corrigida uma lacuna em CANONICAL_FUNCTION_ACL.sql: antes havia apenas comentário orientando revogar ACL herdada, sem comandos de revogação. Agora o arquivo contém REVOKE EXECUTE explícito para as 58 assinaturas do escopo (45 public + 13 private), revoga USAGE do schema private e depois concede somente a allow-list necessária. A execução continua pendente de validação isolada.
+
+Limitação de validação local: o ambiente desta sessão não possui psql, Deno, sqlfluff ou pg_format. Portanto não foi possível executar parser PostgreSQL, checagem TypeScript/Deno nem testes reais de banco nesta rodada. Não declarar SQL/Edge Function como compilados ou testados. A próxima validação precisa usar um banco descartável/branch de desenvolvimento e runtime Deno antes de qualquer aplicação no projeto paralelo principal.
