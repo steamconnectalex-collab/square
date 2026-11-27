@@ -221,3 +221,14 @@
 - Reconfirmados buckets Storage e limites: attachments público, 3 MiB, JPEG/PNG/WebP/GIF; avatars público, 1 MiB, JPEG/PNG/WebP. Realtime canônico continua sendo friendships, messages e voice_members.
 - Revisão permanece documental: nenhum DDL, migration, grant, policy, bucket, trigger, publicação Realtime, dado ou Edge Function foi alterado remotamente.
 - Próximo passo: completar a revisão de grants de sequência/colunas e das dependências de policies/Realtime; então consolidar a migration e o rollback em arquivos locais da branch para revisão, sem aplicar ao Supabase até autorização explícita.
+
+### 2026-11-26 — Auditoria ampliada do schema e permissões
+
+- Inventário integral confirmado: 45 RPCs públicas e 13 funções privadas fora de música/QR. As definições estão distribuídas nos cinco arquivos CANONICAL_*_RPCS.sql e CANONICAL_PRIVATE_FUNCTIONS.sql. Conferida a cobertura de assinaturas do arquivo CANONICAL_FUNCTION_ACL.sql.
+- Recuperada matriz de grants de tabelas e colunas com information_schema. Criado docs/CANONICAL_TABLE_ACL.sql: leitura sob RLS para as tabelas autorizadas, permissões de mensagem, campos específicos de perfil, sequence identity e revogação explícita de grants por coluna. Ainda é referência e precisa passar por validação isolada e testes antes de integrar à migration.
+- Policies RLS reconsultadas no original: 18 policies do produto (música excluída), todas para authenticated. Tabelas internas sem policy pública. Confirmado messages.author_id DEFAULT auth.uid().
+- Storage: attachments público, limite 3 MiB e JPEG/PNG/WebP/GIF; avatars público, 1 MiB e JPEG/PNG/WebP. Realtime original: friendships, messages, voice_members.
+- Novo preflight somente leitura do destino: profiles, communities, community_members, channels e messages permanecem com zero linhas; cinco migrations prototype continuam registradas. Sem DDL remota.
+- Consulta direta de ACL por aclexplode em coluna falhou por formato de array; substituída com sucesso por information_schema.column_privileges. Nenhum dado foi modificado.
+- Estado real: a documentação de schema/ACL está substancialmente recuperada, mas a migration atômica e rollback executáveis ainda precisam de validação isolada. A Edge Function auth ativa v9 ainda não foi recuperada integralmente para o Git; não conectar frontend nem publicar backend até resolver isso.
+- Commits desta rodada: 4cb88f6 adiciona matriz de grants; c94a2e0 corrige revogação de grants por coluna; 5d64b12 consolida o plano. Tudo exclusivamente em shiqi-parallel-dev.
