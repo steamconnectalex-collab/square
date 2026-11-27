@@ -39,7 +39,7 @@
 ## Índices e constraints
 
 - 13 índices prototype capturados, incluindo os índices de PK/UNIQUE e índices auxiliares.
-- Definições de constraints das cinco tabelas capturadas via `pg_constraint`; verifique a saída integral do snapshot arquivada junto à execução desta sessão antes de qualquer reversão.
+- Definições das 24 constraints das cinco tabelas foram capturadas via `pg_constraint` e estão resumidas no apêndice abaixo; repetir a captura integral imediatamente antes de qualquer cutover futuro.
 - Os alvos de renome `legacy_*` estão livres e os nomes de índices truncados a 63 bytes não colidem, conforme preflight.
 
 ## Storage, Realtime e migrations
