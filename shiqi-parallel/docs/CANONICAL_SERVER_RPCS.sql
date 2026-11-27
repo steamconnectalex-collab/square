@@ -15,6 +15,7 @@ declare
 begin
   if uid is null then raise exception 'not_authenticated'; end if;
   if char_length(nm) < 2 or char_length(nm) > 40 then raise exception 'invalid_name'; end if;
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('shiqi:server:create:' || uid::text, 0));
   select count(*) into n from public.servers where owner_id = uid;
   if n >= 10 then raise exception 'too_many_servers'; end if;
   insert into public.servers (name, owner_id) values (nm, uid) returning id into sid;
@@ -44,6 +45,7 @@ begin
   if not exists (select 1 from public.servers s where s.id = p_server and s.owner_id = uid) then
     raise exception 'not_owner';
   end if;
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('shiqi:channel:create:' || p_server::text, 0));
   select count(*), coalesce(max(position), -1) + 1 into n, pos
   from public.channels where server_id = p_server;
   if n >= 30 then raise exception 'too_many_channels'; end if;
@@ -88,6 +90,7 @@ begin
   if exists (select 1 from public.server_bans b where b.server_id = p_server and b.user_id = uid) then
     raise exception 'banned';
   end if;
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('shiqi:membership:limit:' || uid::text, 0));
   if exists (select 1 from public.server_members m where m.server_id = p_server and m.user_id = uid) then
     return p_server;
   end if;
@@ -119,6 +122,7 @@ begin
   if exists (select 1 from public.server_bans b where b.server_id = inv.server_id and b.user_id = uid) then
     raise exception 'banned';
   end if;
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('shiqi:membership:limit:' || uid::text, 0));
   if exists (select 1 from public.server_members m where m.server_id = inv.server_id and m.user_id = uid) then
     return inv.server_id;
   end if;
