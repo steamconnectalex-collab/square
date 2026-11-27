@@ -203,3 +203,11 @@
 - Extraído o inventário de ACLs e propriedades de segurança das funções `public` e `private`: SECURITY DEFINER, search_path e permissões explícitas. As rotinas internas de autenticação ficam restritas a `service_role`; funções de cliente usam `authenticated` conforme o contrato original.
 - Ainda falta transformar a ACL em referência revisável por assinatura e validar o comportamento efetivo de privilégios herdados de PUBLIC. Nenhuma alteração remota foi feita.
 - Próximo passo: concluir a matriz de ACLs e fazer preflight atualizado no destino (colisões `legacy_*`, contagens, migrations, grants, policies e Realtime), sem executar DDL.
+
+
+### 2026-11-26 — ACLs de funções e preflight do destino
+- Consultado `has_function_privilege` no original para verificar permissões efetivas por função, além da ACL gravada. Isso revelou que algumas funções privadas com ACL NULL herdam EXECUTE de PUBLIC no original; a cópia paralela não repetirá essa exposição.
+- Criado `docs/CANONICAL_FUNCTION_ACL.sql` com a matriz de permissões planejada: RPCs de cliente para `authenticated`, rotinas internas de autenticação somente `service_role`, helpers chamados diretamente por RLS com EXECUTE para `authenticated`, e funções exclusivas de trigger sem grants de API. É referência de hardening e precisa de teste de chamadas sob os papéis reais.
+- Preflight somente leitura no destino `ujdosskjycrdkcgsswfa`: as cinco tabelas prototype continuam presentes; cinco nomes `legacy_*` estão livres; nenhuma colisão de nomes detectada; bucket nenhum; Realtime ainda contém apenas `public.messages`; trigger `on_auth_user_created_shiqi` permanece em `auth.users`; cinco migrations prototype continuam registradas.
+- As cinco tabelas continuam sem dados na última auditoria; ainda será exigida nova contagem imediatamente antes de qualquer corte.
+- Não foi executado DDL nem alterado qualquer banco. A migration ainda não está pronta para aplicação: faltam validar cada arquivo SQL de referência contra o catálogo, resolver todas as dependências de funções privadas/trigger e fechar o rollback/testes de permissões.
