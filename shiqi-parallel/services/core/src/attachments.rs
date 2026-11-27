@@ -1,6 +1,6 @@
 //! Validação de anexos de imagem alinhada ao contrato atual do Supabase Storage.
-//! Esta função ainda não é exposta por HTTP: a integração exige autenticação JWT
-//! e autorização do usuário antes de receber ou gravar qualquer arquivo.
+//! As rotas HTTP devem autenticar o usuário antes de validar o arquivo. A gravação
+//! é delegada ao Supabase Storage com o JWT original, preservando as policies RLS.
 
 pub const MAX_ATTACHMENT_BYTES: usize = 3 * 1024 * 1024;
 
