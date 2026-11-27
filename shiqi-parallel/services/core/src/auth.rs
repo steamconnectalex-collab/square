@@ -232,6 +232,28 @@ mod tests {
         DecodingKey::from_rsa_pem(TEST_PUBLIC_KEY.as_bytes()).expect("test public key")
     }
 
+    // Fixture EC P-256 exclusiva dos testes; espelha o formato do JWKS real.
+    const TEST_EC_PRIVATE_KEY: &str = "-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgm7sGXigUGv/nAB3V\nyekijRA3cC3vW7bfIvDzqIoPVkahRANCAATSpK62tpSpYkQIf0xzKk4v/90GVmyD\nbEF7RLGqJKzfkgWth17Mt6tmvJqMaAZnP0tXDl4t7J1OHG1j2bDoTWgK\n-----END PRIVATE KEY-----";
+    const TEST_EC_JWKS: &str = r#"{
+        "keys": [{
+            "kty": "EC",
+            "crv": "P-256",
+            "alg": "ES256",
+            "use": "sig",
+            "kid": "test-ec-key",
+            "x": "0qSutraUqWJECH9McypOL__dBlZsg2xBe0SxqiSs35I",
+            "y": "Ba2HXsy3q2a8moxoBmc_S1cOXi3snU4cbWPZsOhNaAo"
+        }]
+    }"#;
+
+    fn sign_es256(claims: &serde_json::Value) -> String {
+        let mut header = jsonwebtoken::Header::new(Algorithm::ES256);
+        header.kid = Some("test-ec-key".to_owned());
+        let key = jsonwebtoken::EncodingKey::from_ec_pem(TEST_EC_PRIVATE_KEY.as_bytes())
+            .expect("test EC private key");
+        jsonwebtoken::encode(&header, claims, &key).expect("signed ES256 test JWT")
+    }
+
     #[test]
     fn builds_project_pinned_issuer_and_jwks_url() {
         let verifier =
@@ -259,6 +281,25 @@ mod tests {
     #[test]
     fn rejects_empty_audience() {
         assert!(SupabaseJwtVerifier::new("https://example-project.supabase.co", " ").is_err());
+    }
+
+
+    #[test]
+    fn parses_supabase_es256_jwks_and_verifies_signed_claims() {
+        let jwks: JwkSet = serde_json::from_str(TEST_EC_JWKS).expect("Supabase-shaped ES256 JWKS");
+        let jwk = jwks.find("test-ec-key").expect("matching key id");
+        let decoding_key = DecodingKey::from_jwk(jwk).expect("ES256 JWK decoding key");
+        let claims = decode_verified_claims(
+            &sign_es256(&test_claims()),
+            &decoding_key,
+            Algorithm::ES256,
+            TEST_ISSUER,
+            TEST_AUDIENCE,
+        )
+        .expect("valid ES256 claims");
+
+        assert_eq!(claims.role, "authenticated");
+        assert_eq!(claims.sub, "7b9f8b5d-0f3a-4e3c-a3c2-5f7d6e8a9b10");
     }
 
     #[test]
