@@ -5,7 +5,7 @@ pub mod storage;
 use axum::{
     body::Bytes,
     extract::{DefaultBodyLimit, State},
-    http::{header, HeaderMap, StatusCode},
+    http::{header, HeaderMap, HeaderName, HeaderValue, Method, StatusCode},
     response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
@@ -14,7 +14,7 @@ use serde::Serialize;
 use serde_json::json;
 use std::{env, net::SocketAddr, sync::Arc};
 use tokio::net::TcpListener;
-use tower_http::trace::TraceLayer;
+use tower_http::{cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer}, trace::TraceLayer};
 use tracing_subscriber::EnvFilter;
 
 use crate::{
@@ -84,6 +84,31 @@ async fn authenticate(headers: &HeaderMap, state: &AppState) -> Result<SupabaseC
             AuthError::InvalidToken => StatusCode::UNAUTHORIZED,
             _ => StatusCode::SERVICE_UNAVAILABLE,
         })
+}
+
+fn browser_cors_layer() -> Option<CorsLayer> {
+    let origin = env::var("SHIQI_ALLOWED_ORIGIN").ok()?;
+    let parsed = reqwest::Url::parse(&origin).ok()?;
+    if !matches!(parsed.scheme(), "https" | "http")
+        || parsed.host_str().is_none()
+        || parsed.path() != "/"
+        || parsed.query().is_some()
+        || parsed.fragment().is_some()
+        || origin.ends_with('/')
+    {
+        return None;
+    }
+    let origin = HeaderValue::from_str(&origin).ok()?;
+    Some(
+        CorsLayer::new()
+            .allow_origin(AllowOrigin::exact(origin))
+            .allow_methods(AllowMethods::list([Method::POST, Method::OPTIONS]))
+            .allow_headers(AllowHeaders::list([
+                header::AUTHORIZATION,
+                header::CONTENT_TYPE,
+                HeaderName::from_static("x-attachment-path"),
+            ])),
+    )
 }
 
 fn api_error(status: StatusCode, code: &'static str) -> Response {
@@ -317,6 +342,13 @@ async fn main() {
         .layer(TraceLayer::new_for_http())
         .with_state(state);
 
+    let app = if let Some(cors) = browser_cors_layer() {
+        app.layer(cors)
+    } else {
+        tracing::warn!("SHIQI_ALLOWED_ORIGIN missing or invalid; browser cross-origin requests are disabled");
+        app
+    };
+
     let listener = TcpListener::bind(address)
         .await
         .expect("failed to bind HTTP listener");
@@ -358,6 +390,17 @@ async fn shutdown_signal() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn browser_cors_requires_one_exact_http_origin() {
+        env::set_var("SHIQI_ALLOWED_ORIGIN", "https://shiqi.example");
+        assert!(browser_cors_layer().is_some());
+        env::set_var("SHIQI_ALLOWED_ORIGIN", "*");
+        assert!(browser_cors_layer().is_none());
+        env::set_var("SHIQI_ALLOWED_ORIGIN", "https://shiqi.example/path");
+        assert!(browser_cors_layer().is_none());
+        env::remove_var("SHIQI_ALLOWED_ORIGIN");
+    }
 
     #[tokio::test]
     async fn protected_routes_reject_missing_bearer_token() {
