@@ -320,3 +320,23 @@ A leitura de `pg_proc.proacl` com `aclexplode` distinguiu grants explícitos de 
 ### Status
 
 Índices e ACLs foram consultados em modo somente leitura. A estrutura lógica, policies, constraints, índices e corpos de funções do original estão agora mapeados para reconstrução. A estratégia de preservação do protótipo e o SQL de migration ainda precisam de revisão antes de qualquer DDL remoto.
+
+
+## 14. Storage, Realtime e trigger Auth — revalidação cruzada (26/11/2026)
+
+### Original
+- Buckets confirmados: `avatars` público, limite 1 MiB, JPEG/PNG/WebP; `attachments` público, limite 3 MiB, JPEG/PNG/WebP/GIF.
+- Policies Storage: arquivos limitados à primeira pasta igual a `auth.uid()`; avatars têm SELECT/INSERT/UPDATE/DELETE; attachments têm SELECT/INSERT/DELETE.
+- Publicação `supabase_realtime`: `friendships`, `messages`, `voice_members`.
+- A consulta direta a `pg_trigger` em `auth.users` no projeto original não encontrou trigger não interno. Isso difere do destino paralelo e precisa ser levado em conta na integração do fluxo de cadastro; não presumir que o original usa trigger para criar perfil.
+
+### Destino paralelo
+- O trigger `on_auth_user_created_shiqi` existe em `auth.users` e chama `private.handle_new_user()`.
+- O destino está ativo e consultável nesta sessão (PostgreSQL 17.12); possui cinco tabelas públicas e zero buckets Storage. O histórico de migrations contém cinco entradas prototype.
+- O estado anterior de zero linhas nas cinco tabelas foi revalidado pela listagem de tabelas (0 em cada).
+- O destino não tem ainda as três tabelas Realtime canônicas. A troca da publicação deve ser parte da preparação do schema, mas não pode ser feita antes da estrutura canônica existir.
+
+### Consequência para o desenho
+Não copiar automaticamente o trigger do destino nem inventar um trigger novo no canônico. Primeiro comparar o fluxo de signup da Edge Function original: se ela cria o perfil explicitamente, manter o mesmo contrato e retirar o trigger prototype na fase de corte; se o novo frontend depender de Auth signup direto, desenhar o trigger canônico e cobrir ambos os fluxos com testes. A definição antiga do trigger deve ser preservada para rollback.
+
+Nenhuma alteração remota foi feita.
