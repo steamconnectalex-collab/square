@@ -62,6 +62,10 @@ function checkPassword(v: unknown) {
   const p = String(v ?? "");
   if (p.length < 8) throw new HttpError(400, "weak_password", "Use pelo menos 8 caracteres.");
   if (enc.encode(p).length > 72) throw new HttpError(400, "weak_password", "A senha pode ter no máximo 72 caracteres.");
+  // mesma regra do Supabase Auth (senão ele recusa e o usuário veria só "algo deu errado")
+  if (!/[a-z]/.test(p) || !/[A-Z]/.test(p) || !/[0-9]/.test(p) || !/[!@#$%^&*()_+\-=\[\]{};':"\\|<>?,.\/`~]/.test(p)) {
+    throw new HttpError(400, "weak_password", "A senha precisa ter letra maiúscula, minúscula, número e símbolo (ex.: !@#).");
+  }
   return p;
 }
 // senha vazada? (consulta anônima ao Have I Been Pwned: só os 5 primeiros caracteres do hash saem daqui; se o serviço falhar, deixa passar)

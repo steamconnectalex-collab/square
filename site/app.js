@@ -324,11 +324,14 @@ function dobParts(r) {
   if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== m - 1 || dt.getUTCDate() !== d || dt.getTime() > Date.now()) return null;
   return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 }
+// mesma regra do Supabase Auth: minúscula, maiúscula, número e um destes símbolos
+function passStrongOk(p) { return /[a-z]/.test(p) && /[A-Z]/.test(p) && /[0-9]/.test(p) && /[!@#$%^&*()_+\-=\[\]{};':"\\|<>?,.\/`~]/.test(p); }
 function regErrors() {
   const r = S.r, e = {};
   if (!validEmail(r.email)) e.email = 'Informe um e-mail válido, como nome@exemplo.com.';
   if (!userOk(r.user)) e.user = 'Use de 3 a 20 letras, números, ponto ou sublinhado.';
   if (r.pass.length < 8) e.pass = 'Use pelo menos 8 caracteres.';
+  else if (!passStrongOk(r.pass)) e.pass = 'A senha precisa ter letra maiúscula, minúscula, número e símbolo (ex.: !@#).';
   const dob = dobParts(r);
   if (!dob) e.dob = 'Informe uma data de nascimento válida.';
   else { const t = new Date(), cut = (t.getFullYear() - 13) + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); if (dob > cut) e.dob = 'É preciso ter pelo menos 13 anos para criar uma conta.'; }
@@ -352,7 +355,7 @@ function registerView() {
   <div class="field">
     <label class="lbl" for="r-pass">Senha <span class="req" aria-hidden="true">*</span></label>
     ${pwField('r-pass', 'r.pass', r.pass, r.show, e.pass, 'new-password')}
-    <div class="hint${passMsg}" id="r-hint">Use pelo menos 8 caracteres.</div>
+    <div class="hint${passMsg}" id="r-hint">Use 8 ou mais caracteres, com maiúscula, minúscula, número e símbolo.</div>
   </div>
   <div class="field">
     <span class="lbl" id="dob-label">Data de nascimento <span class="req" aria-hidden="true">*</span></span>
