@@ -207,6 +207,16 @@ Combinado com a pessoa em 2026-11-23: o que precisa de conta em aplicativo exter
 - **Feito:** decoração de avatar corrigida; skeleton UI; permissões de amizade (migração 0018), filtro de spam e Apertar para Falar. Testes 164 OK. **Próximo passo:** a pessoa conferir no ar; decidir sobre tema escuro, trocar e-mail, 2 etapas e excluir conta (precisam de backend novo).
 
 
+## CI e backend Rust — 2026-11-27
+
+- GitHub Actions `shiqi-core` está ativo na branch `shiqi-parallel-dev`; execução automática por push/PR nos arquivos do core.
+- Workflow atualizado: inclui execução manual (`workflow_dispatch`), permissões mínimas (`contents: read`), cancelamento de execuções antigas concorrentes, cache Cargo, `cargo fmt --all -- --check`, `cargo test --all-targets --all-features` e `cargo clippy --all-targets --all-features -- -D warnings`.
+- Primeira execução do commit `d5d7920` falhou exclusivamente no `cargo fmt --check`; log identificou diferenças de formatação em `src/main.rs`. Não chegou a executar testes nem Clippy.
+- Formatação corrigida em `src/main.rs`, commit `6257ca742a4791f0f5db677dee9db42c7c292afa`.
+- Workflow atualizado no commit `d366d0b6c80b5f5fd5f411ea39f45e181dcd5619`.
+- Nova execução automática para o commit de código `6257ca7`: run `45997615635`, em andamento na última consulta. **Ainda não declarar compilação/testes aprovados até a conclusão do run.**
+- Produção e branch `main` não foram alteradas. Próximo passo: obter resultado do run; corrigir quaisquer erros de compilação/testes/Clippy e só então avançar para integração funcional do core.
+
 ## Auditoria pós-teste — 2026-11-27
 
 - O teste estático/preflight continua aprovado (18/18 verificações); isso não equivale a teste real de login, Auth ou Edge Function.
