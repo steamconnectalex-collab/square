@@ -6,7 +6,7 @@
 **Migrar tecnologia sem mudar design, layout, identidade visual, navegação ou qualquer funcionalidade do aplicativo original que permaneça no escopo.** O diretório `site/` da raiz é a fonte de verdade. Música foi explicitamente retirada do produto pelo usuário e poderá ser removida somente da cópia paralela. Nenhuma outra simplificação/remoção de função sem autorização expressa.
 
 ## Em andamento agora
-- [ ] Continuar revisão de compatibilidade do pacote SQL e autenticação. MFA e matriz de ACL receberam correções estáticas; a função `is_server_member` foi reconstruída por falta da migration-base no Git e ainda precisa ser comparada com a definição original. Validação PostgreSQL local dispensada; não aplicar DDL remoto.
+- [ ] Continuar revisão de compatibilidade do pacote SQL e autenticação. MFA, matriz de ACL e checks estáticos foram atualizados; `is_server_member` foi reconstruída por falta da migration-base no Git e ainda precisa ser comparada com a definição original. Validação PostgreSQL local dispensada; não aplicar DDL remoto.
 - [x] 2026-11-27 — Ampliado o snapshot para incluir grants de tabela concedidos a PUBLIC e privilégios de todas as sequences; o plano de rollback agora inclui remoção das sete policies Storage do cutover e restauração dos grants de sequence. Removidos grants duplicados do draft.
 
 ## Bloqueios atuais (27/11/2026)
@@ -350,3 +350,11 @@
 - Atualizado `docs/AUTH_CONTRACT_INVENTORY.md` com achados e limites. Commits: `5a59fcd` (tratamento inicial de erros MFA), `0aed03d` (grants duplicados), `c6a636a` (helper de associação), `2991b06` (sessão nova após recuperação), `b3e50b4` (logout após desligar MFA), `437e646` (documentação).
 - Nenhum teste Deno/PostgreSQL/runtime foi executado; nenhuma migration, SQL, secret, e-mail, deploy ou banco remoto foi alterado.
 - Próximo passo: revisar contratos de Auth restantes e dependências do schema; obter a definição original de `is_server_member` por fonte autorizada antes de liberar o pacote SQL.
+
+### 2026-11-27 — Testes estáticos de contrato Auth
+- Criado `shiqi-parallel/tests/auth-contract-static.js`, sem dependências externas, para verificar as 13 rotas, secrets obrigatórios, isolamento de origens, ausência de rota QR, tabelas/RPCs Auth, helper `is_server_member`, RLS nas 18 tabelas, 17 policies, 58 REVOKEs e tratamento da revogação de sessões MFA.
+- As mesmas condições foram verificadas por leitura dos arquivos na branch e passaram. O script foi versionado, mas ainda não foi executado no checkout local; não representa teste de Deno, JWT, Auth, PostgreSQL ou e-mail.
+- Commit do teste: `9b7e78d`; simplificação/correção das assertions: `096bc7c` e `6585b73`.
+- A função `is_server_member` permanece marcada como reconstrução de contrato e não deve ser aplicada antes de comparação com a fonte original.
+- Nenhuma alteração em banco remoto, migration, secret, e-mail, deploy, produção ou branch `main`.
+- Próximo passo: obter/confirmar a definição original da função base ausente e continuar a revisão dos contratos restantes; só depois consolidar migration final e rollback.
