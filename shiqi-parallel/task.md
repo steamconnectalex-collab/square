@@ -6,7 +6,7 @@
 **Migrar tecnologia sem mudar design, layout, identidade visual, navegação ou qualquer funcionalidade do aplicativo original que permaneça no escopo.** O diretório `site/` da raiz é a fonte de verdade. Música foi explicitamente retirada do produto pelo usuário e poderá ser removida somente da cópia paralela. Nenhuma outra simplificação/remoção de função sem autorização expressa.
 
 ## Em andamento agora
-- [ ] Continuar auditoria dos contratos Realtime, mensagens e DMs; depois revisar rollback e snapshot. Anexos privados, bloqueios de leitura em DMs e locks transacionais implementados nos SQLs/draft; teste estático passou em harness em memória. Validação PostgreSQL local dispensada; não aplicar DDL remoto.
+- [ ] Continuar auditoria dos contratos Realtime, mensagens e DMs e revisar rollback/snapshot. Policies de sinalização privada de voz restauradas e preflight ampliado; anexos privados, bloqueios de leitura em DMs e locks transacionais implementados. Teste estático passou em harness em memória; validação PostgreSQL local dispensada; não aplicar DDL remoto.
 - [x] 2026-11-27 — Ampliado o snapshot para incluir grants de tabela concedidos a PUBLIC e privilégios de todas as sequences; o plano de rollback agora inclui remoção das sete policies Storage do cutover e restauração dos grants de sequence. Removidos grants duplicados do draft.
 
 ## Bloqueios atuais (27/11/2026)
@@ -20,6 +20,7 @@
 - O smoke test existente na raiz aponta para o site original e não valida a cópia paralela; não foi executado para evitar testar/altear o alvo errado.
 
 ## Concluído
+- [x] 2026-11-27 — Restauradas as policies `voice_topic_select` e `voice_topic_insert` em `realtime.messages`, conforme migration original `0008_voz.sql`; ambas usam `private.can_voice_topic(realtime.topic())`. Incluídas no SQL canônico e no draft, com guardas de colisão no preflight e remoção explícita no rollback.
 - [x] 2026-11-27 — Corrigida leitura de DMs após bloqueio: `private.is_channel_member`, `private.is_dm_member` e `private.can_read_attachment` agora consultam `private.dm_allowed`, respeitando bloqueios e mantendo a prévia de solicitação pendente sem bloqueio. Atualizados SQL canônico, draft, teste e relatório de segurança.
 - [x] 2026-11-27 — Endurecida concorrência dos limites sujeitos a contagem: locks transacionais por autor/chave/servidor/usuário/mensagem em rate limit de mensagens e Auth, criação de servidores/canais/eventos, entradas em servidores, bloqueios, pedidos de amizade, pins, reações e alternância de interesse em eventos. Atualizados SQLs canônicos, `CUTOVER_DRAFT.sql` e teste estático. Teste passou em harness em memória; runtime PostgreSQL concorrente pendente.
 - [x] 2026-11-27 — Anexos protegidos por conversa: bucket `attachments` privado; signed URLs autenticadas de 60s no frontend; policy `attachments_select_message_member` baseada em `private.can_read_attachment`, exigindo membro atual de servidor ou participante ativo de DM (com bloqueios respeitados). Upload/exclusão seguem restritos à pasta do usuário. Mensagens também validam que o caminho do anexo pertence ao autor em INSERT e UPDATE. Teste estático passou em harness em memória com 16 arquivos; integração/runtime pendentes.
@@ -406,3 +407,5 @@
 - Complemento: `toggle_event_interest` também recebeu lock transacional por evento/usuário; renovação de signed URLs foi automatizada antes da expiração. Teste estático e análise de sintaxe JS passaram novamente.
 
 - Complemento de DMs: a auditoria identificou que bloquear impedia novos envios, mas SELECT de histórico ainda era permitido. Helpers de leitura e Storage foram alinhados à regra de bloqueio; teste estático cobre a correção.
+
+- Realtime: consulta somente leitura no projeto paralelo retornou zero policies em `realtime.messages` e zero função `private.can_voice_topic`, compatível com o estado pré-cutover. A nova consulta de colisões de policies retornou zero linhas. O preflight atualizado tem 18 checks; os 17 checks anteriores já haviam passado, mas o arquivo completo atualizado ainda não foi reexecutado em bloco.
