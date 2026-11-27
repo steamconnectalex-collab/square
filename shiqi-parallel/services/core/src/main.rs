@@ -89,22 +89,32 @@ async fn authenticate(headers: &HeaderMap, state: &AppState) -> Result<SupabaseC
         })
 }
 
-fn browser_cors_layer() -> Option<CorsLayer> {
-    let origin = env::var("SHIQI_ALLOWED_ORIGIN").ok()?;
-    let parsed = reqwest::Url::parse(&origin).ok()?;
-    if !matches!(parsed.scheme(), "https" | "http")
-        || parsed.host_str().is_none()
-        || parsed.path() != "/"
-        || parsed.query().is_some()
-        || parsed.fragment().is_some()
-        || origin.ends_with('/')
-    {
-        return None;
+fn parse_allowed_origins(raw: &str) -> Option<Vec<HeaderValue>> {
+    let mut origins = Vec::new();
+    for origin in raw.split(',').map(str::trim) {
+        let parsed = reqwest::Url::parse(origin).ok()?;
+        if !matches!(parsed.scheme(), "https" | "http")
+            || parsed.host_str().is_none()
+            || parsed.path() != "/"
+            || parsed.query().is_some()
+            || parsed.fragment().is_some()
+            || origin.ends_with('/')
+        {
+            return None;
+        }
+        origins.push(HeaderValue::try_from(origin).ok()?);
     }
-    let origin = HeaderValue::try_from(origin.as_str()).ok()?;
+    if origins.is_empty() { None } else { Some(origins) }
+}
+
+fn browser_cors_layer() -> Option<CorsLayer> {
+    let configured = env::var("SHIQI_ALLOWED_ORIGINS")
+        .or_else(|_| env::var("SHIQI_ALLOWED_ORIGIN"))
+        .ok()?;
+    let origins = parse_allowed_origins(&configured)?;
     Some(
         CorsLayer::new()
-            .allow_origin(AllowOrigin::exact(origin))
+            .allow_origin(AllowOrigin::list(origins))
             .allow_methods(AllowMethods::list([Method::POST, Method::OPTIONS]))
             .allow_headers(AllowHeaders::list([
                 header::AUTHORIZATION,
@@ -397,13 +407,27 @@ mod tests {
     use super::*;
 
     #[test]
-    fn browser_cors_requires_one_exact_http_origin() {
+    fn browser_cors_accepts_only_explicit_http_origins() {
+        let origins = parse_allowed_origins(
+            "https://shiqi.example, https://preview-shiqi.example"
+        )
+        .expect("both exact origins should be accepted");
+        assert_eq!(origins.len(), 2);
+        assert!(parse_allowed_origins("*").is_none());
+        assert!(parse_allowed_origins("https://shiqi.example/path").is_none());
+        assert!(parse_allowed_origins("https://shiqi.example, *").is_none());
+    }
+
+    #[test]
+    fn browser_cors_layer_uses_the_plural_allowlist_with_legacy_fallback() {
+        env::set_var(
+            "SHIQI_ALLOWED_ORIGINS",
+            "https://shiqi.example,https://preview-shiqi.example",
+        );
+        assert!(browser_cors_layer().is_some());
+        env::remove_var("SHIQI_ALLOWED_ORIGINS");
         env::set_var("SHIQI_ALLOWED_ORIGIN", "https://shiqi.example");
         assert!(browser_cors_layer().is_some());
-        env::set_var("SHIQI_ALLOWED_ORIGIN", "*");
-        assert!(browser_cors_layer().is_none());
-        env::set_var("SHIQI_ALLOWED_ORIGIN", "https://shiqi.example/path");
-        assert!(browser_cors_layer().is_none());
         env::remove_var("SHIQI_ALLOWED_ORIGIN");
     }
 
