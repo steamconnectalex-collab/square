@@ -42,3 +42,21 @@ Esta auditoria é estática e não prova o comportamento do banco em runtime. O 
 A RPC `voice_join` verificava a quantidade de participantes e inseria o usuário sem bloquear entradas concorrentes. Duas entradas simultâneas poderiam observar a mesma contagem e ultrapassar o limite de 10; chamadas simultâneas do mesmo usuário para salas diferentes também poderiam deixar registros duplicados em mais de uma sala.
 
 Foi adicionada uma trava transacional por usuário e outra por sala, sempre na mesma ordem (usuário → sala), antes da limpeza/contagem/inserção. Isso serializa as entradas conflitantes e protege o limite de 10, além da regra de uma sala por usuário. A mudança está tanto em `CANONICAL_MODERATION_EVENTS_VOICE_RPCS.sql` quanto no `CUTOVER_DRAFT.sql`; o teste estático verifica as duas travas e o limite. A confirmação de comportamento concorrente ainda depende de teste PostgreSQL de runtime.
+
+
+## Corrigido nesta rodada — limites sujeitos a concorrência
+
+A revisão encontrou contadores com padrão "consultar quantidade e depois inserir", que podiam ser ultrapassados por requisições simultâneas. Foram adicionados advisory transaction locks com namespaces separados e chaves por entidade:
+
+- `private.messages_rate_limit`: serializa por autor antes de contar 5 mensagens/5 segundos e 40/60 segundos.
+- `public.rate_check`: serializa por chave antes de limpar/contar/inserir hits, protegendo os limites usados pelo Auth.
+- `create_server`: serializa o limite de 10 servidores próprios por usuário.
+- `create_channel`: serializa o limite de 30 canais por servidor.
+- `join_public_server` e `join_server`: compartilham lock por usuário para o limite de 20 servidores associados.
+- `block_user` e `send_friend_request`: serializam os limites por usuário (200 bloqueios e 30 solicitações pendentes).
+- `create_event`: serializa o limite de 25 eventos futuros por servidor.
+- `pin_server`: serializa o limite de 4 servidores fixados por usuário.
+- `toggle_reaction`: serializa o limite de 20 emojis distintos por mensagem.
+- `voice_join`: locks por usuário e sala mantêm o limite de 10 participantes e uma sala por usuário.
+
+As alterações foram aplicadas às referências SQL canônicas e às cópias correspondentes no `CUTOVER_DRAFT.sql`. O teste estático agora verifica a presença dos locks nos contratos canônicos e no draft. O teste passou em harness JavaScript em memória com os arquivos atuais da branch; a análise de sintaxe JS também passou. Ainda não foi executado teste de concorrência real em PostgreSQL, então a eficácia operacional deve ser confirmada antes do cutover.
