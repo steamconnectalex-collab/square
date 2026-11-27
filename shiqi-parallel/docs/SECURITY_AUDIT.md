@@ -79,3 +79,14 @@ A migration original `0008_voz.sql` foi recuperada do GitHub. Ela confirma que a
 As policies foram restauradas em `CANONICAL_REALTIME.sql` e `CUTOVER_DRAFT.sql`. O preflight agora bloqueia colisões dos dois nomes e também inclui `private.can_read_attachment` na verificação de colisões de funções. Corrigidos ainda os checks de bucket e policy Storage para refletir `attachments` privado e `attachments_select_message_member`.
 
 Consulta somente leitura ao projeto Supabase paralelo confirmou que não existem policies em `realtime.messages` nem a função antiga `private.can_voice_topic` no estado atual (esperado antes do cutover). A nova consulta de nomes de policy retornou zero linhas. O preflight completo atualizado ainda não foi executado em bloco; nenhum DDL/DML remoto foi realizado.
+
+
+## Revisão final estática do pacote de banco — 2026-11-27
+
+- O snapshot pré-cutover foi executado por seções e registrado em `CUTOVER_SNAPSHOT_BASELINE.md`; o preflight atualizado passou em 18/18 checks booleanos. Nenhuma alteração remota foi feita.
+- O teste `tests/auth-contract-static.js` foi executado em harness JavaScript em memória com os arquivos atuais da branch e passou. A análise de sintaxe de `apps/web/app.js` e do próprio teste também passou. Isso não valida SQL em PostgreSQL, Deno, JWT, Auth, Storage ou Realtime em runtime.
+- Conferência cruzada das assinaturas: 59 definições de funções públicas/privadas correspondem exatamente a 59 REVOKEs na ACL; 52 GRANTs apontam para funções existentes. Não foram encontradas assinaturas sem REVOKE, REVOKEs excedentes ou GRANTs para funções ausentes.
+- Foram encontradas 58 funções `SECURITY DEFINER`; todas declaram `SET search_path TO ''`. A única função sem SECURITY DEFINER permanece fora dessa contagem.
+- O `CUTOVER_DRAFT.sql` mantém BEGIN/COMMIT e não contém `DROP ... CASCADE` nem `TRUNCATE` de nível superior. Isso é uma verificação estática, não uma prova de que a transação executará sem erro.
+- Supabase Advisors no projeto paralelo: zero lints de segurança e zero de saúde. Há cinco avisos INFO de índices não utilizados nas tabelas prototype vazias; não remover esses índices por esse motivo.
+- O pacote continua bloqueado para aplicação: não houve validação transacional em PostgreSQL isolado, testes de concorrência real, testes Auth/JWT, Storage ou Realtime. Não executar `CUTOVER_DRAFT.sql` nem aplicar DDL/DML remoto sem autorização explícita.
