@@ -66,6 +66,7 @@
 - Draft transacional BEGIN/COMMIT; revisão estática não encontrou `DROP ... CASCADE` nem `TRUNCATE` de nível superior.
 - Supabase Advisors: zero alertas de segurança e saúde; cinco INFO de índices não utilizados em tabelas prototype vazias.
 - Limite: nenhuma validação PostgreSQL runtime, Auth/JWT, Storage, Realtime ou concorrência real. Nenhum DDL/DML remoto foi executado.
+- Removido um GRANT redundante de USAGE do schema `private` no ACL canônico e no draft; reexecutado o harness estático após a correção, com resultado OK. Ambos mantêm uma única concessão de USAGE, 59 REVOKEs e 52 GRANTs de função válidos.
 - Próximo: continuar revisão final dos contratos de banco e preparar a versão final revisável da migration/rollback, mantendo execução remota bloqueada.
 
 ## Alinhamento de trabalho conjunto (2026-11-26)
