@@ -537,3 +537,9 @@
 - A consulta do status de deployments via conector Railway foi bloqueada por permissão; não inferir o ID/status do deployment a partir disso. O smoke runtime acima é a confirmação pública disponível.
 - Próximo: login real e `/v1/me` com sessão de teste; depois regressão RLS/Realtime/RPCs com duas contas, sem pedir ou compartilhar tokens no chat.
 - Produção, `main` e projeto Vercel `square-chat` permanecem intocados.
+
+
+### 2026-11-27 — Auth contract incorporado ao CI
+- Workflow atualizado no commit `a2ba5f3b9ccb93e018b159691b28fa6c9fa0f29a` para executar `node tests/auth-contract-static.js` no job `web-contract`.
+- O novo teste passou no run `46049406473`, junto com sintaxe JS, contrato frontend/Rust e inspeção JWKS; `cargo fmt`, testes Rust e Clippy também passaram. Build Docker ainda estava em andamento na última consulta.
+- Próximo: aguardar build Docker e smoke Railway; depois login real e `/v1/me` com sessão válida, seguido de RLS/Realtime/RPCs com duas contas.
