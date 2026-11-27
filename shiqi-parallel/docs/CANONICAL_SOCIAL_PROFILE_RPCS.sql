@@ -13,6 +13,7 @@ declare me uuid := auth.uid();
 begin
   if me is null then raise exception 'not_authenticated'; end if;
   if p_other is null or p_other = me then raise exception 'cannot_add_self'; end if;
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('shiqi:block:limit:' || me::text, 0));
   if (select count(*) from public.blocks where blocker = me) >= 200 then raise exception 'too_many_requests'; end if;
   insert into public.blocks (blocker, blocked) values (me, p_other) on conflict do nothing;
   delete from public.friendships where user_a = least(me, p_other) and user_b = greatest(me, p_other);
@@ -256,6 +257,7 @@ begin
   select id into other from public.profiles where lower(username) = lower(regexp_replace(btrim(coalesce(p_username, '')), '^@', ''));
   if other is null then raise exception 'user_not_found'; end if;
   if other = me then raise exception 'cannot_add_self'; end if;
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('shiqi:friend-request:limit:' || me::text, 0));
   if exists (select 1 from public.blocks where blocker = me and blocked = other) then raise exception 'you_blocked'; end if;
   if exists (select 1 from public.blocks where blocker = other and blocked = me) then raise exception 'user_not_found'; end if;
   a := least(me, other); b := greatest(me, other);
