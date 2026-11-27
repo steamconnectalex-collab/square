@@ -17,7 +17,7 @@ O bucket `attachments` agora é definido como privado nos SQLs canônicos e no `
 
 A policy de SELECT foi trocada de `attachments_select_own` para `attachments_select_message_member`, que chama `private.can_read_attachment(name)`. O helper só autoriza caminhos associados a uma mensagem existente. Em canais de servidor, exige associação atual ao servidor. Em DMs, exige que a pessoa esteja com estado `active`; quem enviou uma solicitação ainda pode ver o próprio anexo, mas o destinatário não recebe acesso até aceitar. Depois do aceite, ambos precisam passar por `private.dm_allowed`, que respeita bloqueios e regras existentes. Upload e exclusão continuam limitados à pasta do próprio usuário.
 
-O helper foi incluído na ACL com EXECUTE apenas para `authenticated`; o total de REVOKEs nominais sobe de 58 para 59. O teste estático foi ampliado para verificar o bucket privado, helper, policy, frontend e cópia do draft.
+O helper foi incluído na ACL com EXECUTE apenas para `authenticated`; o total de REVOKEs nominais sobe de 58 para 59. O teste estático foi ampliado para verificar o bucket privado, helper, policy, frontend, cópia do draft e validação do caminho do autor em INSERT/UPDATE. O teste passou em um harness JavaScript em memória usando os 16 arquivos exatos da branch; também passaram a análise de sintaxe JavaScript de `app.js` e do próprio teste. Isso não equivale a executar Node no checkout nem a validar PostgreSQL/Storage em runtime.
 
 ### Limite residual
 
