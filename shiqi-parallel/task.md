@@ -6,6 +6,7 @@
 **Migrar tecnologia sem mudar design, layout, identidade visual, navegação ou qualquer funcionalidade do aplicativo original que permaneça no escopo.** O diretório `site/` da raiz é a fonte de verdade. Música foi explicitamente retirada do produto pelo usuário e poderá ser removida somente da cópia paralela. Nenhuma outra simplificação/remoção de função sem autorização expressa.
 
 ## Em andamento agora
+- [ ] Remoção da funcionalidade musical exclusivamente da cópia paralela: chamadas de tabelas de música, exportação, campo de perfil e referências promocionais/integrações musicais; preservar arquivos originais e recursos não relacionados.
 - [ ] Revisão estática cruzada dos SQLs canônicos, ACLs, funções, triggers, Storage, Realtime e dependências do frontend; preparar migration reversível apenas para revisão, sem aplicar no Supabase.
 
 ## Concluído
