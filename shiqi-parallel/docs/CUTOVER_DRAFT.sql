@@ -1,3 +1,8 @@
+-- Revisão transacional: qualquer erro reverte todo o cutover.
+BEGIN;
+SET LOCAL lock_timeout = '5s';
+SET LOCAL statement_timeout = '5min';
+
 -- PREFLIGHT TRANSACIONAL: qualquer divergência aborta antes de renomear.
 DO $preflight$
 DECLARE
@@ -2070,3 +2075,5 @@ NOTIFY pgrst, 'reload schema';
 -- ATENÇÃO: este é um artefato de revisão, não uma autorização para executar.
 -- Não aplicar no projeto remoto até que o rollback tenha sido completado e testado
 -- em PostgreSQL isolado e o usuário aprove explicitamente a janela de cutover.
+
+COMMIT;
