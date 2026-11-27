@@ -27,6 +27,7 @@ const storagePolicySql = read('docs/CANONICAL_STORAGE_POLICIES.sql');
 const appSql = read('apps/web/app.js');
 const realtimeSql = read('docs/CANONICAL_REALTIME.sql');
 const preflightSql = read('docs/CUTOVER_PREFLIGHT.sql');
+const snapshotSql = read('docs/CUTOVER_SNAPSHOT.sql');
 const rlsSql = read('docs/CANONICAL_RLS_POLICIES.sql');
 
 const routes = [
@@ -127,6 +128,9 @@ assert.ok(draftSql.includes('CREATE POLICY attachments_select_message_member ON 
 assert.ok(draftSql.includes('CREATE POLICY voice_topic_select ON realtime.messages') &&
   draftSql.includes('CREATE POLICY voice_topic_insert ON realtime.messages'),
   'O cutover draft deve instalar as policies privadas de voz.');
+assert.ok(snapshotSql.includes("WHERE schemaname='realtime' AND tablename='messages'") &&
+  snapshotSql.includes('policyname, permissive, roles, cmd, qual, with_check'),
+  'O snapshot de rollback deve capturar as policies de realtime.messages.');
 assert.ok(preflightSql.includes('realtime_voice_policy_names_free') &&
   draftSql.includes("n.nspname='realtime' AND c.relname='messages'"),
   'Preflight deve bloquear colisões nas policies de voz do Realtime.');
