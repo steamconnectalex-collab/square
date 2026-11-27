@@ -342,3 +342,15 @@ Preflight somente leitura no destino em 26/11/2026: as cinco tabelas prototype f
 - Migration atômica e rollback executáveis: ainda não aprovados/concluídos. Não aplicar DDL remota. A migration precisa ser montada e validada em ambiente isolado, incluindo comportamento de renomeação das tabelas legadas e dependências internas.
 - Edge Function auth: código ativo v9 continua sem versão integral recuperada no Git; etapa de backend bloqueada até recuperação e comparação.
 - Frontend paralelo: ainda não deve ser ligado ao banco até schema e auth estarem completos. Design original permanece fonte de verdade.
+
+## 22. Recuperação da Edge Function Auth ativa v10 (26/11/2026)
+
+A função ativa foi recuperada diretamente do projeto original por ferramenta administrativa somente de leitura: slug auth, status ACTIVE, versão 10, verify_jwt=false. Os dois arquivos foram copiados integralmente para a branch isolada shiqi-parallel-dev, sem deploy:
+- supabase/functions/auth/index.ts (30.767 bytes)
+- supabase/functions/auth/mail.ts (7.951 bytes)
+
+A versão 10 contém as rotas signup, verify, resend, login, login/totp, forgot, reset, email/change/request, email/change/confirm, account/deactivate, account/delete, mfa/recovery, mfa/disable e GET /health. Não contém fluxo QR. As RPCs chamadas são rate_check, get_auth_user_by_email, verify_email_code, get_login_email_by_username, revoke_user_sessions e purge_user_data; todas devem existir no conjunto canônico e ter grants adequados. Variáveis de ambiente lidas: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY, SITE_URL e EXTRA_ORIGINS. O módulo mail lê RESEND_API_KEY, RESEND_FROM e BRAND_NAME.
+
+O código recuperado não contém service-role secret nem chave secreta embutida. A chave publishable fallback é pública por natureza. Segredos permanecem no Supabase e não foram copiados. Não houve deploy nem alteração de configuração no projeto original ou paralelo.
+
+A versão v10 é agora a referência de backend, substituindo a cópia truncada de 2.259 bytes que estava versionada. Próximo trabalho: revisar compatibilidade das RPCs/tabelas/Storage, executar verificação estática e testes de contrato sem tocar produção. Não ligar o frontend paralelo nem publicar até concluir a validação.
