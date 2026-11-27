@@ -65,6 +65,8 @@ jobs:
         run: node --check apps/web/app.js
       - name: Check frontend/Rust upload contract
         run: node tests/rust-frontend-contract.js
+      - name: Check Auth and database security contract
+        run: node tests/auth-contract-static.js
 
   rust:
     runs-on: ubuntu-latest
