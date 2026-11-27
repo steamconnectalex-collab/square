@@ -104,12 +104,16 @@ fn parse_allowed_origins(raw: &str) -> Option<Vec<HeaderValue>> {
         }
         origins.push(HeaderValue::try_from(origin).ok()?);
     }
-    if origins.is_empty() { None } else { Some(origins) }
+    if origins.is_empty() {
+        None
+    } else {
+        Some(origins)
+    }
 }
 
 fn browser_cors_layer() -> Option<CorsLayer> {
-    let configured = env::var("SHIQI_ALLOWED_ORIGINS")
-        .or_else(|_| env::var("SHIQI_ALLOWED_ORIGIN"));
+    let configured =
+        env::var("SHIQI_ALLOWED_ORIGINS").or_else(|_| env::var("SHIQI_ALLOWED_ORIGIN"));
     let mut origins = match configured {
         Ok(value) => parse_allowed_origins(&value)?,
         Err(_) => Vec::new(),
@@ -425,10 +429,8 @@ mod tests {
 
     #[test]
     fn browser_cors_accepts_only_explicit_http_origins() {
-        let origins = parse_allowed_origins(
-            "https://shiqi.example, https://preview-shiqi.example"
-        )
-        .expect("both exact origins should be accepted");
+        let origins = parse_allowed_origins("https://shiqi.example, https://preview-shiqi.example")
+            .expect("both exact origins should be accepted");
         assert_eq!(origins.len(), 2);
         assert!(parse_allowed_origins("*").is_none());
         assert!(parse_allowed_origins("https://shiqi.example/path").is_none());
