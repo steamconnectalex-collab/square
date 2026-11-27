@@ -459,3 +459,5 @@
 - O verificador já aceita ES256 e usa `DecodingKey::from_jwk`; foi adicionado teste unitário com fixture EC P-256 exclusiva de testes para confirmar desserialização de JWKS no formato Supabase, seleção por `kid` e validação de JWT ES256 assinado.
 - Commit do teste: `fb239df8676c610db9e548f5442e19c8e7cced15`. Aguardando CI (fmt/test/clippy). A fixture não é a chave real do projeto.
 - Ainda não conectar ao tráfego até o CI confirmar e até definir a etapa de integração/implantação sem misturar com a Edge Function Auth pendente.
+
+- Ajuste de formatação após o primeiro CI: o run `45999793815` confirmou JWKS ES256, mas parou no `cargo fmt` por uma linha em branco extra no teste novo. Corrigido no commit `dc5a43d48ea69b262d8aa9a5a7f94fac35896484`; os testes e Clippy ainda aguardam nova execução.
