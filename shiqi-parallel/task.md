@@ -111,3 +111,11 @@
 - QR não foi investigado; música continua excluída.
 - Nenhum DDL, migration, grant, policy, bucket, trigger, Realtime, usuário, dado ou Edge Function foi alterado.
 - Próximo passo: completar a auditoria estrutural exata de policies/constraints/grants e fechar a estratégia reversível para preservar o protótipo antes de gerar migrations do destino.
+
+### 2026-11-26 — Policies, constraints e grants do original
+- Recuperadas por SELECT as policies RLS das 18 tabelas-alvo, constraints funcionais/PK/FK, definições de colunas (tipo, nulabilidade, default e identidade) e grants efetivos de tabela.
+- Confirmado que o original não concede acesso direto de tabela a `anon`; leitura direta do cliente é concedida a `authenticated` nas tabelas apropriadas, com RLS, e mutações sensíveis são mediadas por RPCs.
+- Confirmado que `messages.id` é BIGINT identity ALWAYS; channels e DMs preservam a constraint de formato; settings, reações, mensagens e eventos têm limites exatos registrados.
+- Atualizados `docs/REMOTE_SCHEMA_AUDIT.md` e `docs/DATABASE_RECONCILIATION_PLAN.md`.
+- Nenhum DDL, migration ou alteração remota foi executado.
+- Próximo passo: fechar índices/ACLs de função e confirmar o plano reversível de preservação do protótipo; só depois preparar migrations para revisão.
