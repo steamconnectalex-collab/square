@@ -153,3 +153,11 @@
 - Estratégia corrigida: remover o trigger prototype e função associada na migration de corte, sem criar trigger novo; manter criação explícita pela Edge Function.
 - Achado adicional: `supabase/functions/auth/index.ts` versionado na branch está incompleto (2.259 bytes), enquanto v9 ativa é completa. Não publicar/sobrescrever; recuperar e reconciliar na etapa do backend.
 - Nenhuma alteração remota.
+
+### 2026-11-26 — DDL das tabelas e índices
+- Gerado DDL de referência das 18 tabelas canônicas a partir de `pg_attribute`, `pg_attrdef` e `pg_constraint`; inclui identity, defaults, nullability, checks, PK/FK e ON DELETE.
+- Gerados os índices não-PK diretamente de `pg_indexes`.
+- Criados `docs/CANONICAL_TABLES.sql` e `docs/CANONICAL_INDEXES.sql` na branch paralela.
+- Confirmados pontos sensíveis: `rate_hits` sem PK; `messages.id` bigint identity ALWAYS; dependências de ordem para canais/mensagens/reactions/eventos.
+- Estes arquivos são referências, ainda não migrations prontas nem aplicadas.
+- Próximo passo: gerar definições completas de RLS/funções/triggers e revisar o frontend/backend contra o contrato canônico; só depois montar a migration atômica e seu rollback.
