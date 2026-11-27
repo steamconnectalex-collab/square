@@ -366,3 +366,11 @@ Limitação de validação local: o ambiente desta sessão não possui psql, Den
 ## 24. Checklist SQL de pós-migração
 
 Criado docs/POST_MIGRATION_VALIDATION.sql com verificações somente SELECT para presença das 18 tabelas, RLS, contagem de policies, inventário de 45 funções públicas/13 privadas, buckets Storage, tabelas Realtime, ausência do trigger Auth prototype e ausência dos objetos de música/QR. Esse checklist ainda não foi executado: depende da migration em banco de teste/target após aprovação. É uma verificação complementar, não substitui testes de fluxo com usuários de teste.
+
+## 10. Artefatos de Storage e Realtime (27/11/2026)
+
+Foram adicionados dois arquivos de referência para cobrir objetos que não estavam representados em SQL executável:
+- docs/CANONICAL_STORAGE_BUCKETS.sql: cria os buckets avatars e attachments somente quando ausentes e interrompe a execução se a configuração existente divergir dos limites/MIME types esperados. Não sobrescreve configuração de bucket existente.
+- docs/CANONICAL_REALTIME.sql: valida a publicação supabase_realtime, remove a tabela arquivada legacy_messages da publicação quando presente e adiciona friendships, messages e voice_members somente quando ausentes.
+
+Ambos são referências para a futura migration, não foram executados. A sequência depende de as tabelas canônicas existirem e de a renomeação do protótipo já ter ocorrido. A validação PostgreSQL e o rollback ainda estão pendentes.
