@@ -235,3 +235,11 @@ Combinado com a pessoa em 2026-11-23: o que precisa de conta em aplicativo exter
 - Job `supabase-jwks` adicionado ao workflow Rust na branch `shiqi-parallel-dev` (commit `7bcf0f90e4df3f5f2241c611e099a491a7bf198e`). O job consulta o JWKS público e verifica compatibilidade com ES256/RS256 sem imprimir material das chaves nem usar secrets.
 - Aguardar o GitHub Actions. Não conectar o verificador ao tráfego até o job confirmar o algoritmo/chaves reais.
 - Produção e branch `main` permanecem intocadas.
+
+
+## SHIQI — atualização 2026-11-27 (JWKS/ES256 concluído)
+- O GitHub Actions consultou o JWKS público real do Supabase paralelo e confirmou chave EC P-256 / ES256.
+- Adicionado teste unitário ES256 com JWK de fixture; run `45999868193` passou em fmt, testes e Clippy.
+- README do serviço e auditoria Rust atualizados. O serviço ainda não foi implantado e não recebe tráfego; Storage/RLS continuam como autoridade e não foi adicionada service_role.
+- Próxima etapa: implementar/testar proxy de anexos preservando o JWT do usuário e policies do Storage antes de integrar a UI.
+- Produção e branch `main` intocadas.
