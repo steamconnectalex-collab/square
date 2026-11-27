@@ -168,3 +168,10 @@
 - Confirmado que tabelas internas `email_codes`, `rate_hits`, `server_invites`, `server_bans`, `mfa_recovery` não possuem policies públicas; não adicionar policies genéricas.
 - Arquivo depende de helpers privados/RPCs criadas previamente e é referência, não migration pronta.
 - Próximo passo: revisar as definições dos helpers e das funções públicas para produzir SQL executável, ACLs e testes de contrato.
+
+### 2026-11-26 — Helpers e triggers
+- Recuperadas integralmente as 13 funções privadas do original e salvas em `docs/CANONICAL_PRIVATE_FUNCTIONS.sql`.
+- Recuperada `public.is_server_member(uuid)` e os cinco triggers reais; salvos em `docs/CANONICAL_TRIGGERS.sql`.
+- Definida ordem de montagem: tabelas → funções/helpers → triggers → RLS → grants.
+- Arquivos são referências; ainda faltam RPCs públicas/ACLs para fechar migration completa.
+- Nenhum DDL remoto.
