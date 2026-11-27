@@ -2064,8 +2064,7 @@ GRANT EXECUTE ON FUNCTION public.purge_user_data(uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.rate_check(text,integer,integer) TO service_role;
 GRANT EXECUTE ON FUNCTION public.revoke_user_sessions(uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.verify_email_code(text,text,text,integer) TO service_role;
--- Private helpers referenced directly by RLS policies.
-GRANT USAGE ON SCHEMA private TO authenticated;
+-- Private helpers referenced directly by RLS policies; schema USAGE was granted above.
 GRANT EXECUTE ON FUNCTION private.can_post(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION private.can_voice_topic(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION private.is_channel_member(uuid) TO authenticated;
