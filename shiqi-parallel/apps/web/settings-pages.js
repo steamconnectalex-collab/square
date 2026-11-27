@@ -384,7 +384,7 @@ ${servers().length ? `<b class="sgl">Compartilhar atividade com estes servidores
 SET.acts['act-srv'] = (t) => { const off = Object.assign({}, SET.getState('actOff') || {}); const id = t.dataset.id; if (off[id]) delete off[id]; else off[id] = 1; SET.setState('actOff', off); SET.setP('act_off', off); SET.redraw(); };
 
 const APPS = [['Riot Games', '#D32F2F'], ['Battle.net', '#1D6FD8'], ['Bluesky', '#2E8BF0'], ['Letterboxd', '#3D8F4F'], ['PayPal', '#1A3D8F'], ['Reddit', '#E8480C'], ['Steam', '#1B2838'], ['X', '#111'], ['eBay', '#C23A2A'], ['Crunchyroll', '#E8700C'], ['PlayStation', '#1F3FA8'], ['Xbox', '#107C10'], ['Bungie', '#3A4650'], ['Site', '#4A4A5A'], ['Epic Games', '#2A2A32'], ['Facebook', '#1877F2'], ['GitHub', '#24292F'], ['Roblox', '#2A2A32'], ['Twitch', '#7B3FE4'], ['YouTube', '#E02020']];
-page({ id: 'apps', label: 'Apps conectados', title: 'Apps conectados', icon: 'apps', kw: 'conexões contas steam spotify',
+page({ id: 'apps', label: 'Apps conectados', title: 'Apps conectados', icon: 'apps', kw: 'conexões contas steam',
   subs: [{ id: 'ap-con', label: 'Conexões' }, { id: 'ap-auth', label: 'Aplicativos autorizados' }],
   render() {
     return `${h2('ap-con', 'Conexões', 'Estas são contas de outras plataformas. Conectá-las aqui pode desbloquear novos recursos na Shiqi, como compartilhar sua atividade em jogos e aplicativos, receber pagamentos de forma segura e muito mais.')}
