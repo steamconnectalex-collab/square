@@ -6,10 +6,15 @@
 **Migrar tecnologia sem mudar design, layout, identidade visual, navegação ou qualquer funcionalidade do aplicativo original que permaneça no escopo.** O diretório `site/` da raiz é a fonte de verdade. Música foi explicitamente retirada do produto pelo usuário e poderá ser removida somente da cópia paralela. Nenhuma outra simplificação/remoção de função sem autorização expressa.
 
 ## Em andamento agora
-- [ ] Remoção da funcionalidade musical exclusivamente da cópia paralela: chamadas de tabelas de música, exportação, campo de perfil e referências promocionais/integrações musicais; preservar arquivos originais e recursos não relacionados.
 - [ ] Revisão estática cruzada dos SQLs canônicos, ACLs, funções, triggers, Storage, Realtime e dependências do frontend; preparar migration reversível apenas para revisão, sem aplicar no Supabase.
 
+## Bloqueios atuais (27/11/2026)
+- O conector Supabase retornou permissão negada ao tentar consultar o projeto paralelo ujdosskjycrdkcgsswfa nesta sessão. Nenhum SQL foi executado; não concluir que o projeto está pausado apenas por esse erro.
+- A Vercel continua com a última implantação READY, mas ela aponta para o commit 1a6f6706, anterior às alterações recentes de frontend. A proteção SSO está habilitada. Não disparar novo deploy enquanto a restrição/janela de limite registrada no projeto não terminar.
+- O smoke test existente na raiz aponta para o site original e não valida a cópia paralela; não foi executado para evitar testar/altear o alvo errado.
+
 ## Concluído
+- [x] 2026-11-27 — Removida a funcionalidade musical da cópia paralela: exportação não consulta mais music_favorites/playlists; campo de última música removido do editor de perfil; integrações Spotify/Amazon Music e textos promocionais de atividade musical removidos. Arquivos originais em site/ e branch main preservados.
 - [x] Branch isolada `shiqi-parallel-dev` e pasta `shiqi-parallel/`.
 - [x] Projeto Vercel paralelo `shiqi-parallel`, Root Directory `shiqi-parallel/apps/web`.
 - [x] Projeto Supabase paralelo `ujdosskjycrdkcgsswfa`, região São Paulo.
@@ -266,3 +271,9 @@
 - Nenhum SQL foi executado no Supabase. A migration e o rollback ainda não foram montados nem validados em PostgreSQL; revisão estática continua.
 - [x] 2026-11-27 — Criadas referências separadas para criação/verificação segura dos buckets Storage (docs/CANONICAL_STORAGE_BUCKETS.sql) e associação da publicação Realtime (docs/CANONICAL_REALTIME.sql). Os arquivos falham diante de configuração inesperada e ainda não foram executados.
 - [ ] Consolidar os SQLs canônicos em migration revisável e rollback, após terminar a conferência de dependências e obter validação PostgreSQL isolada.
+
+### 2026-11-27 — Remoção da funcionalidade musical na cópia paralela
+- Removidas as consultas REST para music_favorites e playlists do fluxo de exportação de dados; removidos os campos musicais do JSON exportado.
+- Removido o campo de última música do editor de perfil e os handlers associados; removidas as opções Spotify/Amazon Music do catálogo de conexões.
+- Ajustadas as referências promocionais/status que apresentavam reprodução musical como recurso da SHIQI. A alteração ficou restrita a shiqi-parallel/apps/web; site/, desktop/ e main não foram alterados.
+- Verificação estática confirmou ausência das chamadas/telas musicais nos arquivos editados. Não houve execução de smoke test nem deploy, pelas restrições documentadas acima.
