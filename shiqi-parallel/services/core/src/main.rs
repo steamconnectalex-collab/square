@@ -226,3 +226,34 @@ async fn shutdown_signal() {
 
     tracing::info!("shutdown signal received");
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn protected_routes_reject_missing_bearer_token() {
+        let headers = HeaderMap::new();
+        let state = AppState { jwt: None };
+
+        assert_eq!(
+            authenticate(&headers, &state).await.unwrap_err(),
+            StatusCode::UNAUTHORIZED
+        );
+    }
+
+    #[tokio::test]
+    async fn protected_routes_fail_closed_when_jwt_config_is_missing() {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            header::AUTHORIZATION,
+            "Bearer placeholder".parse().expect("valid header"),
+        );
+        let state = AppState { jwt: None };
+
+        assert_eq!(
+            authenticate(&headers, &state).await.unwrap_err(),
+            StatusCode::SERVICE_UNAVAILABLE
+        );
+    }
+}
