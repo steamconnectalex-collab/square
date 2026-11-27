@@ -93,3 +93,6 @@ Consulta somente leitura ao projeto Supabase paralelo confirmou que não existem
 
 - Auditoria adicional de acesso às tabelas: 18/18 tabelas canônicas têm RLS habilitada; as 17 policies estão distribuídas em 13 tabelas. As cinco tabelas internas (`email_codes`, `rate_hits`, `server_invites`, `server_bans`, `mfa_recovery`) não recebem grants diretos para `authenticated`; o acesso permanece mediado pelas RPCs/Edge Function.
 - A revisão de grants do draft encontrou zero GRANTs para `anon`. Para `authenticated`, os grants diretos de tabela/coluna são limitados a leitura de tabelas sociais/conversas sob RLS, campos selecionados de perfil, escrita limitada de mensagens e a sequence identity necessária. `service_role` recebe privilégios administrativos para o backend.
+
+- Correção durante a revisão final: removido o GRANT redundante de `USAGE` do schema `private` para `authenticated`, que já estava coberto pelo grant conjunto a `authenticated, service_role`. ACL canônica e draft agora têm exatamente uma concessão de USAGE do schema.
+- Reexecutado o teste estático após a correção: passou; as 59 revogações continuam alinhadas e a análise de sintaxe de `app.js` passou.
