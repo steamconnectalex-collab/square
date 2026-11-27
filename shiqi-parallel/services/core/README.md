@@ -6,7 +6,9 @@ Serviço Rust independente em fase inicial, isolado do frontend existente.
 
 - HTTP server com Tokio + Axum.
 - `GET /healthz`: verifica se o processo responde.
-- `GET /readyz`: readiness provisória do processo (ainda sem dependências externas).
+- `GET /readyz`: retorna 200 somente quando a configuração JWT do Supabase está válida; sem `SUPABASE_URL`, retorna 503.
+- `GET /v1/me`: rota protegida; valida o Bearer JWT do Supabase via JWKS e retorna somente o ID e o papel do usuário.
+- `POST /v1/attachments/validate`: exige JWT e valida assinatura JPEG/PNG/WebP, MIME declarado e limite de 3 MiB. Não grava arquivos nem substitui as policies/signed URLs do Storage.
 - `TraceLayer` para rastreamento de requisições HTTP.
 - Logs via `tracing`.
 - Encerramento gracioso.
@@ -15,6 +17,10 @@ Serviço Rust independente em fase inicial, isolado do frontend existente.
 - Testes unitários do validador.
 - Build multi-stage em Docker.
 - GitHub Actions para format, testes e Clippy.
+
+## Configuração
+
+Defina `SUPABASE_URL` com a URL HTTPS do projeto Supabase. `SUPABASE_JWT_AUDIENCE` é opcional e assume `authenticated`. Não coloque service-role key nem outros segredos no serviço: a validação usa somente o endpoint público JWKS.
 
 ## Executar localmente
 
