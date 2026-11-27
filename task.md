@@ -2,9 +2,21 @@
 
 > **Para a IA:** este arquivo é a fonte da verdade sobre o projeto. Leia tudo antes de começar e atualize **na hora** em que algo acontecer (regras completas em `agents.md`). Não duplique tarefas: procure aqui antes de adicionar.
 >
-> Última atualização: 2026-11-26 (segurança)
+> Última atualização: 2026-11-27 (ambiente paralelo SHIQI)
 
 ---
+
+
+
+## Estado atual do ambiente paralelo — 2026-11-27
+
+- Projeto Supabase de desenvolvimento: `shiqi-parallel`, ref `ujdosskjycrdkcgsswfa`, ativo na região São Paulo. Produção permanece intocada.
+- Branch de trabalho: `shiqi-parallel-dev` no repositório `steamconnectalex-collab/square`.
+- Frontend: `site/config.js` atualizado para apontar para o Supabase paralelo e sua chave publishable. Commit: `6c24333d46bea1c5668ba228c886046a44007657`.
+- Banco: estrutura canônica presente; RLS ligado nas tabelas verificadas; nenhuma conta em `auth.users`.
+- Backend: código da Edge Function `auth` está em `supabase/functions/auth/index.ts` e `mail.ts`; as rotas incluem cadastro, verificação por e-mail, login, recuperação, MFA e gestão de conta. A função ainda não está publicada no projeto paralelo. A tentativa de publicação pela integração foi bloqueada pelas configurações de segurança; não houve alteração remota.
+- As três RPCs usadas pelo backend (`rate_check`, `get_auth_user_by_email`, `verify_email_code`) existem e concedem execução somente a `service_role`, não a `anon` nem a `authenticated`.
+- Próxima ação: concluir a publicação controlada da Edge Function `auth` no projeto paralelo, verificar `/health` e a configuração do Resend antes de iniciar cadastros de teste. Não usar o projeto de produção nem inserir usuários diretamente em `auth.users`.
 
 ## O que estamos construindo
 
