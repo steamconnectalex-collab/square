@@ -167,7 +167,7 @@
 
 ### 2026-11-26 — Policies RLS exatas
 - Extraídas as expressões completas de `pg_policies` em três lotes.
-- Criado `docs/CANONICAL_RLS_POLICIES.sql` com as 18 policies existentes e RLS nas 18 tabelas.
+- Criado `docs/CANONICAL_RLS_POLICIES.sql` com as 17 policies existentes e RLS nas 18 tabelas.
 - Confirmado que tabelas internas `email_codes`, `rate_hits`, `server_invites`, `server_bans`, `mfa_recovery` não possuem policies públicas; não adicionar policies genéricas.
 - Arquivo depende de helpers privados/RPCs criadas previamente e é referência, não migration pronta.
 - Próximo passo: revisar as definições dos helpers e das funções públicas para produzir SQL executável, ACLs e testes de contrato.
@@ -229,7 +229,7 @@
 
 - Inventário integral confirmado: 45 RPCs públicas e 13 funções privadas fora de música/QR. As definições estão distribuídas nos cinco arquivos CANONICAL_*_RPCS.sql e CANONICAL_PRIVATE_FUNCTIONS.sql. Conferida a cobertura de assinaturas do arquivo CANONICAL_FUNCTION_ACL.sql.
 - Recuperada matriz de grants de tabelas e colunas com information_schema. Criado docs/CANONICAL_TABLE_ACL.sql: leitura sob RLS para as tabelas autorizadas, permissões de mensagem, campos específicos de perfil, sequence identity e revogação explícita de grants por coluna. Ainda é referência e precisa passar por validação isolada e testes antes de integrar à migration.
-- Policies RLS reconsultadas no original: 18 policies do produto (música excluída), todas para authenticated. Tabelas internas sem policy pública. Confirmado messages.author_id DEFAULT auth.uid().
+- Policies RLS reconsultadas no original: 17 policies do produto (música excluída), todas para authenticated. Tabelas internas sem policy pública. Confirmado messages.author_id DEFAULT auth.uid().
 - Storage: attachments público, limite 3 MiB e JPEG/PNG/WebP/GIF; avatars público, 1 MiB e JPEG/PNG/WebP. Realtime original: friendships, messages, voice_members.
 - Novo preflight somente leitura do destino: profiles, communities, community_members, channels e messages permanecem com zero linhas; cinco migrations prototype continuam registradas. Sem DDL remota.
 - Consulta direta de ACL por aclexplode em coluna falhou por formato de array; substituída com sucesso por information_schema.column_privileges. Nenhum dado foi modificado.
@@ -254,6 +254,12 @@
 
 ### 2026-11-26 — Checklist de validação pós-migration
 
-- Criado docs/POST_MIGRATION_VALIDATION.sql com consultas somente leitura para validar as 18 tabelas, RLS, 18 policies, 45 RPCs públicas, 13 funções privadas, Storage, Realtime, remoção do trigger Auth prototype e exclusão de música/QR.
+- Criado docs/POST_MIGRATION_VALIDATION.sql com consultas somente leitura para validar as 18 tabelas, RLS, 17 policies, 45 RPCs públicas, 13 funções privadas, Storage, Realtime, remoção do trigger Auth prototype e exclusão de música/QR.
 - O checklist ainda não foi executado porque a migration não foi aplicada. A etapa requer primeiro validar o pacote em banco descartável/branch de desenvolvimento.
 - Commit: c8d36ac (checklist); 720af91 (plano).
+
+### 2026-11-27 — Revisão estática inicial do pacote canônico
+- Cruzados os arquivos de tabelas, índices, RLS, funções privadas, triggers, RPCs, ACLs, Storage e validação pós-migration.
+- Corrigida a contagem do checklist: são 18 tabelas canônicas e 17 policies RLS, não 18 policies. A lista de policies do arquivo `CANONICAL_RLS_POLICIES.sql` contém 17 entradas e cobre as regras documentadas.
+- Removida a definição duplicada de `public.unban_member` do arquivo de RPCs de autenticação; ela permanece no grupo de moderação, evitando criar a mesma RPC em dois blocos de referência.
+- Nenhum SQL foi executado no Supabase. A migration e o rollback ainda não foram montados nem validados em PostgreSQL; revisão estática continua.
