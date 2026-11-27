@@ -25,6 +25,7 @@ begin
   if not exists (select 1 from public.servers s where s.id = p_server and s.owner_id = me) then raise exception 'not_owner'; end if;
   if char_length(t) < 2 or char_length(t) > 80 then raise exception 'invalid_title'; end if;
   if p_starts is null or p_starts < now() - interval '5 minutes' then raise exception 'past_date'; end if;
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('shiqi:event:create:' || p_server::text, 0));
   if (select count(*) from public.server_events e where e.server_id = p_server and e.starts_at > now()) >= 25 then raise exception 'too_many_events'; end if;
   insert into public.server_events (server_id, creator_id, title, description, place, starts_at)
   values (p_server, me, t, left(btrim(coalesce(p_description, '')), 500), left(btrim(coalesce(p_place, '')), 80), p_starts) returning id into eid;
@@ -158,6 +159,7 @@ begin
     return;
   end if;
   if not exists (select 1 from public.server_members m where m.server_id = p_server and m.user_id = uid) then raise exception 'not_member'; end if;
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('shiqi:pins:limit:' || uid::text, 0));
   if exists (select 1 from public.server_pins p where p.user_id = uid and p.server_id = p_server) then return; end if;
   if (select count(*) from public.server_pins p join public.server_members m on m.server_id = p.server_id and m.user_id = p.user_id where p.user_id = uid) >= 4 then
     raise exception 'too_many_pins';
@@ -216,6 +218,7 @@ begin
   if char_length(e) < 1 or char_length(e) > 16 then raise exception 'invalid_emoji'; end if;
   select channel_id into ch from public.messages where id = p_message;
   if ch is null or not private.can_post(ch) then raise exception 'not_member'; end if;
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('shiqi:reaction:message:' || p_message::text, 0));
   delete from public.message_reactions where message_id = p_message and user_id = me and emoji = e;
   get diagnostics n = row_count;
   if n > 0 then return false; end if;
