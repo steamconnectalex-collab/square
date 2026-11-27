@@ -263,3 +263,5 @@
 - Corrigida a contagem do checklist: são 18 tabelas canônicas e 17 policies RLS, não 18 policies. A lista de policies do arquivo `CANONICAL_RLS_POLICIES.sql` contém 17 entradas e cobre as regras documentadas.
 - Removida a definição duplicada de `public.unban_member` do arquivo de RPCs de autenticação; ela permanece no grupo de moderação, evitando criar a mesma RPC em dois blocos de referência.
 - Nenhum SQL foi executado no Supabase. A migration e o rollback ainda não foram montados nem validados em PostgreSQL; revisão estática continua.
+- [x] 2026-11-27 — Criadas referências separadas para criação/verificação segura dos buckets Storage (docs/CANONICAL_STORAGE_BUCKETS.sql) e associação da publicação Realtime (docs/CANONICAL_REALTIME.sql). Os arquivos falham diante de configuração inesperada e ainda não foram executados.
+- [ ] Consolidar os SQLs canônicos em migration revisável e rollback, após terminar a conferência de dependências e obter validação PostgreSQL isolada.
