@@ -104,20 +104,6 @@ $function$
 
 -- ========================================
 
-CREATE OR REPLACE FUNCTION public.unban_member(p_server uuid, p_user uuid)
- RETURNS void
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO ''
-AS $function$
-begin
-  if not exists (select 1 from public.servers s where s.id = p_server and s.owner_id = (select auth.uid())) then raise exception 'not_owner'; end if;
-  delete from public.server_bans where server_id = p_server and user_id = p_user;
-end;
-$function$
-
-
--- ========================================
 
 CREATE OR REPLACE FUNCTION public.verify_email_code(p_email text, p_purpose text, p_hash text, p_max_attempts integer DEFAULT 5)
  RETURNS TABLE(status text, attempts_left integer)
