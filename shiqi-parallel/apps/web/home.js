@@ -369,7 +369,7 @@ window.SQ_HOME = `
 <div style="flex: none; width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg,#CBE9D9,#78BE9D); box-shadow: 0 4px 10px rgba(29,29,34,.16), inset 0 0 0 2px rgba(255,255,255,.8); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #1D1D22">P</div>
 <div style="min-width: 0">
 <div style="font-size: 13px; font-weight: 700; color: #1B6B47; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Pai de Pet</div>
-<div style="font-size: 10px; color: #62626D; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Ouvindo música</div>
+<div style="font-size: 10px; color: #62626D; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Jogando agora</div>
 </div>
 </div>
 <div style="display: flex; align-items: center; gap: 10px; padding: 6px; border-radius: 12px; background: transparent">
@@ -468,7 +468,7 @@ window.SQ_HOME = `
 </div>
 <div style="flex: 1 1 320px; min-width: 0; padding: 16px 20px; display: flex; flex-direction: column; gap: 18px">
 <h2 style="margin: 0; font-family: 'Plus Jakarta Sans', Inter, 'Segoe UI', sans-serif; font-weight: 800; font-size: clamp(28px, 3.3vw, 44px); line-height: 1.1; letter-spacing: -0.025em; text-wrap: balance">Sempre tem algo pra fazer junto</h2>
-<p style="margin: 0; max-width: 460px; font-size: 17px; line-height: 1.65; color: #55555F">Assistam a vídeos, joguem, ouçam música ou só naveguem juntos e compartilhem memes. Mandem mensagens, liguem, conversem por vídeo e joguem tranquilos, tudo no mesmo bate-papo em grupo.</p>
+<p style="margin: 0; max-width: 460px; font-size: 17px; line-height: 1.65; color: #55555F">Assistam a vídeos, joguem ou só naveguem juntos e compartilhem memes. Mandem mensagens, liguem, conversem por vídeo e joguem tranquilos, tudo no mesmo bate-papo em grupo.</p>
 </div>
 </section>
 <section style="display: flex; flex-wrap: wrap; align-items: center; gap: 24px 32px; padding: 28px; border-radius: 44px; background: rgba(255,255,255,.62); -webkit-backdrop-filter: blur(28px) saturate(1.4); backdrop-filter: blur(28px) saturate(1.4); border: 1px solid rgba(255,255,255,.9); box-shadow: 0 30px 80px rgba(40,40,70,.1), 0 0 0 1px rgba(29,29,34,.05)">
