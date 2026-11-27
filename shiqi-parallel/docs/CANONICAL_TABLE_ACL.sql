@@ -8,6 +8,14 @@
 REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM anon, authenticated;
 REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM anon, authenticated;
 
+REVOKE ALL PRIVILEGES (id, username, display_name, birth_date, marketing_opt_in,
+  created_at, bio, status_text, avatar_path, accent, last_seen,
+  terms_accepted_at, plan, settings, presence, deactivated_at, profile_updated_at)
+ON TABLE public.profiles FROM anon, authenticated;
+REVOKE ALL PRIVILEGES (id, channel_id, author_id, content, created_at, edited_at,
+  attachment_path, attachment_alt, thread_of)
+ON TABLE public.messages FROM anon, authenticated;
+
 -- Leitura direta permitida pelo original; todas as tabelas permanecem sob RLS.
 GRANT SELECT ON public.blocks, public.channels, public.dm_members,
   public.event_interest, public.friendships, public.message_reactions,
