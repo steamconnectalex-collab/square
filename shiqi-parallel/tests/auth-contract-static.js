@@ -85,6 +85,19 @@ assert.ok(attachmentHelper.includes('m.attachment_path = p_path') &&
   'A leitura de anexos deve corresponder a um caminho realmente associado a uma mensagem.');
 assert.ok(attachmentHelper.includes("mine.state = 'active'") && attachmentHelper.includes('private.dm_allowed'),
   'A leitura de anexos em DM deve exigir membro ativo e respeitar bloqueios/regras de DM.');
+const channelMemberHelper = privateSql.slice(
+  privateSql.indexOf('function private.is_channel_member('),
+  privateSql.indexOf('create or replace function private.is_channel_owner')
+);
+const dmMemberHelper = privateSql.slice(
+  privateSql.indexOf('function private.is_dm_member('),
+  privateSql.indexOf('create or replace function private.can_read_attachment')
+);
+assert.ok(channelMemberHelper.includes('private.dm_allowed') && dmMemberHelper.includes('private.dm_allowed'),
+  'Leitura de canais/mensagens e seleção de DMs deve respeitar bloqueios e elegibilidade de DM.');
+assert.ok(attachmentHelper.includes('private.dm_allowed') &&
+  attachmentHelper.includes("m.author_id = (select auth.uid()) or other_member.state = 'active'"),
+  'Anexos de DM devem respeitar bloqueios e manter a prévia pendente apenas para o remetente.');
 assert.ok(attachmentHelper.includes('sm.user_id = (select auth.uid())'),
   'A leitura de anexos de servidor deve exigir associação atual.');
 assert.ok(storageBucketSql.includes("'attachments', 'attachments', false") &&
