@@ -245,3 +245,20 @@ A configuração de Storage e Realtime foi revalidada diretamente no projeto ori
 Diferença importante descoberta: o projeto paralelo tem o trigger `on_auth_user_created_shiqi` em `auth.users` → `private.handle_new_user()`, mas a consulta ao catálogo original não encontrou trigger não interno em `auth.users`. Portanto, não se deve assumir que o trigger faz parte do contrato original. O fluxo de cadastro na Edge Function original deve ser inspecionado antes de decidir se o destino mantém, substitui ou remove esse trigger prototype.
 
 O projeto paralelo está consultável no momento (PostgreSQL 17.12, cinco tabelas públicas, zero buckets e zero linhas nas cinco tabelas). Isso não equivale a autorização para alterar o banco.
+
+
+## 15. Contrato real do signup — Edge Function original v9 (26/11/2026)
+
+A função `auth` ativa no projeto original foi lida diretamente via API do Supabase (versão 9, ACTIVE, `verify_jwt=false`). O fluxo `signup`:
+1. valida e normaliza email, username, senha, data de nascimento, idade mínima e aceite dos termos;
+2. cria o usuário com `admin.auth.admin.createUser(... email_confirm:false ...)`;
+3. insere explicitamente o perfil em `public.profiles` com `admin.from("profiles").insert(...)`;
+4. se a inserção falha, apaga o usuário recém-criado e retorna erro;
+5. gera e envia código de confirmação por email.
+
+Portanto, o contrato original é **criação explícita de perfil pela Edge Function**, não trigger em `auth.users`. O trigger `on_auth_user_created_shiqi` do protótipo paralelo conflita diretamente com esse fluxo: dispara ao criar usuário, insere o perfil primeiro e faz o INSERT explícito subsequente falhar por chave duplicada. A migration canônica deverá remover o trigger prototype `on_auth_user_created_shiqi` e sua função exclusiva, sem criar trigger substituto. O signup existente continuará sendo a única fonte de criação do perfil, preservando a semântica original.
+
+### Divergência de código-fonte
+O arquivo versionado `supabase/functions/auth/index.ts` na branch consultada contém apenas 2.259 bytes e termina antes das rotas, enquanto a função ativa v9 no Supabase contém o código completo. Não sobrescrever nem publicar o arquivo incompleto. A reconciliação do código da Edge Function precisa ser feita na etapa de backend, recuperando a versão ativa completa e comparando com o repositório antes de qualquer deploy.
+
+Nenhuma alteração remota foi executada.
