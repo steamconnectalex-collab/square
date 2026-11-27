@@ -25,6 +25,8 @@ const draftSql = read('docs/CUTOVER_DRAFT.sql');
 const storageBucketSql = read('docs/CANONICAL_STORAGE_BUCKETS.sql');
 const storagePolicySql = read('docs/CANONICAL_STORAGE_POLICIES.sql');
 const appSql = read('apps/web/app.js');
+const realtimeSql = read('docs/CANONICAL_REALTIME.sql');
+const preflightSql = read('docs/CUTOVER_PREFLIGHT.sql');
 const rlsSql = read('docs/CANONICAL_RLS_POLICIES.sql');
 
 const routes = [
@@ -116,6 +118,19 @@ assert.ok(rlsSql.includes("split_part(attachment_path, '/', 1) = (select auth.ui
 assert.ok(storagePolicySql.includes('private.can_read_attachment(name)') &&
   !storagePolicySql.includes('CREATE POLICY attachments_select_own'),
   'A policy de leitura deve autorizar pelo acesso à mensagem, não pelo dono da pasta.');
+assert.ok(realtimeSql.includes('CREATE POLICY voice_topic_select ON realtime.messages') &&
+  realtimeSql.includes('CREATE POLICY voice_topic_insert ON realtime.messages') &&
+  realtimeSql.includes('private.can_voice_topic'),
+  'Realtime de voz deve ter policies privadas de SELECT e INSERT.');
+assert.ok(draftSql.includes('CREATE POLICY voice_topic_select ON realtime.messages') &&
+  draftSql.includes('CREATE POLICY voice_topic_insert ON realtime.messages'),
+  'O cutover draft deve instalar as policies privadas de voz.');
+assert.ok(preflightSql.includes('realtime_voice_policy_names_free') &&
+  draftSql.includes("n.nspname='realtime' AND c.relname='messages'"),
+  'Preflight deve bloquear colisões nas policies de voz do Realtime.');
+assert.ok(preflightSql.includes("'can_read_attachment'") &&
+  draftSql.includes("'can_read_attachment'"),
+  'Preflight deve detectar colisão do helper de anexos.');
 assert.ok(appSql.includes('scheduleAttachmentRefresh') && appSql.includes('expiresAt <= now + 10000'),
   'O frontend deve renovar signed URLs antes da expiração.');
 assert.ok(appSql.includes('/storage/v1/object/sign/attachments/') &&
