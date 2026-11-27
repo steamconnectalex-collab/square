@@ -12,6 +12,8 @@ on:
     branches: [shiqi-parallel-dev]
     paths:
       - "shiqi-parallel/services/core/**"
+      - "shiqi-parallel/apps/web/**"
+      - "shiqi-parallel/tests/**"
       - ".github/workflows/shiqi-core.yml"
   workflow_dispatch:
 
