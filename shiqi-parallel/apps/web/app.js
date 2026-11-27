@@ -815,11 +815,11 @@ function scheduleAttachmentRefresh() {
     let hasValidUrls = false;
     for (const [path, entry] of attachmentUrlCache) {
       if (!entry.url) continue;
-      if (entry.expiresAt <= now + 5000) attachmentUrlCache.delete(path);
+      if (entry.expiresAt <= now + 10000) attachmentUrlCache.delete(path);
       else hasValidUrls = true;
     }
     if (A && S.view === 'app') paintMsgs('keep');
-    if (hasValidUrls) scheduleAttachmentRefresh();
+    if (hasValidUrls && A && S.view === 'app') scheduleAttachmentRefresh();
   }, 45000);
 }
 function ensureAttachmentUrl(path) {
