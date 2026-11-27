@@ -192,6 +192,7 @@ security definer
 set search_path to ''
 as $function$
 begin
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('shiqi:messages:rate:' || new.author_id::text, 0));
   if (select count(*) from public.messages
       where author_id = new.author_id and created_at > now() - interval '5 seconds') >= 5
      or (select count(*) from public.messages
