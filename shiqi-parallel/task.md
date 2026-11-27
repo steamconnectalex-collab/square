@@ -182,3 +182,15 @@
 - Confirmados limites de servidores/canais, defaults de convite, lock de convite, bloqueio por ban e limites de membership.
 - Próximo grupo: RPCs de amizade/DM e bloqueios; depois demais funções públicas e ACLs.
 - Nenhuma alteração remota.
+
+
+### 2026-11-26 — Continuação da recuperação das RPCs canônicas
+- Relidos `task.md` e `agents.md` da raiz, além do acompanhamento paralelo e do plano de reconciliação.
+- Consultado o catálogo do projeto original somente com SELECT e extraídas as definições completas de 40 funções públicas não relacionadas a música/QR, em lotes menores para evitar truncamento.
+- Criados na branch `shiqi-parallel-dev`:
+  - `docs/CANONICAL_SOCIAL_PROFILE_RPCS.sql` — amizades, DMs, bloqueios, perfil e configurações (15 definições, incluindo sobrecarga).
+  - `docs/CANONICAL_MODERATION_EVENTS_VOICE_RPCS.sql` — moderação, reações, eventos, voz, exploração e destaques (17 definições).
+  - `docs/CANONICAL_AUTH_ACCOUNT_RPCS.sql` — rotinas internas de autenticação e ciclo de vida da conta (8 definições).
+- As definições foram extraídas com `pg_get_functiondef` do banco original; são referências para reconciliação, não migrations prontas.
+- QR e música permaneceram excluídos. Nenhum DDL, migration, grant, policy, bucket, trigger, Realtime, usuário ou dado foi alterado em qualquer banco.
+- Próximo passo: validar que a lista de funções extraídas cobre exatamente o inventário público não musical, revisar dependências e ACLs por assinatura, e auditar Storage policies/grants/Realtime antes de consolidar a migration reversível.
