@@ -125,3 +125,10 @@
 - Diferenciados grants explícitos de permissões herdadas via PUBLIC; identificados helpers privados e rotinas internas que exigem hardening no destino.
 - Registrada a diretriz de não reproduzir grants históricos amplos de helpers/rotinas internas.
 - Próximo passo: fechar o desenho reversível para isolar as cinco tabelas incompatíveis do protótipo e iniciar a montagem local do schema canônico, ainda sem executar DDL remoto.
+
+### 2026-11-26 — Desenho reversível de preservação do protótipo
+- Documentada proposta de isolamento das cinco tabelas incompatíveis por renomeação controlada para `legacy_*`, preservando OIDs, constraints, FKs, índices, policies, triggers e dados.
+- Mapeadas dependências obrigatórias da mesma janela: trigger `auth.users`, grants legados, publicação Realtime e validação PostgREST.
+- Documentado rollback separado, sem `DROP CASCADE` e sem remoção automática de dados.
+- A proposta ainda exige conferência final dos objetos/colisões e revisão do SQL. Nenhuma renomeação ou DDL foi executada.
+- Próximo passo: revisar o trigger de criação de perfil e a dependência da publicação Realtime; depois montar migrations locais para revisão.
