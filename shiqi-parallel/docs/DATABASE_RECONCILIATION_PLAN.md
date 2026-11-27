@@ -157,3 +157,16 @@ A função viva no banco original `voice_join` impõe atualmente o limite de 6 p
 - Foram consultadas definições completas das funções do catálogo original, mas a resposta do conector excedeu o limite de saída e foi truncada. Ela não serve como exportação integral e verificável de todas as rotinas.
 - O próximo passo técnico é extrair definições em lotes menores, filtrando as funções de música por nome e dependências, e registrar cada lote sem truncamento.
 - Nenhum DDL, migration, grant, trigger, policy, função, bucket ou publicação foi alterado em qualquer banco.
+
+
+## 10. Fechamento adicional da auditoria estrutural (26/11/2026)
+
+Foram recuperados diretamente do catálogo original:
+- 18 conjuntos de colunas com tipos, nulabilidade, defaults e identidade;
+- constraints funcionais, PKs, FKs e regras ON DELETE;
+- 18 policies RLS de tabelas públicas;
+- grants efetivos de tabelas.
+
+Resumo de segurança: as policies de aplicação são para `authenticated`; não há grants diretos de tabela para `anon` no inventário original. Leitura direta é concedida a `authenticated` apenas onde o frontend precisa, e mutations sensíveis são mediadas por RPCs e RLS. Tabelas internas de códigos, rate limit, convites, bans e MFA não têm policies públicas.
+
+O conjunto de definições de funções (13 private/45 public), estrutura de colunas, constraints, policies e grants agora está recuperado para a referência original. Falta fechar índices, ACL explícita por função, detalhes finais de Storage/Realtime e a revisão das dependências internas do protótipo no destino. A auditoria não autoriza DDL; o plano reversível ainda precisa ser fechado e revisado antes de qualquer mudança remota.
