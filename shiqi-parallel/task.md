@@ -1,6 +1,19 @@
 # SHIQI — acompanhamento
 
-Última atualização: 2026-11-27
+Última atualização: 2026-11-27 (revisão global do banco e avanço para Rust)
+
+## Atualização mais recente — revisão global do banco (27/11/2026)
+
+- O usuário confirmou que já realizou o teste real e que funcionou; por decisão explícita, não repetir bateria de testes reais nesta etapa. Registrar que isso não equivale a validar todos os caminhos de produção.
+- No Supabase paralelo `ujdosskjycrdkcgsswfa`, aplicada e verificada a migration `database_global_performance_hardening`.
+- Corrigidos os seis índices de cobertura de FK: `blocks.blocked`, `event_interest.user_id`, `message_reactions.user_id`, `server_bans.user_id`, `server_events.creator_id` e `server_pins.server_id`.
+- `rate_hits` recebeu coluna identity `id bigint` e chave primária `rate_hits_pkey`; verificação posterior confirmou identity e PK.
+- Advisors pós-correção não apontam mais FK sem índice nem tabela sem PK. Restam 5 avisos INFO de RLS habilitado sem policies em tabelas internas (`email_codes`, `mfa_recovery`, `rate_hits`, `server_bans`, `server_invites`); as cinco não concedem SELECT/INSERT diretamente a anon/authenticated e são acessadas por funções privilegiadas. Não criar policies genéricas.
+- Permanecem 39 avisos WARN de funções SECURITY DEFINER executáveis por authenticated; a inspeção confirmou que nenhuma delas é executável por anon. As funções de produto fazem validação por `auth.uid()`/propriedade/participação, e as RPCs internas de Auth permanecem restritas a service_role. Não revogar em lote: isso quebraria operações legítimas.
+- Os avisos de índices não utilizados (28 após criar os índices novos) são esperados em banco paralelo sem tráfego significativo; não remover índices por esse motivo.
+- Saúde do projeto sem alertas. Edge Functions publicadas no projeto paralelo: nenhuma, segundo a consulta atual; a função Auth ainda precisa ser publicada/configurada no destino antes de integrar o fluxo Rust, apesar do teste real informado pelo usuário no ambiente que ele validou.
+- Próxima fase: avançar no serviço Rust existente em `shiqi-parallel/services/core`, sem alterar visual ou produção. O `main.rs` expõe atualmente apenas `/healthz` e `/readyz`; `auth.rs` valida JWT via JWKS e `attachments.rs` valida imagem, mas ambos ainda não estão ligados a rotas HTTP.
+
 
 ## Requisito central
 **Migrar tecnologia sem mudar design, layout, identidade visual, navegação ou qualquer funcionalidade do aplicativo original que permaneça no escopo.** O diretório `site/` da raiz é a fonte de verdade. Música foi explicitamente retirada do produto pelo usuário e poderá ser removida somente da cópia paralela. Nenhuma outra simplificação/remoção de função sem autorização expressa.
