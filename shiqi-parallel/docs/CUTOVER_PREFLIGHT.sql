@@ -109,7 +109,7 @@ SELECT 'storage_bucket_settings_compatible' AS check_name,
          SELECT 1 FROM storage.buckets
          WHERE id = 'attachments'
            AND NOT (
-             name = 'attachments' AND public IS TRUE AND file_size_limit = 3145728
+             name = 'attachments' AND public IS FALSE AND file_size_limit = 3145728
              AND allowed_mime_types @> ARRAY['image/jpeg','image/png','image/webp','image/gif']::text[]
              AND allowed_mime_types <@ ARRAY['image/jpeg','image/png','image/webp','image/gif']::text[]
            )
@@ -129,11 +129,22 @@ JOIN pg_namespace n ON n.oid = c.relnamespace
 WHERE n.nspname = 'storage'
   AND c.relname = 'objects'
   AND p.polname IN (
-    'attachments_delete_own','attachments_insert_own','attachments_select_own',
+    'attachments_delete_own','attachments_insert_own','attachments_select_message_member',
     'avatars_delete_own','avatars_insert_own','avatars_select_own','avatars_update_own'
   );
 
--- 10) Os nomes prefixados para índices antigos precisam estar livres antes do rename.
+-- 10) Nomes das policies de sinalização privada do Realtime devem estar livres.
+SELECT 'realtime_voice_policy_names_free' AS check_name,
+       count(*) = 0 AS passed,
+       count(*)::text AS observed
+FROM pg_policy p
+JOIN pg_class c ON c.oid = p.polrelid
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'realtime'
+  AND c.relname = 'messages'
+  AND p.polname IN ('voice_topic_select','voice_topic_insert');
+
+-- 11) Os nomes prefixados para índices antigos precisam estar livres antes do rename.
 SELECT 'legacy_index_rename_targets_free' AS check_name,
        NOT EXISTS (
          SELECT 1
@@ -216,7 +227,7 @@ SELECT 'canonical_function_names_available' AS check_name,
          SELECT 1 FROM pg_proc p
          JOIN pg_namespace n ON n.oid = p.pronamespace
          WHERE (n.nspname = 'public' AND p.proname = ANY(ARRAY['is_server_member','create_server','create_channel','create_invite','join_public_server','join_server','block_user','change_username','get_my_settings','my_age_group','open_dm','profiles_full','remove_friend','respond_dm_request','respond_friend_request','save_my_settings','send_friend_request','set_my_presence','unblock_user','unsubscribe_marketing','ban_member','create_event','delete_event','featured_servers','kick_member','list_bans','list_public_servers','my_plan','pin_server','set_server_public','toggle_event_interest','toggle_reaction','unban_member','voice_join','voice_leave','voice_ping','voice_set_state','get_auth_user_by_email','get_login_email_by_username','purge_user_data','rate_check','reactivate_account','revoke_user_sessions','verify_email_code']::text[]))
-            OR (n.nspname = 'private' AND p.proname = ANY(ARRAY['accept_on_reply','dm_allowed','can_post','can_voice_topic','check_thread_parent','is_channel_member','is_channel_owner','is_dm_member','messages_rate_limit','remove_from_server','shares_server_with','touch_edited_at','touch_profile']::text[]))
+            OR (n.nspname = 'private' AND p.proname = ANY(ARRAY['accept_on_reply','dm_allowed','can_post','can_voice_topic','can_read_attachment','check_thread_parent','is_channel_member','is_channel_owner','is_dm_member','messages_rate_limit','remove_from_server','shares_server_with','touch_edited_at','touch_profile']::text[]))
        ) AS passed,
        COALESCE((
          SELECT string_agg(n.nspname || '.' || p.proname, ', ' ORDER BY n.nspname, p.proname)
