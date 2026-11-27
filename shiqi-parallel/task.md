@@ -211,3 +211,13 @@
 - Preflight somente leitura no destino `ujdosskjycrdkcgsswfa`: as cinco tabelas prototype continuam presentes; cinco nomes `legacy_*` estão livres; nenhuma colisão de nomes detectada; bucket nenhum; Realtime ainda contém apenas `public.messages`; trigger `on_auth_user_created_shiqi` permanece em `auth.users`; cinco migrations prototype continuam registradas.
 - As cinco tabelas continuam sem dados na última auditoria; ainda será exigida nova contagem imediatamente antes de qualquer corte.
 - Não foi executado DDL nem alterado qualquer banco. A migration ainda não está pronta para aplicação: faltam validar cada arquivo SQL de referência contra o catálogo, resolver todas as dependências de funções privadas/trigger e fechar o rollback/testes de permissões.
+
+### 2026-11-26 — Continuação: inventário completo de funções e grants
+
+- Relidos os três arquivos de acompanhamento antes da retomada. Mantidas as regras de isolamento da branch e preservação integral da interface/funcionalidades restantes.
+- Consultado novamente o catálogo do Supabase original por SELECT: confirmadas as 13 funções privadas e 45 assinaturas públicas fora de música (inclui as duas sobrecargas de send_friend_request). Foram conferidos schema, argumentos, SECURITY DEFINER, search_path e ACL explícita por assinatura.
+- Conferida a matriz de ACLs: RPCs de produto têm grants explícitos para authenticated/service_role; rotinas de autenticação/gestão sensível ficam apenas com service_role. Helpers privados chamados diretamente por policies precisam de EXECUTE para authenticated; helpers internos e triggers não devem ser expostos.
+- Conferidos os grants de tabela no original: authenticated recebe SELECT somente nas tabelas de leitura direta protegidas por RLS e DELETE em messages; tabelas internas não recebem acesso de cliente. service_role/postgres mantêm privilégios administrativos. A migration deve reproduzir esse modelo mínimo, não os grants amplos do protótipo.
+- Reconfirmados buckets Storage e limites: attachments público, 3 MiB, JPEG/PNG/WebP/GIF; avatars público, 1 MiB, JPEG/PNG/WebP. Realtime canônico continua sendo friendships, messages e voice_members.
+- Revisão permanece documental: nenhum DDL, migration, grant, policy, bucket, trigger, publicação Realtime, dado ou Edge Function foi alterado remotamente.
+- Próximo passo: completar a revisão de grants de sequência/colunas e das dependências de policies/Realtime; então consolidar a migration e o rollback em arquivos locais da branch para revisão, sem aplicar ao Supabase até autorização explícita.
