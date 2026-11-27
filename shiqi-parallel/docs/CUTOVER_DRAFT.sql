@@ -120,6 +120,29 @@ BEGIN
      OR to_regclass('storage.buckets') IS NULL OR to_regclass('storage.objects') IS NULL THEN
     RAISE EXCEPTION 'SHIQI preflight: papéis Supabase ou Storage ausentes';
   END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM pg_class idx
+    JOIN pg_namespace ns ON ns.oid=idx.relnamespace
+    WHERE ns.nspname='public' AND idx.relkind='i'
+      AND idx.relname = ANY(ARRAY['channels_server_idx','dm_members_user_idx','email_codes_expires_idx','email_codes_lookup_idx','friendships_b_idx','message_reactions_msg_idx','messages_author_created_idx','messages_author_idx','messages_channel_created_idx','messages_thread_idx','profiles_username_lower_key','rate_hits_key_at_idx','server_events_srv_idx','server_invites_creator_idx','server_invites_server_idx','server_members_user_idx','servers_owner_idx','voice_members_user_idx','profiles_pkey','email_codes_pkey','servers_pkey','server_members_pkey','channels_pkey','messages_pkey','server_invites_pkey','dm_members_pkey','friendships_pkey','blocks_pkey','voice_members_pkey','server_bans_pkey','server_pins_pkey','mfa_recovery_pkey','message_reactions_pkey','server_events_pkey','event_interest_pkey']::text[])
+      AND NOT EXISTS (
+        SELECT 1 FROM pg_index ix JOIN pg_class tbl ON tbl.oid=ix.indrelid
+        WHERE ix.indexrelid=idx.oid
+          AND tbl.relname IN ('profiles','communities','community_members','channels','messages')
+      )
+  ) THEN
+    RAISE EXCEPTION 'SHIQI preflight: nome de índice canônico já ocupado fora do legado';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+    WHERE (n.nspname='public' AND p.proname = ANY(ARRAY['is_server_member','create_server','create_channel','create_invite','join_public_server','join_server','block_user','change_username','get_my_settings','my_age_group','open_dm','profiles_full','remove_friend','respond_dm_request','respond_friend_request','save_my_settings','send_friend_request','set_my_presence','unblock_user','unsubscribe_marketing','ban_member','create_event','delete_event','featured_servers','kick_member','list_bans','list_public_servers','my_plan','pin_server','set_server_public','toggle_event_interest','toggle_reaction','unban_member','voice_join','voice_leave','voice_ping','voice_set_state','get_auth_user_by_email','get_login_email_by_username','purge_user_data','rate_check','reactivate_account','revoke_user_sessions','verify_email_code']::text[]))
+       OR (n.nspname='private' AND p.proname = ANY(ARRAY['accept_on_reply','dm_allowed','can_post','can_voice_topic','check_thread_parent','is_channel_member','is_channel_owner','is_dm_member','messages_rate_limit','remove_from_server','shares_server_with','touch_edited_at','touch_profile']::text[]))
+  ) THEN
+    RAISE EXCEPTION 'SHIQI preflight: nome de função canônica já existe; não sobrescrever';
+  END IF;
+
 END
 $preflight$;
 
