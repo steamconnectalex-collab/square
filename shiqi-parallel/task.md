@@ -6,12 +6,12 @@
 **Migrar tecnologia sem mudar design, layout, identidade visual, navegação ou qualquer funcionalidade do aplicativo original que permaneça no escopo.** O diretório `site/` da raiz é a fonte de verdade. Música foi explicitamente retirada do produto pelo usuário e poderá ser removida somente da cópia paralela. Nenhuma outra simplificação/remoção de função sem autorização expressa.
 
 ## Em andamento agora
-- [ ] Reexecutar integralmente o snapshot corrigido (a primeira tentativa revelou uma view inexistente); fechar rollback com as ACLs reais; validar cutover e rollback em PostgreSQL isolado. Não aplicar DDL remoto.
+- [ ] Revisar compatibilidade final do pacote SQL e contratos da autenticação restaurada. A validação em PostgreSQL local foi dispensada pelo usuário nesta fase; não aplicar DDL remoto.
 - [x] 2026-11-27 — Ampliado o snapshot para incluir grants de tabela concedidos a PUBLIC e privilégios de todas as sequences; o plano de rollback agora inclui remoção das sete policies Storage do cutover e restauração dos grants de sequence. Removidos grants duplicados do draft.
 
 ## Bloqueios atuais (27/11/2026)
 - Leitura do Supabase restabelecida em 2026-11-27 usando a conexão `Primary`; projeto `ujdosskjycrdkcgsswfa` confirmado `ACTIVE_HEALTHY`. A falha anterior era a conexão incorreta (`shiqi` apontava para o projeto antigo). O preflight foi executado somente com SELECT e todos os 17 checks retornaram true. Nenhum DDL/DML foi executado.
-- O ambiente de trabalho não tem psql, servidor PostgreSQL nem Docker disponíveis; a validação de parser/runtime precisa ocorrer em ambiente PostgreSQL isolado externo ou após disponibilizar acesso de teste.
+- A validação de parser/runtime em PostgreSQL isolado foi dispensada pelo usuário para evitar aprofundamento em configuração local. Os SQLs continuam sem validação de runtime; manter bloqueio de execução remota até revisão e autorização.
 - A Vercel continua com a última implantação READY, mas ela aponta para o commit 1a6f6706, anterior às alterações recentes de frontend. A proteção SSO está habilitada. Não disparar novo deploy enquanto a restrição/janela de limite registrada no projeto não terminar.
 - O smoke test existente na raiz aponta para o site original e não valida a cópia paralela; não foi executado para evitar testar/altear o alvo errado.
 
@@ -42,8 +42,8 @@
 - [x] 2026-11-26 — Música excluída do escopo: migrations 0011 e 0012 removidas somente da pasta paralela; originals em `main` preservados.
 - [x] Matriz de paridade funcional concluída em `docs/FEATURE_PARITY_MATRIX.md` em 2026-11-26, incluindo rotas, ações, persistência, contratos e critérios de regressão. Execução dos testes fica para a etapa de regressão.
 - [ ] **Etapa 2 — reconciliação/migração do banco:** auditoria e recuperação de schema/ACLs concluídas documentalmente; cinco tabelas prototype incompatíveis, cinco migrations remotas e grants amplos a anon foram identificados. Próximo: consolidar migration/rollback, validar em PostgreSQL isolado e revalidar o destino antes de qualquer DDL.
-- [x] 2026-11-26 — Edge Function Auth v10 completa recuperada para a branch paralela, sem deploy.
-- [ ] Validar contratos de Auth v10, dependências, JWT e chaves em ambiente isolado antes de conectar a UI.
+- [x] 2026-11-27 — Edge Function Auth completa restaurada em `shiqi-parallel/supabase/functions/auth/index.ts` a partir da fonte versionada na raiz; origens antigas de produção removidas, URL padrão ajustada para o projeto paralelo e chave anon exigida por variável de ambiente. Sem deploy.
+- [ ] Validar contratos da Edge Function Auth restaurada, dependências, JWT e variáveis de ambiente antes de conectar a UI.
 - [ ] Completar testes JWT assinados/negativos e validar algoritmo/chaves do projeto destino antes de integrar middleware.
 - [ ] Preparar migrations incrementais, RLS, grants, Storage e Realtime; não aplicar remotamente sem revisão.
 - [ ] Regressão de todos os fluxos que permanecem no produto.
@@ -325,3 +325,13 @@
 - Adicionada captura de ACLs dos schemas private/public a `CUTOVER_SNAPSHOT.sql` (commit `95c1871`) e etapa explícita de restauração ao rollback (commit `8859ff3`).
 - Ferramentas locais verificadas: Node.js 22/npm 10 disponíveis; psql, postgres, Docker e Podman não estão instalados. Supabase não possui branches de desenvolvimento existentes. Uma branch Supabase isolada custa US$ 0,01344 por hora; não criar sem aprovação expressa do usuário.
 - Próximo passo: validar a execução integral do snapshot corrigido em seções separadas, concluir a revisão das operações do draft que alteram estado (ACL, trigger, Realtime, Storage) e pedir aprovação somente se for necessário criar a branch isolada para testes PostgreSQL.
+
+
+### 2026-11-27 — Restauração da Edge Function Auth na cópia paralela
+- Identificada divergência entre a documentação e o arquivo: a implementação completa (30.767 bytes) existia em `supabase/functions/auth/index.ts` na raiz do repositório, mas a cópia paralela tinha somente 2.206 bytes e não continha `Deno.serve` nem handlers.
+- Restaurada a implementação completa em `shiqi-parallel/supabase/functions/auth/index.ts` no commit `0b61202ba9cd7f4d809e52253ef8ef7471b15a66`.
+- Adaptada a cópia paralela: `SUPABASE_ANON_KEY` passou a ser obrigatória via secret; `SITE_URL` usa por padrão `https://shiqi-parallel.vercel.app`; origens do domínio e deploys antigos de produção foram removidas da allow-list. Origens de preview podem ser adicionadas por `EXTRA_ORIGINS`.
+- Revisão estática confirmou 13 rotas POST + GET `/health`; as tabelas `profiles`, `email_codes`, `mfa_recovery` e as seis RPCs utilizadas estão presentes nas referências SQL canônicas.
+- Atualizado `docs/AUTH_CONTRACT_INVENTORY.md` para corrigir o diagnóstico anterior. O prefixo HMAC histórico `square-v1:` foi preservado.
+- Limitação: nenhuma checagem Deno/runtime, teste JWT, conexão da UI, envio de e-mail ou deploy foi executado. Não houve alteração no Supabase nem em produção.
+- Próximo passo: revisar os handlers contra as definições/ACLs SQL e os payloads reais do frontend; depois preparar testes de contrato antes da integração.
