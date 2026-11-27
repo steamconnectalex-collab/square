@@ -6,14 +6,20 @@
 **Migrar tecnologia sem mudar design, layout, identidade visual, navegação ou qualquer funcionalidade do aplicativo original que permaneça no escopo.** O diretório `site/` da raiz é a fonte de verdade. Música foi explicitamente retirada do produto pelo usuário e poderá ser removida somente da cópia paralela. Nenhuma outra simplificação/remoção de função sem autorização expressa.
 
 ## Em andamento agora
-- [ ] Consolidar migration canônica e rollback reversível em arquivos de revisão; validar em PostgreSQL isolado antes de qualquer aplicação remota.
+- [ ] Finalizar rollback executável com snapshot real do destino; validar cutover e rollback em PostgreSQL isolado; executar preflight remoto e revisar todos os resultados antes de pedir autorização para aplicar.
 
 ## Bloqueios atuais (27/11/2026)
-- O conector Supabase retornou permissão negada ao tentar consultar o projeto paralelo ujdosskjycrdkcgsswfa nesta sessão. Nenhum SQL foi executado; não concluir que o projeto está pausado apenas por esse erro.
+- O conector Supabase continua retornando permissão negada para leitura do projeto paralelo ujdosskjycrdkcgsswfa. Isso não comprova que o projeto esteja pausado. Nenhum SQL foi executado remotamente.
+- O ambiente de trabalho não tem psql, servidor PostgreSQL nem Docker disponíveis; a validação de parser/runtime precisa ocorrer em ambiente PostgreSQL isolado externo ou após disponibilizar acesso de teste.
 - A Vercel continua com a última implantação READY, mas ela aponta para o commit 1a6f6706, anterior às alterações recentes de frontend. A proteção SSO está habilitada. Não disparar novo deploy enquanto a restrição/janela de limite registrada no projeto não terminar.
 - O smoke test existente na raiz aponta para o site original e não valida a cópia paralela; não foi executado para evitar testar/altear o alvo errado.
 
 ## Concluído
+- [x] 2026-11-27 — Corrigido voice_join para o limite aprovado de 10 participantes (a referência canônica ainda estava em 6).
+- [x] 2026-11-27 — Corrigida ACL de funções: schema private com USAGE para authenticated/service_role e as seis RPCs internas de conta/autenticação com EXECUTE somente para service_role.
+- [x] 2026-11-27 — Criado CUTOVER_PREFLIGHT.sql (somente leitura), com verificações de tabelas/dados, colisões, trigger Auth, pgcrypto, Realtime, Storage, índices, funções e papéis.
+- [x] 2026-11-27 — Montado CUTOVER_DRAFT.sql em transação, com renomeação das cinco tabelas prototype, renomeação de índices legados, remoção do trigger Auth conflitante e criação do schema canônico completo. É somente rascunho de revisão, não aplicado.
+- [x] 2026-11-27 — Criados CUTOVER_SNAPSHOT.sql e CUTOVER_ROLLBACK_PLAN.md. O rollback executável continua bloqueado até capturar privilégios/trigger reais e validar em PostgreSQL isolado.
 - [x] 2026-11-27 — Corrigidos dois pontos na referência canônica: voice_join agora respeita o limite aprovado de 10 participantes; ACL concede USAGE do schema private aos papéis que precisam executar policies/helpers e EXECUTE service_role às seis RPCs internas de autenticação/conta.
 - [x] 2026-11-27 — Revisão estática cruzada dos SQLs canônicos, ACLs, funções, triggers, Storage, Realtime e dependências: 18 tabelas, 17 policies, 45 RPCs públicas, 13 funções privadas e 46 referências de colunas verificadas.
 - [x] 2026-11-27 — Removida a funcionalidade musical da cópia paralela: exportação não consulta mais music_favorites/playlists; campo de última música removido do editor de perfil; integrações Spotify/Amazon Music e textos promocionais de atividade musical removidos. Arquivos originais em site/ e branch main preservados.
