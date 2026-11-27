@@ -46,3 +46,10 @@ O validador ainda não está exposto por uma rota e não grava arquivos. Isso é
 4. Só então considerar processamento assíncrono durável (fila persistida e retries), sem jobs em memória que se percam em reinícios.
 5. Avaliar rate limiting distribuído somente para rotas novas, mantendo os limites atuais do banco.
 6. Medir Realtime/presença e voz antes de considerar gateway WebSocket/SFU.
+
+## Atualização de autenticação Rust — 27/11/2026
+- O endpoint público JWKS do Supabase paralelo `ujdosskjycrdkcgsswfa` foi consultado pelo GitHub Actions. A chave publicada foi identificada como `EC / P-256 / ES256`; o job não expõe coordenadas nem material de chave.
+- `SupabaseJwtVerifier` já aceita ES256 e RS256, exige `kid`, verifica assinatura e claims, e usa cache JWKS. O algoritmo ES256 real é compatível com a implementação atual.
+- Adicionado teste assinado com chave EC P-256 exclusiva de testes para desserializar um JWKS no formato Supabase, selecionar por `kid` e validar claims ES256. CI verde no run `45999868193`: fmt, todos os testes e Clippy.
+- O teste com fixture não é uma sessão de usuário real e não prova integração completa de Auth. Não houve alteração da UI, deploy do serviço, upload de arquivos nem substituição das policies do Supabase.
+- Próxima fase recomendada: implementar o caminho de anexos no serviço como proxy que encaminhe o JWT do usuário ao Supabase Storage e mantenha as policies/RLS como autoridade; primeiro cobrir com testes locais/mocados, depois integrar a UI e validar no projeto paralelo.
