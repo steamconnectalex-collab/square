@@ -37,7 +37,7 @@ BEGIN
     SELECT 1 FROM storage.buckets
     WHERE id = 'attachments'
       AND name = 'attachments'
-      AND public IS TRUE
+      AND public IS FALSE
       AND file_size_limit = 3145728
       AND allowed_mime_types @> ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif']::text[]
       AND allowed_mime_types <@ ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif']::text[]
