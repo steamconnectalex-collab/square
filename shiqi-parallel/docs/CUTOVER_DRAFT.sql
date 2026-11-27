@@ -1458,6 +1458,10 @@ begin
                  where c.id = p_channel and c.kind = 'voice' and m.user_id = uid) then
     raise exception 'not_member';
   end if;
+  -- Serializa entradas concorrentes do mesmo usuário e da mesma sala.
+  -- A ordem (usuário -> sala) é fixa para evitar deadlocks entre chamadas.
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('shiqi:voice:user:' || uid::text, 0));
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('shiqi:voice:channel:' || p_channel::text, 0));
   delete from public.voice_members where channel_id = p_channel and seen_at < now() - interval '45 seconds';
   delete from public.voice_members where user_id = uid and channel_id <> p_channel;
   select count(*) into n from public.voice_members where channel_id = p_channel and user_id <> uid;
