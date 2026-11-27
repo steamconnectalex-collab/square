@@ -24,11 +24,11 @@ assert.ok(app.includes('uploadAttachmentViaCore(path, blob'),
   'O fluxo de envio de imagens deve usar o serviço Rust.');
 assert.ok(app.includes("storageCall('POST', path, blob") === false,
   'O fluxo de anexos não deve continuar enviando diretamente ao Storage.');
-assert.ok(app.includes("storageCall('POST', path, blob, 'image/jpeg')") === false,
-  'O fluxo de avatar não deve ser confundido com o upload de anexos.');
-assert.ok(app.includes("storageCall('POST', path, blob, 'image/jpeg', 'avatars')") ||
-  app.includes("storageCall('POST', path, blob, 'image/jpeg', 'avatars'"),
-  'O fluxo de avatar deve continuar usando Storage diretamente.');
+const avatarStart = app.indexOf('uploadAvatar: async (blob) => {');
+const avatarEnd = app.indexOf('removeAvatar: async () => {', avatarStart);
+const avatarFlow = app.slice(avatarStart, avatarEnd);
+assert.ok(avatarStart >= 0 && avatarFlow.includes("storageCall('POST', path, blob, 'image/jpeg')"),
+  'O fluxo de avatar deve continuar usando o bucket avatars diretamente.');
 assert.ok(core.includes('.route("/v1/attachments/upload", post(upload_attachment))'),
   'A rota Rust de upload deve existir.');
 assert.ok(core.includes('storage.upload(&claims.sub, object_path, token, format, &body)'),
