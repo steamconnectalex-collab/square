@@ -336,3 +336,9 @@ Combinado com a pessoa em 2026-11-23: o que precisa de conta em aplicativo exter
 - A listagem de deployments Railway não pôde ser consultada nesta sessão por falta de permissão do conector; o smoke do GitHub Actions é a evidência disponível do runtime.
 - Próximo passo: validar login real e `/v1/me` com a sessão do usuário no preview, sem compartilhar senha ou JWT no chat; depois avançar para RLS/Realtime/RPCs com duas contas de teste. Upload de imagens segue adiado.
 - Nenhuma alteração em `main`, produção ou no projeto Vercel principal `square-chat`.
+
+
+## Atualização de CI — 2026-11-27
+- Adicionado ao job `web-contract` o teste `node tests/auth-contract-static.js`, que verifica rotas Auth, contratos SQL, RLS, policies, ACLs, Storage e proteções de concorrência.
+- Commit: `a2ba5f3b9ccb93e018b159691b28fa6c9fa0f29a` na branch paralela.
+- Run `46049406473`: teste Auth/segurança, contrato frontend/Rust e JWKS passaram; fmt, testes Rust e Clippy também passaram. Build Docker ainda estava em andamento na última consulta; aguardar conclusão antes de marcar CI integral como verde.
