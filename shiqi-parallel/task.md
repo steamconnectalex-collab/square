@@ -138,3 +138,10 @@
 - Confirmado conflito concreto: fallback atual insere username NULL, mas a tabela canônica exige username válido e NOT NULL; regex atual também difere.
 - A função do trigger precisa ser adaptada na mesma migration que cria a nova `public.profiles`; os helpers de communities ficam associados ao legado.
 - Nenhuma função, trigger, usuário ou dado foi alterado remotamente.
+
+### 2026-11-26 — Storage, Realtime e trigger Auth
+- Revalidados buckets/policies Storage e tabelas na publicação Realtime do original.
+- Confirmado que o original não apresenta trigger não interno em `auth.users`, ao contrário do protótipo paralelo, que possui `on_auth_user_created_shiqi`.
+- Revalidado destino: ativo/consultável, cinco tabelas públicas, zero linhas e zero buckets; histórico remoto segue com cinco migrations prototype.
+- Corrigida a estratégia: inspecionar signup da Edge Function original antes de decidir o destino do trigger; não copiar nem remover o trigger às cegas.
+- Nenhuma alteração remota.
