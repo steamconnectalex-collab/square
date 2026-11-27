@@ -194,3 +194,12 @@
 - As definições foram extraídas com `pg_get_functiondef` do banco original; são referências para reconciliação, não migrations prontas.
 - QR e música permaneceram excluídos. Nenhum DDL, migration, grant, policy, bucket, trigger, Realtime, usuário ou dado foi alterado em qualquer banco.
 - Próximo passo: validar que a lista de funções extraídas cobre exatamente o inventário público não musical, revisar dependências e ACLs por assinatura, e auditar Storage policies/grants/Realtime antes de consolidar a migration reversível.
+
+
+### 2026-11-26 — Storage e segurança das funções
+- Reextraídas por SELECT as sete policies reais de `storage.objects` e os metadados dos buckets originais.
+- Criado `docs/CANONICAL_STORAGE_POLICIES.sql` com as policies de leitura, envio, atualização e remoção limitadas à pasta do próprio usuário.
+- Confirmados buckets públicos: `attachments` (3 MiB; JPEG/PNG/WebP/GIF) e `avatars` (1 MiB; JPEG/PNG/WebP).
+- Extraído o inventário de ACLs e propriedades de segurança das funções `public` e `private`: SECURITY DEFINER, search_path e permissões explícitas. As rotinas internas de autenticação ficam restritas a `service_role`; funções de cliente usam `authenticated` conforme o contrato original.
+- Ainda falta transformar a ACL em referência revisável por assinatura e validar o comportamento efetivo de privilégios herdados de PUBLIC. Nenhuma alteração remota foi feita.
+- Próximo passo: concluir a matriz de ACLs e fazer preflight atualizado no destino (colisões `legacy_*`, contagens, migrations, grants, policies e Realtime), sem executar DDL.
