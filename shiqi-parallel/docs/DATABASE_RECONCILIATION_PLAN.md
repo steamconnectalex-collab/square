@@ -312,3 +312,14 @@ Regras confirmadas nos corpos:
 - entrar por convite/público: respeita banimento e limite de 20 servidores por usuário; uso de convite é incrementado com lock da linha.
 
 Este é o primeiro grupo de RPCs públicas. Ainda faltam funções de amizade/DM, perfil/configurações, exploração, moderação, eventos, reações, presença, voz e rotinas internas. O arquivo não é migration completa nem foi aplicado.
+
+
+## 20. ACL efetiva de funções e preflight mais recente (26/11/2026)
+
+A auditoria de ACL passou a usar `has_function_privilege` para medir permissões efetivas, não apenas `proacl`. Isso é necessário porque funções com ACL NULL herdam os privilégios padrão do projeto, e no original alguns helpers privados ficam executáveis por PUBLIC. Essa exposição histórica não será copiada automaticamente.
+
+Foi criado `docs/CANONICAL_FUNCTION_ACL.sql` com a política planejada de menor privilégio: RPCs de usuário para authenticated, rotinas internas para service_role, helpers usados diretamente em RLS para authenticated e funções exclusivas de trigger sem acesso via API. O arquivo ainda exige conferência de todas as assinaturas, testes de policies/triggers e validação de que as rotinas SECURITY DEFINER continuam executando corretamente.
+
+Preflight somente leitura do destino: as cinco tabelas prototype continuam presentes; nomes legacy_profiles, legacy_communities, legacy_community_members, legacy_channels e legacy_messages estão livres; cinco migrations prototype registradas; Realtime apenas em public.messages; nenhum bucket; trigger on_auth_user_created_shiqi ainda ligado a auth.users. Nenhuma colisão legacy foi encontrada.
+
+**Bloqueio mantido:** nenhuma DDL foi executada. Antes da migration de corte, conferir novamente contagens/dados, dependências, triggers, policies, grants, publication membership e nomes livres; validar SQL e rollback em ambiente isolado. A existência de nomes livres agora não substitui o preflight transacional no momento da aplicação.
