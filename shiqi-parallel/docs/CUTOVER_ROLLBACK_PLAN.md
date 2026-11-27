@@ -1,6 +1,6 @@
 # SHIQI — plano de rollback do cutover canônico
 
-**Status: NÃO LIBERADO PARA EXECUÇÃO.** O arquivo `CUTOVER_DRAFT.sql` é apenas uma proposta de revisão. Este plano registra as condições para reverter sem perda; não autoriza aplicar nem desfazer o banco.
+**Status: NÃO LIBERADO PARA EXECUÇÃO.** Snapshot real conferido em 2026-11-27; o rollback continua sem teste transacional em PostgreSQL isolado. O arquivo `CUTOVER_DRAFT.sql` é apenas uma proposta de revisão. Este plano registra as condições para reverter sem perda; não autoriza aplicar nem desfazer o banco.
 
 ## Por que o rollback ainda não é executável
 
