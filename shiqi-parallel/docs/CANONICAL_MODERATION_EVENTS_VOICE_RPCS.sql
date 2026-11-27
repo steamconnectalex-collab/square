@@ -258,7 +258,7 @@ begin
   delete from public.voice_members where channel_id = p_channel and seen_at < now() - interval '45 seconds';
   delete from public.voice_members where user_id = uid and channel_id <> p_channel;
   select count(*) into n from public.voice_members where channel_id = p_channel and user_id <> uid;
-  if n >= 6 then raise exception 'voice_full'; end if;
+  if n >= 10 then raise exception 'voice_full'; end if;
   insert into public.voice_members (channel_id, user_id) values (p_channel, uid)
   on conflict (channel_id, user_id) do update set seen_at = now(), muted = false, deafened = false, video = false, screen = false;
 end;
