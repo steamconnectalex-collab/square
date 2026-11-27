@@ -236,3 +236,12 @@ Isso é incompatível com a tabela canônica original, que exige username NOT NU
 As outras funções privadas do protótipo (`add_community_owner`, `is_community_admin`, `is_community_member`, `set_updated_at`) são específicas das tabelas legadas. Devem permanecer preservadas com o legado, sem serem usadas como autorização das tabelas canônicas.
 
 Nenhuma função ou trigger foi alterada remotamente.
+
+
+## 14. Storage, Realtime e fluxo de criação de perfil
+
+A configuração de Storage e Realtime foi revalidada diretamente no projeto original. O original possui buckets `avatars` e `attachments` com limites e MIME types documentados, e a publicação `supabase_realtime` inclui `friendships`, `messages`, `voice_members`.
+
+Diferença importante descoberta: o projeto paralelo tem o trigger `on_auth_user_created_shiqi` em `auth.users` → `private.handle_new_user()`, mas a consulta ao catálogo original não encontrou trigger não interno em `auth.users`. Portanto, não se deve assumir que o trigger faz parte do contrato original. O fluxo de cadastro na Edge Function original deve ser inspecionado antes de decidir se o destino mantém, substitui ou remove esse trigger prototype.
+
+O projeto paralelo está consultável no momento (PostgreSQL 17.12, cinco tabelas públicas, zero buckets e zero linhas nas cinco tabelas). Isso não equivale a autorização para alterar o banco.
