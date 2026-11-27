@@ -137,6 +137,52 @@ as $function$
   )
 $function$;
 
+create or replace function private.can_read_attachment(p_path text)
+returns boolean
+language sql
+stable
+security definer
+set search_path to ''
+as $function$
+  select (select auth.uid()) is not null and exists (
+    select 1
+    from public.messages m
+    join public.channels c on c.id = m.channel_id
+    where m.attachment_path = p_path
+      and (
+        (
+          c.kind = 'text'
+          and exists (
+            select 1 from public.server_members sm
+            where sm.server_id = c.server_id
+              and sm.user_id = (select auth.uid())
+          )
+        )
+        or (
+          c.kind = 'dm'
+          and exists (
+            select 1
+            from public.dm_members mine
+            where mine.channel_id = c.id
+              and mine.user_id = (select auth.uid())
+              and mine.state = 'active'
+              and (
+                m.author_id = (select auth.uid())
+                or exists (
+                  select 1
+                  from public.dm_members other_member
+                  where other_member.channel_id = c.id
+                    and other_member.user_id <> (select auth.uid())
+                    and other_member.state = 'active'
+                    and private.dm_allowed((select auth.uid()), other_member.user_id)
+                )
+              )
+          )
+        )
+      )
+  )
+$function$;
+
 create or replace function private.messages_rate_limit()
 returns trigger
 language plpgsql
