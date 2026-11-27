@@ -6,7 +6,7 @@
 **Migrar tecnologia sem mudar design, layout, identidade visual, navegação ou qualquer funcionalidade do aplicativo original que permaneça no escopo.** O diretório `site/` da raiz é a fonte de verdade. Música foi explicitamente retirada do produto pelo usuário e poderá ser removida somente da cópia paralela. Nenhuma outra simplificação/remoção de função sem autorização expressa.
 
 ## Em andamento agora
-- [ ] Revisão estática cruzada dos SQLs canônicos, ACLs, funções, triggers, Storage, Realtime e dependências do frontend; preparar migration reversível apenas para revisão, sem aplicar no Supabase.
+- [ ] Consolidar migration canônica e rollback reversível em arquivos de revisão; validar em PostgreSQL isolado antes de qualquer aplicação remota.
 
 ## Bloqueios atuais (27/11/2026)
 - O conector Supabase retornou permissão negada ao tentar consultar o projeto paralelo ujdosskjycrdkcgsswfa nesta sessão. Nenhum SQL foi executado; não concluir que o projeto está pausado apenas por esse erro.
@@ -14,6 +14,7 @@
 - O smoke test existente na raiz aponta para o site original e não valida a cópia paralela; não foi executado para evitar testar/altear o alvo errado.
 
 ## Concluído
+- [x] 2026-11-27 — Revisão estática cruzada dos SQLs canônicos, ACLs, funções, triggers, Storage, Realtime e dependências: 18 tabelas, 17 policies, 45 RPCs públicas, 13 funções privadas e 46 referências de colunas verificadas.
 - [x] 2026-11-27 — Removida a funcionalidade musical da cópia paralela: exportação não consulta mais music_favorites/playlists; campo de última música removido do editor de perfil; integrações Spotify/Amazon Music e textos promocionais de atividade musical removidos. Arquivos originais em site/ e branch main preservados.
 - [x] Branch isolada `shiqi-parallel-dev` e pasta `shiqi-parallel/`.
 - [x] Projeto Vercel paralelo `shiqi-parallel`, Root Directory `shiqi-parallel/apps/web`.
@@ -29,8 +30,9 @@
 - [x] 2026-11-26 — Contratos iniciais de autenticação documentados em `docs/AUTH_CONTRACT_INVENTORY.md`.
 - [x] 2026-11-26 — Música excluída do escopo: migrations 0011 e 0012 removidas somente da pasta paralela; originals em `main` preservados.
 - [x] Matriz de paridade funcional concluída em `docs/FEATURE_PARITY_MATRIX.md` em 2026-11-26, incluindo rotas, ações, persistência, contratos e critérios de regressão. Execução dos testes fica para a etapa de regressão.
-- [ ] **Etapa 2 — planejamento/reconciliação do banco:** plano inicial criado em `docs/DATABASE_RECONCILIATION_PLAN.md`. Auditoria somente leitura confirmou cinco tabelas incompatíveis e vazias, cinco migrations remotas, ausência de RPCs do app original, ausência de buckets e Realtime apenas em messages; políticas são do modelo communities e há grants amplos a anon que exigem hardening. Próximo: recuperar SQL base ausente, fechar dependências e revisar estratégia sem DDL.
-- [ ] Reconstruir e testar contratos de autenticação; o arquivo versionado atual é apenas stub.
+- [ ] **Etapa 2 — reconciliação/migração do banco:** auditoria e recuperação de schema/ACLs concluídas documentalmente; cinco tabelas prototype incompatíveis, cinco migrations remotas e grants amplos a anon foram identificados. Próximo: consolidar migration/rollback, validar em PostgreSQL isolado e revalidar o destino antes de qualquer DDL.
+- [x] 2026-11-26 — Edge Function Auth v10 completa recuperada para a branch paralela, sem deploy.
+- [ ] Validar contratos de Auth v10, dependências, JWT e chaves em ambiente isolado antes de conectar a UI.
 - [ ] Completar testes JWT assinados/negativos e validar algoritmo/chaves do projeto destino antes de integrar middleware.
 - [ ] Preparar migrations incrementais, RLS, grants, Storage e Realtime; não aplicar remotamente sem revisão.
 - [ ] Regressão de todos os fluxos que permanecem no produto.
