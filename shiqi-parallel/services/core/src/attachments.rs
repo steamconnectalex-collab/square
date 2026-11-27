@@ -9,6 +9,7 @@ pub enum ImageFormat {
     Jpeg,
     Png,
     Webp,
+    Gif,
 }
 
 impl ImageFormat {
@@ -17,6 +18,7 @@ impl ImageFormat {
             Self::Jpeg => "image/jpeg",
             Self::Png => "image/png",
             Self::Webp => "image/webp",
+            Self::Gif => "image/gif",
         }
     }
 }
@@ -48,6 +50,8 @@ pub fn validate_image(
         Some(ImageFormat::Png)
     } else if bytes.len() >= 12 && &bytes[0..4] == b"RIFF" && &bytes[8..12] == b"WEBP" {
         Some(ImageFormat::Webp)
+    } else if bytes.starts_with(b"GIF87a") || bytes.starts_with(b"GIF89a") {
+        Some(ImageFormat::Gif)
     } else {
         None
     }
@@ -101,6 +105,27 @@ mod tests {
         );
         assert_eq!(
             validate_image(&[0xFF, 0xD8, 0xFF], "image/png"),
+            Err(AttachmentError::ContentTypeMismatch)
+        );
+    }
+
+
+    #[test]
+    fn accepts_gif87a_and_gif89a_with_matching_mime() {
+        assert_eq!(
+            validate_image(b"GIF87a\x00\x00", "image/gif"),
+            Ok(ImageFormat::Gif)
+        );
+        assert_eq!(
+            validate_image(b"GIF89a\x00\x00", "image/gif"),
+            Ok(ImageFormat::Gif)
+        );
+    }
+
+    #[test]
+    fn rejects_gif_signature_with_wrong_mime() {
+        assert_eq!(
+            validate_image(b"GIF89a\x00\x00", "image/png"),
             Err(AttachmentError::ContentTypeMismatch)
         );
     }
