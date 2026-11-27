@@ -10,6 +10,7 @@
 - [x] 2026-11-27 — Ampliado o snapshot para incluir grants de tabela concedidos a PUBLIC e privilégios de todas as sequences; o plano de rollback agora inclui remoção das sete policies Storage do cutover e restauração dos grants de sequence. Removidos grants duplicados do draft.
 
 ## Bloqueios atuais (27/11/2026)
+- O bucket canônico `attachments` está configurado como público e o frontend monta URLs `/object/public/attachments/`; URLs de anexos de DMs/canais privados podem ser acessadas por qualquer pessoa que as possua. Antes do lançamento, migrar para bucket privado, signed URLs e policy de leitura por participação no canal; não tornar o bucket privado isoladamente porque quebraria o frontend atual.
 - A validação de runtime dos SQLs segue pendente. O helper `private.shares_server_with` foi endurecido para considerar apenas amizades aceitas; a verificação estática cobre o helper e o cutover draft, mas não substitui teste RLS com dois usuários.
 - Os fluxos MFA ainda não foram executados contra Supabase Auth; a correção foi estática. O comportamento de revogação de sessões ao excluir um fator verificado exige novo login no desligamento e sessão nova após recuperação.
 - Leitura do Supabase restabelecida em 2026-11-27 usando a conexão `Primary`; projeto `ujdosskjycrdkcgsswfa` confirmado `ACTIVE_HEALTHY`. A falha anterior era a conexão incorreta (`shiqi` apontava para o projeto antigo). O preflight foi executado somente com SELECT e todos os 17 checks retornaram true. Nenhum DDL/DML foi executado.
@@ -375,4 +376,4 @@
 - Ampliado `tests/auth-contract-static.js` para verificar tanto o helper quanto a cópia dentro do cutover draft. Verificação pós-commit por leitura dos arquivos confirmou as duas condições; o script Node completo e os testes RLS em runtime ainda não foram executados.
 - Commits: `de1b194` (helper), `f388097` (draft), `aa3e415` (teste), `f718add` (task).
 - Nenhuma alteração em banco remoto, migration aplicada, usuário Auth, secret, deploy, produção ou branch `main`.
-- Próximo passo: continuar auditoria dos contratos de mensagens, anexos, Realtime/Storage e concorrência das RPCs; depois revisar rollback e snapshot.
+- Próximo passo: implementar em conjunto bucket privado de anexos, signed URLs e policy de leitura por participação; continuar revisão de concorrência das RPCs; depois revisar rollback e snapshot.
