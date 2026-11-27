@@ -149,6 +149,8 @@ as $function$
     from public.messages m
     join public.channels c on c.id = m.channel_id
     where m.attachment_path = p_path
+      and split_part(p_path, '/', 1) = m.author_id::text
+      and split_part(p_path, '/', 2) <> ''
       and (
         (
           c.kind = 'text'
