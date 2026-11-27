@@ -70,11 +70,20 @@ BEGIN
     JOIN pg_namespace n ON n.oid=c.relnamespace
     WHERE n.nspname='storage' AND c.relname='objects'
       AND p.polname = ANY(ARRAY[
-        'attachments_delete_own','attachments_insert_own','attachments_select_own',
+        'attachments_delete_own','attachments_insert_own','attachments_select_message_member',
         'avatars_delete_own','avatars_insert_own','avatars_select_own','avatars_update_own'
       ])
   ) THEN
     RAISE EXCEPTION 'SHIQI preflight: policy Storage com nome canônico já existe';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM pg_policy p JOIN pg_class c ON c.oid=p.polrelid
+    JOIN pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname='realtime' AND c.relname='messages'
+      AND p.polname = ANY(ARRAY['voice_topic_select','voice_topic_insert'])
+  ) THEN
+    RAISE EXCEPTION 'SHIQI preflight: policy de canal privado Realtime já existe';
   END IF;
 
   IF EXISTS (
@@ -87,7 +96,7 @@ BEGIN
   ) OR EXISTS (
     SELECT 1 FROM storage.buckets
     WHERE id='attachments' AND NOT (
-      name='attachments' AND public IS TRUE AND file_size_limit=3145728
+      name='attachments' AND public IS FALSE AND file_size_limit=3145728
       AND allowed_mime_types @> ARRAY['image/jpeg','image/png','image/webp','image/gif']::text[]
       AND allowed_mime_types <@ ARRAY['image/jpeg','image/png','image/webp','image/gif']::text[]
     )
@@ -168,7 +177,7 @@ BEGIN
   IF EXISTS (
     SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
     WHERE (n.nspname='public' AND p.proname = ANY(ARRAY['is_server_member','create_server','create_channel','create_invite','join_public_server','join_server','block_user','change_username','get_my_settings','my_age_group','open_dm','profiles_full','remove_friend','respond_dm_request','respond_friend_request','save_my_settings','send_friend_request','set_my_presence','unblock_user','unsubscribe_marketing','ban_member','create_event','delete_event','featured_servers','kick_member','list_bans','list_public_servers','my_plan','pin_server','set_server_public','toggle_event_interest','toggle_reaction','unban_member','voice_join','voice_leave','voice_ping','voice_set_state','get_auth_user_by_email','get_login_email_by_username','purge_user_data','rate_check','reactivate_account','revoke_user_sessions','verify_email_code']::text[]))
-       OR (n.nspname='private' AND p.proname = ANY(ARRAY['accept_on_reply','dm_allowed','can_post','can_voice_topic','check_thread_parent','is_channel_member','is_channel_owner','is_dm_member','messages_rate_limit','remove_from_server','shares_server_with','touch_edited_at','touch_profile']::text[]))
+       OR (n.nspname='private' AND p.proname = ANY(ARRAY['accept_on_reply','dm_allowed','can_post','can_voice_topic','can_read_attachment','check_thread_parent','is_channel_member','is_channel_owner','is_dm_member','messages_rate_limit','remove_from_server','shares_server_with','touch_edited_at','touch_profile']::text[]))
   ) THEN
     RAISE EXCEPTION 'SHIQI preflight: nome de função canônica já existe; não sobrescrever';
   END IF;
@@ -2205,6 +2214,17 @@ BEGIN
   END LOOP;
 END
 $migration$;
+
+-- Sinalização WebRTC em canal privado: somente membros atuais do servidor
+-- dono do canal voice podem ler e publicar mensagens de broadcast.
+DROP POLICY IF EXISTS voice_topic_select ON realtime.messages;
+DROP POLICY IF EXISTS voice_topic_insert ON realtime.messages;
+CREATE POLICY voice_topic_select ON realtime.messages
+  FOR SELECT TO authenticated
+  USING (extension = 'broadcast' AND private.can_voice_topic((SELECT realtime.topic())));
+CREATE POLICY voice_topic_insert ON realtime.messages
+  FOR INSERT TO authenticated
+  WITH CHECK (extension = 'broadcast' AND private.can_voice_topic((SELECT realtime.topic())));
 
 
 NOTIFY pgrst, 'reload schema';
