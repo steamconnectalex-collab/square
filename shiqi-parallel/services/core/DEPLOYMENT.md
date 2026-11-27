@@ -64,10 +64,18 @@ Projeto Railway dedicado criado:
 
 Acesso GitHub App Railway liberado pelo usuário em 27/11/2026. A fonte do serviço `shiqi-core` está conectada ao repositório `steamconnectalex-collab/square`, branch `shiqi-parallel-dev`.
 
-Ainda pendente: configurar `SHIQI_ALLOWED_ORIGIN` com a origem HTTPS exata do frontend paralelo; publicar a imagem; gerar domínio público; verificar `/healthz` e `/readyz`; validar JWT; só então integrar upload na UI.
+Concluído em 27/11/2026: `SHIQI_ALLOWED_ORIGIN` foi configurada com a origem HTTPS exata do preview da branch paralela; a imagem foi publicada; o domínio público foi gerado; o health check `/healthz` passou. Ainda pendente: chamada HTTP independente a `/readyz`, validação de `GET /v1/me` com JWT real de sessão de teste e integração do upload na UI.
 
 
 ### Primeiro deployment Railway — 27/11/2026
 - Deployment `566fe457-7c58-448b-8b85-9cbc18172004` iniciado automaticamente após conexão da branch.
 - Build Docker reconheceu `shiqi-parallel/services/core/Dockerfile` e iniciou `cargo build --release`.
 - Estado na última verificação: `BUILDING`; ainda não gerar domínio nem conectar frontend até sucesso e health checks.
+
+
+### Resultado do deploy inicial — 27/11/2026
+- Estado: `SUCCESS`; deployment `4cb2e28b-5120-43fc-88e6-3b891a6ccbf5`.
+- URL do serviço: `https://shiqi-core-development.up.railway.app` (porta 8080).
+- Origem CORS autorizada: `https://shiqi-parallel-git-shiqi-parallel-dev-steamconnectalex-9536.vercel.app`.
+- Logs: verificador JWT e proxy Storage configurados; health check `/healthz` passou.
+- Não há integração da UI nem validação externa de `/readyz`/`/v1/me` nesta etapa.
