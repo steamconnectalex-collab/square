@@ -1,20 +1,17 @@
 # SHIQI — acompanhamento
 
-Última atualização: 2026-11-27 (revisão global do banco e avanço para Rust)
+Última atualização: 2026-11-27 (cadastro real confirmado; integração Rust/frontend iniciada)
 
-## Atualização mais recente — revisão global do banco (27/11/2026)
+## Trabalho em andamento — integração Rust com frontend (27/11/2026)
 
-- O usuário confirmou que já realizou o teste real e que funcionou; por decisão explícita, não repetir bateria de testes reais nesta etapa. Registrar que isso não equivale a validar todos os caminhos de produção.
-- No Supabase paralelo `ujdosskjycrdkcgsswfa`, aplicada e verificada a migration `database_global_performance_hardening`.
-- Corrigidos os seis índices de cobertura de FK: `blocks.blocked`, `event_interest.user_id`, `message_reactions.user_id`, `server_bans.user_id`, `server_events.creator_id` e `server_pins.server_id`.
-- `rate_hits` recebeu coluna identity `id bigint` e chave primária `rate_hits_pkey`; verificação posterior confirmou identity e PK.
-- Advisors pós-correção não apontam mais FK sem índice nem tabela sem PK. Restam 5 avisos INFO de RLS habilitado sem policies em tabelas internas (`email_codes`, `mfa_recovery`, `rate_hits`, `server_bans`, `server_invites`); as cinco não concedem SELECT/INSERT diretamente a anon/authenticated e são acessadas por funções privilegiadas. Não criar policies genéricas.
-- Permanecem 39 avisos WARN de funções SECURITY DEFINER executáveis por authenticated; a inspeção confirmou que nenhuma delas é executável por anon. As funções de produto fazem validação por `auth.uid()`/propriedade/participação, e as RPCs internas de Auth permanecem restritas a service_role. Não revogar em lote: isso quebraria operações legítimas.
-- Os avisos de índices não utilizados (28 após criar os índices novos) são esperados em banco paralelo sem tráfego significativo; não remover índices por esse motivo.
-- Saúde do projeto sem alertas. Edge Functions publicadas no projeto paralelo: nenhuma, segundo a consulta atual; a função Auth ainda precisa ser publicada/configurada no destino antes de integrar o fluxo Rust, apesar do teste real informado pelo usuário no ambiente que ele validou.
-- Rust — primeiro incremento concluído na branch: `main.rs` liga `SupabaseJwtVerifier` a `GET /v1/me` e protege `POST /v1/attachments/validate`; `/readyz` só retorna 200 com `SUPABASE_URL` válido. CI remoto aprovado em 27/11: `cargo fmt`, `cargo test` e `cargo clippy` passaram nos runs `45997615635` e `45997628383`. Workflow com execução manual, permissões mínimas, cache e verificações com `--all-features`. Não há Cargo local; compilação é feita no GitHub Actions. Próxima compatibilidade identificada: UI e bucket já aceitam GIF, então o validador Rust foi ampliado para GIF87a/GIF89a e MIME `image/gif`; commits `e191ded` (código), `1a723df` (README), `f566c5a` (auditoria) e `b03021f` (formatação). Run `45998130147` está validando essa alteração; não marcar como aprovada até concluir.
-- JWT — testes assinados RS256 aprovados no run `45998473927`: claims válidas e rejeições de issuer, audience, expiração, `nbf`, `role`, `sub` e HS256. A validação foi extraída para `decode_verified_claims` e usa par RSA exclusivo de testes, sem segredo de produção. `cargo fmt`, `cargo test --all-targets --all-features` e `cargo clippy --all-targets --all-features -- -D warnings` passaram. Commits `a6fd39f` (testes) e `e94f5ab` (formatação).
-
+- O usuário confirmou que o cadastro no preview funcionou e que recebeu o e-mail de verificação; também confirmou que SITE_URL está completo no Supabase paralelo.
+- Isso valida o fluxo de cadastro/e-mail no teste realizado, mas não substitui a validação de login, sessão persistente, GET /v1/me nem upload real.
+- Iniciada a integração do frontend ao serviço Rust já implantado no Railway paralelo. Escopo inicial: direcionar somente uploads do bucket privado `attachments` para `POST /v1/attachments/upload`, enviando o JWT renovado do usuário, Content-Type e X-Attachment-Path. O Supabase Storage/RLS permanece como autoridade de autorização.
+- Preservar uploads de avatar no fluxo Storage atual e leitura de anexos por signed URL de 60 segundos; não alterar Auth, layout ou outros fluxos.
+- Frontend preview: https://shiqi-parallel-git-shiqi-parallel-dev-steamconnectalex-9536.vercel.app
+- Serviço Rust: https://shiqi-core-development.up.railway.app
+- Branch exclusiva: `shiqi-parallel-dev`. Não tocar em `main`, produção ou secrets.
+- Próximas verificações: teste estático/automático do contrato de upload; CI; deploy automático no Railway a partir da branch; depois teste de `/v1/me` e upload no preview com a conta de teste do usuário.
 
 ## Requisito central
 **Migrar tecnologia sem mudar design, layout, identidade visual, navegação ou qualquer funcionalidade do aplicativo original que permaneça no escopo.** O diretório `site/` da raiz é a fonte de verdade. Música foi explicitamente retirada do produto pelo usuário e poderá ser removida somente da cópia paralela. Nenhuma outra simplificação/remoção de função sem autorização expressa.
