@@ -251,3 +251,11 @@ Combinado com a pessoa em 2026-11-23: o que precisa de conta em aplicativo exter
 - Rota nova `POST /v1/attachments/upload`; frontend ainda não foi conectado e serviço não implantado.
 - GitHub Actions está pendente após pushes consecutivos; aguardar CI verde antes de integrar a UI.
 - Produção e branch `main` permanecem intocadas.
+
+
+## SHIQI — atualização 2026-11-27 (upload Rust/CORS)
+- Run `46004181670` aprovou fmt, 21 testes e Clippy; novo teste HTTP simulado confirmou que o proxy encaminha JWT do usuário, publishable key, MIME e bytes ao endpoint privado do Storage.
+- O contrato canônico foi revisado: bucket `attachments` privado; policy de INSERT exige a pasta do usuário e SELECT depende de `private.can_read_attachment(name)`.
+- Caminho de objeto limitado a 200 bytes, filename a 128 bytes.
+- CORS foi adicionado com allowlist de origem exata por `SHIQI_ALLOWED_ORIGIN`; CI `46004512804` ainda em andamento.
+- Sem deploy, sem alteração do frontend, do banco remoto, da produção ou da branch `main`.
