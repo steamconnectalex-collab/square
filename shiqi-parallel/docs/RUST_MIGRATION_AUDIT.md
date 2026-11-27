@@ -15,7 +15,7 @@ O frontend original em HTML/CSS/JavaScript é a referência visual e funcional. 
 | Limite de mensagens | Trigger no PostgreSQL: 5 mensagens/5 s e 40/min por autor | Não duplicar no processo Rust; o banco continua autoridade. |
 | Autenticação | Edge Function Deno `auth`, Supabase Auth e tabelas privadas | Não migrar sem contrato completo, testes e equivalência de segurança. |
 | Rate limit de autenticação | RPC `rate_check` e tabela `rate_hits`, acessíveis à service role | Preservar; evitar um contador em memória que não compartilha estado entre instâncias. |
-| Anexos | Bucket `attachments`, público para leitura, 3 MiB, JPEG/PNG/WebP; gravação/apagamento na pasta do próprio usuário | Rust pode validar/transformar mídia, mas o endpoint só será conectado depois de implementar validação JWT e autorização equivalente às policies Storage. |
+| Anexos | Bucket `attachments`, público para leitura, 3 MiB, JPEG/PNG/WebP/GIF; gravação/apagamento na pasta do próprio usuário | Rust pode validar/transformar mídia, mas o endpoint só será conectado depois de implementar validação JWT e autorização equivalente às policies Storage. |
 | Presença | Heartbeat no app e timestamp `last_seen` | Medir antes de introduzir gateway WebSocket. |
 | Voz | WebRTC P2P, sinalização no canal privado Realtime; `voice_join` limita a seis pessoas e uma sala por usuário | Não substituir por SFU/gateway sem teste com usuários reais e estimativa de custo/latência. |
 | Desktop | Electron carrega o site, mantém permissões de mídia e captura de tela | Nenhuma mudança no Electron nesta etapa. |
