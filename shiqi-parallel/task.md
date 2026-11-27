@@ -499,3 +499,16 @@
 - Deployment inicial `566fe457-7c58-448b-8b85-9cbc18172004` iniciado. Estado observado: `BUILDING`; Dockerfile e contexto foram carregados e a etapa `cargo build --release` começou.
 - Ainda não há domínio público nem URL validada. Próximo passo: concluir build, gerar domínio, validar health/readiness e autenticação.
 - Sem alteração em `main`, produção, frontend ou Supabase.
+
+
+
+
+### 2026-11-27 — Deploy inicial Railway concluído
+- A instalação GitHub App do Railway recebeu acesso ao repositório e a fonte foi conectada à branch `shiqi-parallel-dev`.
+- Serviço Railway `shiqi-core` implantado no projeto `SHIQI Core Parallel`, ambiente `development`; deployment final confirmado `SUCCESS` (`4cb2e28b-5120-43fc-88e6-3b891a6ccbf5`).
+- Domínio Railway criado: `https://shiqi-core-development.up.railway.app`, roteado à porta 8080.
+- O domínio de preview da branch Vercel foi confirmado como `https://shiqi-parallel-git-shiqi-parallel-dev-steamconnectalex-9536.vercel.app`; `SHIQI_ALLOWED_ORIGIN` configurada com essa origem exata.
+- Railway reportou `healthcheck succeeded` para `/healthz`; logs confirmaram inicialização do verificador JWT e do proxy Storage. A variável `SHIQI_ALLOWED_ORIGIN` está presente e o aviso de CORS desabilitado deixou de aparecer.
+- `/readyz` e rotas autenticadas ainda não foram chamadas externamente nesta sessão; validação HTTP direta ficou indisponível no ambiente de ferramentas. Não declarar readiness ou JWT de usuário testados.
+- Frontend ainda não foi integrado ao Rust. Próximo passo: validar `/readyz` e `GET /v1/me` com JWT real de sessão de teste do Supabase paralelo; depois avaliar integração do upload na UI paralela.
+- Nenhuma alteração em `main`, produção, projeto Supabase original ou chaves `service_role`.
