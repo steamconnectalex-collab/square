@@ -18,8 +18,8 @@
 - Rust: `shiqi-core` implantado no Railway paralelo; `/healthz` passou e usuário confirmou `/readyz` como `ready`. `GET /v1/me` e upload com JWT real ainda não foram testados.
 - Integração inicial: frontend da branch direciona upload de imagens para `POST /v1/attachments/upload`; JWT original é encaminhado pelo Rust ao Storage, que continua aplicando RLS. Avatares seguem no fluxo Storage atual e leitura de anexos usa signed URLs.
 - Vercel: deployment READY com o frontend integrado no commit `d9801be24637215835b9e8c78b174997e4a7bf94`; alias do preview: https://shiqi-parallel-git-shiqi-parallel-dev-steamconnectalex-9536.vercel.app.
-- CI atualizado para validar sintaxe e contrato frontend/Rust além de JWKS, fmt, testes, Clippy e build Docker. Execução completa do commit mais recente está pendente.
-- Próxima ação: concluir CI, confirmar deploy Railway, testar login e `GET /v1/me`, depois testar upload real com a conta do preview. Não pedir nem compartilhar JWT no chat. Não inserir usuários manualmente em `auth.users`.
+- CI completo aprovado no run `46041802300`: JWKS, sintaxe JavaScript, contrato frontend/Rust, `cargo fmt`, 21 testes Rust, Clippy e build Docker passaram.
+- Próxima ação: testar login e `GET /v1/me`, depois testar upload real com a conta do preview. O código integrado e CI estão aprovados; upload real ainda não foi validado. Não pedir nem compartilhar JWT no chat. Não inserir usuários manualmente em `auth.users`.
 - Nenhuma alteração em `main`, produção ou segredos foi feita nesta integração.
 
 ## O que estamos construindo
