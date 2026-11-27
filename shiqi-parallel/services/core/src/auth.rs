@@ -283,7 +283,6 @@ mod tests {
         assert!(SupabaseJwtVerifier::new("https://example-project.supabase.co", " ").is_err());
     }
 
-
     #[test]
     fn parses_supabase_es256_jwks_and_verifies_signed_claims() {
         let jwks: JwkSet = serde_json::from_str(TEST_EC_JWKS).expect("Supabase-shaped ES256 JWKS");
