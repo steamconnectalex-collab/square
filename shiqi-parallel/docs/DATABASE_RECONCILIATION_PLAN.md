@@ -362,3 +362,7 @@ A leitura cruzada dos arquivos SQL identificou uma dependência de criação: pr
 Também foi corrigida uma lacuna em CANONICAL_FUNCTION_ACL.sql: antes havia apenas comentário orientando revogar ACL herdada, sem comandos de revogação. Agora o arquivo contém REVOKE EXECUTE explícito para as 58 assinaturas do escopo (45 public + 13 private), revoga USAGE do schema private e depois concede somente a allow-list necessária. A execução continua pendente de validação isolada.
 
 Limitação de validação local: o ambiente desta sessão não possui psql, Deno, sqlfluff ou pg_format. Portanto não foi possível executar parser PostgreSQL, checagem TypeScript/Deno nem testes reais de banco nesta rodada. Não declarar SQL/Edge Function como compilados ou testados. A próxima validação precisa usar um banco descartável/branch de desenvolvimento e runtime Deno antes de qualquer aplicação no projeto paralelo principal.
+
+## 24. Checklist SQL de pós-migração
+
+Criado docs/POST_MIGRATION_VALIDATION.sql com verificações somente SELECT para presença das 18 tabelas, RLS, contagem de policies, inventário de 45 funções públicas/13 privadas, buckets Storage, tabelas Realtime, ausência do trigger Auth prototype e ausência dos objetos de música/QR. Esse checklist ainda não foi executado: depende da migration em banco de teste/target após aprovação. É uma verificação complementar, não substitui testes de fluxo com usuários de teste.
