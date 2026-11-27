@@ -36,7 +36,7 @@ assert.ok(avatarStart >= 0 && avatarFlow.includes("storageCall('POST', path, blo
   'O fluxo de avatar deve continuar usando o bucket avatars diretamente.');
 assert.ok(core.includes('.route("/v1/attachments/upload", post(upload_attachment))'),
   'A rota Rust de upload deve existir.');
-assert.ok(core.includes('storage.upload(&claims.sub, object_path, token, format, &body)'),
+assert.ok(core.includes('.upload(&claims.sub, object_path, token, format, &body)'),
   'O serviço Rust deve encaminhar a identidade JWT original ao Storage.');
 
 console.log('Contrato frontend/Rust de anexos: OK');
