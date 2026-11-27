@@ -35,9 +35,9 @@ A revisão identificou que a API administrativa do Supabase encerra as sessões 
 
 Referência do comportamento de revogação de sessão: https://supabase.com/docs/reference/javascript/auth-admin-deletefactor
 
-A revisão também encontrou que `public.is_server_member(uuid)` era referenciada por três policies e pela ACL, mas não tinha definição em nenhum arquivo SQL canônico. Foi adicionada uma implementação mínima `SECURITY DEFINER`, com `search_path` vazio, baseada na semântica documentada de associação ao servidor. A migration-base original `servidores_e_canais` está ausente do Git; portanto, essa implementação é uma reconstrução de contrato e **precisa ser comparada com a definição do banco original antes de qualquer aplicação**.
+A revisão também conferiu a dependência `public.is_server_member(uuid)`: ela já estava definida em `CANONICAL_TRIGGERS.sql` e no `CUTOVER_DRAFT.sql`, com `SECURITY DEFINER` e `search_path` vazio. A primeira varredura não incluiu o arquivo de triggers e, por isso, apontou incorretamente a função como ausente. Uma cópia redundante que havia sido adicionada a `CANONICAL_SERVER_RPCS.sql` foi removida; a definição canônica preservada não foi alterada. A migration-base `servidores_e_canais` continua ausente do Git, mas a definição dessa função está preservada nos arquivos canônicos e no draft.
 
-A matriz de ACL foi conferida por assinatura: 58 definições (45 públicas e 13 privadas), 58 REVOKEs correspondentes, nenhum REVOKE excedente ou ausente, nenhum GRANT duplicado e nenhum GRANT apontando para função inexistente. As sete funções privadas sem GRANT explícito são helpers internos/trigger-only, intencionalmente não expostos. Isso é validação estática, não teste PostgreSQL em runtime.
+A matriz de ACL foi conferida por assinatura incluindo também `CANONICAL_TRIGGERS.sql`: 58 definições (45 públicas e 13 privadas), 58 REVOKEs correspondentes, nenhum REVOKE excedente ou ausente, nenhum GRANT duplicado e nenhum GRANT apontando para função inexistente. As sete funções privadas sem GRANT explícito são helpers internos/trigger-only, intencionalmente não expostos. Isso é validação estática, não teste PostgreSQL em runtime.
 
 ## Transporte comum observado
 
