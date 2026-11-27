@@ -480,3 +480,12 @@
 - Commits: `2ce1a8d` (proxy), `0d9996f` (rota), `c45f5da` (comentário), `c3acb4f` (README).
 - Aguardando GitHub Actions no commit mais recente; os runs intermediários foram cancelados por pushes consecutivos e o último ainda está pendente. Não integrar a UI nem implantar o serviço até CI verde e revisão final.
 - Nenhuma mudança na UI, Supabase remoto, Storage policies, produção ou branch `main`.
+
+
+### 2026-11-27 — Teste de upload e CORS (em andamento)
+- Revisado o contrato canônico: bucket `attachments` privado, 3 MiB, JPEG/PNG/WebP/GIF; `attachments_insert_own` exige a primeira pasta igual a `auth.uid()`; leitura é autorizada por `private.can_read_attachment(name)`.
+- Teste de integração local com Storage HTTP simulado foi adicionado: verifica endpoint/bucket/path, encaminhamento do Bearer JWT original, chave publicável, Content-Type, `x-upsert=false` e bytes enviados.
+- Run `46004181670` passou em fmt, 21 testes e Clippy; o novo teste `forwards_user_jwt_and_upload_to_private_storage_endpoint` passou. Também foi limitado o caminho a 200 bytes e o nome a 128 bytes.
+- CORS estrito foi adicionado para permitir apenas a origem configurada em `SHIQI_ALLOWED_ORIGIN`, métodos POST/OPTIONS e headers necessários ao upload. Sem origem válida, requisições cross-origin ficam desabilitadas.
+- Run atual para CORS: `46004512804`, aguardando resultado. Não conectar frontend nem implantar até CI verde e definição do host do serviço.
+- Frontend permanece sem alteração; nenhum deploy ou alteração remota de Storage foi feito.
