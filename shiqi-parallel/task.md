@@ -6,7 +6,7 @@
 **Migrar tecnologia sem mudar design, layout, identidade visual, navegação ou qualquer funcionalidade do aplicativo original que permaneça no escopo.** O diretório `site/` da raiz é a fonte de verdade. Música foi explicitamente retirada do produto pelo usuário e poderá ser removida somente da cópia paralela. Nenhuma outra simplificação/remoção de função sem autorização expressa.
 
 ## Em andamento agora
-- [ ] Continuar auditoria de contratos Realtime, mensagens e DMs; depois revisar rollback e snapshot. Anexos privados e locks de limites implementados nos SQLs/draft; teste estático passou em harness em memória. Validação PostgreSQL local dispensada; não aplicar DDL remoto.
+- [ ] Continuar auditoria dos contratos Realtime, mensagens e DMs; depois revisar rollback e snapshot. Anexos privados e locks transacionais de limites implementados nos SQLs/draft; teste estático passou em harness em memória. Validação PostgreSQL local dispensada; não aplicar DDL remoto.
 - [x] 2026-11-27 — Ampliado o snapshot para incluir grants de tabela concedidos a PUBLIC e privilégios de todas as sequences; o plano de rollback agora inclui remoção das sete policies Storage do cutover e restauração dos grants de sequence. Removidos grants duplicados do draft.
 
 ## Bloqueios atuais (27/11/2026)
@@ -20,7 +20,7 @@
 - O smoke test existente na raiz aponta para o site original e não valida a cópia paralela; não foi executado para evitar testar/altear o alvo errado.
 
 ## Concluído
-- [x] 2026-11-27 — Endurecida concorrência dos limites sujeitos a contagem: locks transacionais por autor/chave/servidor/usuário/mensagem em rate limit de mensagens e Auth, criação de servidores/canais/eventos, entradas em servidores, bloqueios, pedidos de amizade, pins e reações. Atualizados SQLs canônicos, `CUTOVER_DRAFT.sql` e teste estático. Teste passou em harness em memória; runtime PostgreSQL concorrente pendente.
+- [x] 2026-11-27 — Endurecida concorrência dos limites sujeitos a contagem: locks transacionais por autor/chave/servidor/usuário/mensagem em rate limit de mensagens e Auth, criação de servidores/canais/eventos, entradas em servidores, bloqueios, pedidos de amizade, pins, reações e alternância de interesse em eventos. Atualizados SQLs canônicos, `CUTOVER_DRAFT.sql` e teste estático. Teste passou em harness em memória; runtime PostgreSQL concorrente pendente.
 - [x] 2026-11-27 — Anexos protegidos por conversa: bucket `attachments` privado; signed URLs autenticadas de 60s no frontend; policy `attachments_select_message_member` baseada em `private.can_read_attachment`, exigindo membro atual de servidor ou participante ativo de DM (com bloqueios respeitados). Upload/exclusão seguem restritos à pasta do usuário. Mensagens também validam que o caminho do anexo pertence ao autor em INSERT e UPDATE. Teste estático passou em harness em memória com 16 arquivos; integração/runtime pendentes.
 - [x] 2026-11-27 — Endurecida a concorrência de `voice_join`: locks transacionais por usuário e sala evitam que entradas simultâneas ultrapassem 10 participantes ou mantenham o mesmo usuário em duas salas. Atualizados SQL canônico, draft e teste estático.
 - [x] 2026-11-27 — Corrigida exposição de perfis por amizade pendente: `private.shares_server_with()` agora só reconhece amizades com `status = 'accepted'`, tanto no helper canônico quanto no `CUTOVER_DRAFT.sql`. O helper alimenta `profiles_select_visible` e `profiles_full`; a correção impede que uma solicitação pendente seja tratada como amizade para liberar perfil. Adicionada verificação ao teste estático de contrato.
@@ -393,7 +393,7 @@
 - Alterado o bucket `attachments` para `public = false` em `CANONICAL_STORAGE_BUCKETS.sql` e no draft. O bucket `avatars` continua público.
 - Criado `private.can_read_attachment(text)`: associa o caminho a uma mensagem real, exige membro atual do servidor para canais de texto e, em DMs, exige membro ativo. O remetente mantém acesso ao próprio anexo enquanto a solicitação está pendente; o destinatário só ganha acesso depois de aceitar. Participantes ativos também precisam passar por `private.dm_allowed`, que respeita bloqueios.
 - Substituída a policy `attachments_select_own` por `attachments_select_message_member`; INSERT/DELETE continuam limitados à pasta do usuário. Incluída a função na ACL: 59 REVOKEs e EXECUTE para authenticated.
-- Frontend agora solicita signed URLs autenticadas com expiração de 60 segundos e cache local de 50 segundos; removida a montagem de URL pública. Erros não caem para URL pública.
+- Frontend agora solicita signed URLs autenticadas com expiração de 60 segundos e cache local de 50 segundos, com renovação automática antes do vencimento; removida a montagem de URL pública. Erros não caem para URL pública.
 - Atualizados teste estático, relatório de segurança e plano de rollback. Verificações pós-commit de conteúdo ainda serão feitas; não foi executado o teste Node completo nem integração Storage/PostgreSQL.
 - Nenhuma migration, policy, bucket, função ou dado foi alterado no Supabase remoto; sem deploy ou alteração em produção.
 - Próximo passo: revisar consistência e sintaxe dos arquivos alterados, conferir referências à policy antiga e validar contratos Realtime/mensagens/DMs restantes.
@@ -401,3 +401,5 @@
 - Verificação adicional da etapa de anexos: o teste `auth-contract-static.js` passou em harness JavaScript em memória com os 16 arquivos atuais da branch. A análise de sintaxe de `apps/web/app.js` e do teste também passou. O script não foi executado em um processo Node real e não houve teste de Storage/PostgreSQL em runtime.
 
 - Verificação de concorrência: teste de contrato estático passou em harness JavaScript em memória com os 16 arquivos da branch; parse JS de `app.js` e do teste passou. Foram confirmados 59 REVOKEs tanto no ACL canônico quanto no draft. Nenhum teste concorrente PostgreSQL foi executado.
+
+- Complemento: `toggle_event_interest` também recebeu lock transacional por evento/usuário; renovação de signed URLs foi automatizada antes da expiração. Teste estático e análise de sintaxe JS passaram novamente.
