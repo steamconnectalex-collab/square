@@ -61,6 +61,57 @@
 - Supabase Advisors: zero lints de segurança e zero lints de saúde.
 - Performance: cinco avisos INFO de índices não utilizados nas tabelas prototype vazias; não são tratados como defeitos nem justificam remover índices.
 
+
+
+## Apêndice — definições exatas capturadas
+
+### Índices
+
+- `channels`
+  - `channels_community_id_name_key`: UNIQUE BTREE (`community_id, name`)
+  - `channels_community_position_idx`: BTREE (`community_id, position`)
+  - `channels_pkey`: UNIQUE BTREE (`id`)
+- `communities`
+  - `communities_owner_idx`: BTREE (`owner_id`)
+  - `communities_pkey`: UNIQUE BTREE (`id`)
+  - `communities_slug_key`: UNIQUE BTREE (`slug`)
+- `community_members`
+  - `community_members_pkey`: UNIQUE BTREE (`community_id, user_id`)
+  - `community_members_user_idx`: BTREE (`user_id`)
+- `messages`
+  - `messages_author_idx`: BTREE (`author_id`)
+  - `messages_channel_created_idx`: BTREE (`channel_id, created_at DESC`)
+  - `messages_pkey`: UNIQUE BTREE (`id`)
+- `profiles`
+  - `profiles_pkey`: UNIQUE BTREE (`id`)
+  - `profiles_username_key`: UNIQUE BTREE (`username`)
+
+### Constraints
+
+- `channels`: `channels_channel_type_check` CHECK (`channel_type IN ('text','voice')`); `channels_community_id_fkey` FOREIGN KEY (`community_id`) REFERENCES `communities(id)` ON DELETE CASCADE; `channels_community_id_name_key` UNIQUE (`community_id,name`); `channels_description_check` CHECK (`char_length(description) <= 300`); `channels_name_check` CHECK (`char_length(name) BETWEEN 1 AND 80`); `channels_pkey` PRIMARY KEY (`id`).
+- `communities`: `communities_description_check` CHECK (`char_length(description) <= 500`); `communities_name_check` CHECK (`char_length(name) BETWEEN 2 AND 80`); `communities_owner_id_fkey` FOREIGN KEY (`owner_id`) REFERENCES `auth.users(id)` ON DELETE RESTRICT; `communities_pkey` PRIMARY KEY (`id`); `communities_slug_check` CHECK (`slug ~ '^[a-z0-9-]{3,50}
+
+- A captura é do estado pré-cutover observado em 2026-11-27, não uma autorização para alterar o banco.
+- Não foi executado `CUTOVER_DRAFT.sql`, rollback, DDL ou DML.
+- O rollback ainda precisa de teste transacional em PostgreSQL isolado. A validação estática e a captura real não substituem esse teste.
+`); `communities_slug_key` UNIQUE (`slug`).
+- `community_members`: `community_members_community_id_fkey` FOREIGN KEY (`community_id`) REFERENCES `communities(id)` ON DELETE CASCADE; `community_members_pkey` PRIMARY KEY (`community_id,user_id`); `community_members_role_check` CHECK (`role IN ('owner','admin','member')`); `community_members_user_id_fkey` FOREIGN KEY (`user_id`) REFERENCES `auth.users(id)` ON DELETE CASCADE.
+- `messages`: `messages_author_id_fkey` FOREIGN KEY (`author_id`) REFERENCES `auth.users(id)` ON DELETE RESTRICT; `messages_channel_id_fkey` FOREIGN KEY (`channel_id`) REFERENCES `channels(id)` ON DELETE CASCADE; `messages_content_check` CHECK (`char_length(content) >= 1 AND char_length(content) <= 10000`); `messages_pkey` PRIMARY KEY (`id`).
+- `profiles`: `profiles_id_fkey` FOREIGN KEY (`id`) REFERENCES `auth.users(id)` ON DELETE CASCADE; `profiles_pkey` PRIMARY KEY (`id`); `profiles_username_format` CHECK (`username IS NULL OR username ~ '^[a-zA-Z0-9_]{3,24}
+
+- A captura é do estado pré-cutover observado em 2026-11-27, não uma autorização para alterar o banco.
+- Não foi executado `CUTOVER_DRAFT.sql`, rollback, DDL ou DML.
+- O rollback ainda precisa de teste transacional em PostgreSQL isolado. A validação estática e a captura real não substituem esse teste.
+`); `profiles_username_key` UNIQUE (`username`).
+
+### Triggers
+
+- `auth.users.on_auth_user_created_shiqi`: AFTER INSERT ON `auth.users` FOR EACH ROW EXECUTE FUNCTION `private.handle_new_user()`.
+- `public.communities_add_owner`: AFTER INSERT ON `public.communities` FOR EACH ROW EXECUTE FUNCTION `private.add_community_owner()`.
+- `public.profiles_set_updated_at`: BEFORE UPDATE ON `public.profiles` FOR EACH ROW EXECUTE FUNCTION `private.set_updated_at()`.
+
+A definição integral de `private.handle_new_user()` foi consultada no catálogo e retornou sem erro; ela também pode ser recuperada antes de qualquer operação a partir do estado original, desde que o cutover ainda não tenha sido executado. Este apêndice preserva a assinatura/trigger e as definições de índices e constraints observadas.
+
 ## Limites
 
 - A captura é do estado pré-cutover observado em 2026-11-27, não uma autorização para alterar o banco.
