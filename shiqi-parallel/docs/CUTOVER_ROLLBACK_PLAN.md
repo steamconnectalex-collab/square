@@ -37,7 +37,7 @@ O rollback só poderá ser considerado se:
 4. Remover as RPCs públicas e helpers privados canônicos, usando assinaturas exatas e sem `CASCADE`.
 5. Remover as 18 tabelas canônicas em ordem inversa das FKs, sem `CASCADE`.
 6. Renomear as cinco tabelas `legacy_*` para os nomes originais.
-7. Remover as sete policies Storage criadas pelo cutover (`attachments_*` e `avatars_*`); manter os buckets somente se estiverem vazios e a decisão de preservá-los estiver documentada.
+7. Remover as sete policies Storage criadas pelo cutover (`attachments_delete_own`, `attachments_insert_own`, `attachments_select_message_member` e as quatro `avatars_*`); manter os buckets somente se estiverem vazios e a decisão de preservá-los estiver documentada.
 8. Restaurar os nomes dos índices/constraints conforme o snapshot.
 9. Restaurar os privilégios de tabela, coluna e sequence exatamente conforme o snapshot, incluindo entradas concedidas a `PUBLIC` e privilégios PG17 como `MAINTAIN`.
 10. Restaurar a ACL do schema `private` ao estado capturado (USAGE somente para `authenticated`, além do proprietário).
