@@ -84,3 +84,39 @@ jobs:
       - run: cargo clippy --all-targets --all-features -- -D warnings
       - name: Build shiqi-core container image
         run: docker build --pull --tag shiqi-core:ci .
+
+  railway-smoke:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: [rust, supabase-jwks]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check deployed Railway service and protected route
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://shiqi-core-development.up.railway.app"
+          retry() {
+            local url="$1"
+            local expected="$2"
+            local body="/tmp/shiqi-response.json"
+            local code=""
+            for attempt in $(seq 1 30); do
+              code="$(curl --silent --show-error --max-time 10 -o "$body" -w '%{http_code}' "$url" || true)"
+              if [[ "$code" == "$expected" ]]; then
+                cat "$body"
+                return 0
+              fi
+              echo "Aguardando endpoint (tentativa $attempt/30): HTTP ${code:-sem resposta}; esperado $expected"
+              sleep 10
+            done
+            echo "::error::Endpoint $url não retornou HTTP $expected."
+            [[ -f "$body" ]] && cat "$body"
+            return 1
+          }
+          retry "$base/healthz" "200"
+          jq -e '.service == "shiqi-core" and .status == "ok"' /tmp/shiqi-response.json >/dev/null
+          retry "$base/readyz" "200"
+          jq -e '.service == "shiqi-core" and .status == "ready"' /tmp/shiqi-response.json >/dev/null
+          retry "$base/v1/me" "401"
+          jq -e '.ok == false and .error == "unauthorized"' /tmp/shiqi-response.json >/dev/null
+          echo "Railway runtime smoke checks passed (health, readiness, unauthenticated route rejection)."
