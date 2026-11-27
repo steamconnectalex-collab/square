@@ -4,7 +4,7 @@
 /* =====================================================================
    Shiqi. — Perfil do usuário (editor). Abre por "Editar perfil" (window.SQ_PERFIL.open()).
    Grava no banco: nome exibido, status, bio, cor da faixa e foto.
-   Guardado só neste navegador (por conta): pronomes, "última música", nota, widgets e fotos recentes.
+   Guardado só neste navegador (por conta): pronomes, nota, widgets e fotos recentes.
    Decorações, efeitos, molduras e placas são itens da Loja; como ainda não há compra, ficam bloqueados.
    ===================================================================== */
 
@@ -20,7 +20,7 @@ const I = {
   dots: '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>', coin: '<circle cx="12" cy="12" r="8.5"/><path d="m12 7.5 1.5 3 3 1.5-3 1.5-1.5 3-1.5-3-3-1.5 3-1.5z"/>',
   img: '<rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="m4 18 5-5 4 4 3-3 4 4"/>', imgs: '<rect x="3" y="4" width="14" height="12" rx="2"/><path d="M7 20h12a2 2 0 0 0 2-2V8"/>',
   rot: '<path d="M4 12a8 8 0 1 1 3 6.2M4 12V6m0 6h6"/>', eye: '<path d="m4 20 6-6M14 6l4 4-8 8H6v-4zM16 4l4 4"/>', link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
-  pen: '<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/>', music: '<path d="M9 18V5l11-2v13"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/>', user: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-4 3-6 7-6s7 2 7 6"/>', heart: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>'
+  pen: '<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/>', user: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-4 3-6 7-6s7 2 7 6"/>', heart: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>'
 };
 
 const me = () => (api().me && api().me()) || {};
@@ -85,7 +85,7 @@ function pickerHTML() {
 function cardHTML() {
   const x = P.x, m = me();
   return `<section class="pf-mid" aria-label="Prévia do perfil"><div class="pcard${P.pv && P.ap.frame ? ' pvframe' : ''}"><div class="pbn" style="background:${esc(P.accent)}"></div>${P.pv && P.ap.effect && shop() ? `<span class="mpfx pvfx">${shop().art(findItem(P.ap.effect), true)}</span>` : ''}${P.pv && P.ap.frame && shop() ? `<span class="pvfr">${shop().art(findItem(P.ap.frame), true)}</span>` : ''}
-  <div class="pcav">${decAv(92, 'ring')}<i class="pon" aria-hidden="true"></i><label class="pmus"><span>${ic(I.plus, 12, '#fff', 2.4)}</span><input id="pf-music" value="${esc(x.music || '')}" maxlength="40" placeholder="Última música que não sai da sua cabeça?" aria-label="Última música"></label></div>
+  <div class="pcav">${decAv(92, 'ring')}<i class="pon" aria-hidden="true"></i></div>
   <div class="pbody"><input class="pname" id="pf-name" value="${esc(P.name)}" maxlength="32" aria-label="Nome exibido" placeholder="Nome exibido">${P.pv && P.ap.plate && shop() ? `<span class="pvpl">${shop().art(findItem(P.ap.plate))}</span>` : ''}
   <div class="pun"><span>${esc(m.user || '')}</span><i>•</i><input id="pf-pron" value="${esc(x.pron || '')}" maxlength="20" placeholder="Adicionar pronomes" aria-label="Pronomes"></div>
   <button type="button" class="pchip" data-pf="soon" data-msg="As insígnias chegam em breve">${ic(I.plus, 12, '#1D1D22', 2.4)} Insígnias</button>
@@ -315,7 +315,7 @@ function onClick(e) {
 function onInput(e) {
   if (!P) return; const t = e.target, id = t.id;
   if (id === 'pf-name') P.name = t.value; else if (id === 'pf-status') P.status = t.value; else if (id === 'pf-bio') P.bio = t.value;
-  else if (id === 'pf-pron' || id === 'pf-music' || id === 'pf-note') { const x = P.x; x[{ 'pf-pron': 'pron', 'pf-music': 'music', 'pf-note': 'note' }[id]] = t.value; setX(x); return; }
+  else if (id === 'pf-pron' || id === 'pf-note') { const x = P.x; x[id === 'pf-pron' ? 'pron' : 'note'] = t.value; setX(x); return; }
   else if (id === 'phexi') { const v = '#' + t.value.replace(/[^0-9A-Fa-f]/g, '').slice(0, 6); if (isHex(v)) { P.accent = v; syncPick(); } return; }
   else if (id === 'pf-zoom') { P.crop.z = Number(t.value) / 100; drawCrop(); return; }
   else return;
