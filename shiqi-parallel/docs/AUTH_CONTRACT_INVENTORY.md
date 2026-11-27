@@ -25,6 +25,20 @@ O gerenciamento inicial do fator TOTP (consultar fatores, cadastrar, desafiar e 
 
 Esta é uma conferência estática de chamadas e campos, não um teste de execução, JWT, sessão, e-mail ou MFA real.
 
+## Revisão de segurança do fluxo MFA (2026-11-27)
+
+A revisão identificou que a API administrativa do Supabase encerra as sessões ativas quando um fator MFA verificado é removido. O fluxo foi ajustado na branch paralela:
+
+- Login com código de recuperação: erros ao consumir/limpar códigos e ao remover o fator agora interrompem a operação; após remover o fator, a função cria uma sessão nova para não devolver o token anterior, que pode ter sido revogado.
+- Desligamento de MFA nas configurações: o backend agora verifica os erros ao consumir/limpar códigos e ao remover o fator; a interface encerra o estado local da sessão e informa que será necessário entrar novamente.
+- Geração de novos códigos: falhas ao apagar os códigos antigos ou salvar os novos agora são retornadas como erro, em vez de confirmar sucesso indevidamente.
+
+Referência do comportamento de revogação de sessão: https://supabase.com/docs/reference/javascript/auth-admin-deletefactor
+
+A revisão também encontrou que `public.is_server_member(uuid)` era referenciada por três policies e pela ACL, mas não tinha definição em nenhum arquivo SQL canônico. Foi adicionada uma implementação mínima `SECURITY DEFINER`, com `search_path` vazio, baseada na semântica documentada de associação ao servidor. A migration-base original `servidores_e_canais` está ausente do Git; portanto, essa implementação é uma reconstrução de contrato e **precisa ser comparada com a definição do banco original antes de qualquer aplicação**.
+
+A matriz de ACL foi conferida por assinatura: 58 definições (45 públicas e 13 privadas), 58 REVOKEs correspondentes, nenhum REVOKE excedente ou ausente, nenhum GRANT duplicado e nenhum GRANT apontando para função inexistente. As sete funções privadas sem GRANT explícito são helpers internos/trigger-only, intencionalmente não expostos. Isso é validação estática, não teste PostgreSQL em runtime.
+
 ## Transporte comum observado
 
 O frontend usa um helper `api(path, body, token?)` e envia requisições POST para a Edge Function configurada em `C.FN`. As chamadas observadas abaixo usam JSON. O formato completo de erros e cabeçalhos deve ser extraído do helper e validado em testes antes da implementação.
