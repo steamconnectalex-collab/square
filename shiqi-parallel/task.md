@@ -59,6 +59,15 @@
 - [ ] Regressão de todos os fluxos que permanecem no produto.
 - [ ] Preview Vercel depois que a janela de limite terminar; não contornar limite.
 
+### 2026-11-27 — Auditoria estática final do pacote de banco
+- Executado novamente `tests/auth-contract-static.js` em harness JavaScript em memória com os arquivos atuais da branch; resultado OK. Parse JavaScript de `apps/web/app.js` e do teste também passou.
+- Conferidas as assinaturas SQL: 59 funções definidas, 59 REVOKEs correspondentes, 52 GRANTs apontando para funções existentes; nenhuma assinatura ausente/excedente.
+- Das 59 funções, 58 são SECURITY DEFINER; todas usam `SET search_path TO ''`.
+- Draft transacional BEGIN/COMMIT; revisão estática não encontrou `DROP ... CASCADE` nem `TRUNCATE` de nível superior.
+- Supabase Advisors: zero alertas de segurança e saúde; cinco INFO de índices não utilizados em tabelas prototype vazias.
+- Limite: nenhuma validação PostgreSQL runtime, Auth/JWT, Storage, Realtime ou concorrência real. Nenhum DDL/DML remoto foi executado.
+- Próximo: continuar revisão final dos contratos de banco e preparar a versão final revisável da migration/rollback, mantendo execução remota bloqueada.
+
 ## Alinhamento de trabalho conjunto (2026-11-26)
 - O usuário informou que Claude está preparado para acompanhar esta branch paralela e receber continuamente as atualizações. Trabalhar de forma coordenada: manter os arquivos de acompanhamento atualizados e registrar decisões para que qualquer IA continue do ponto correto.
 - Antes de cada sessão/tarefa, ler integralmente `task.md` e `agents.md` da raiz; reler os arquivos de código relevantes antes de editá-los.
@@ -107,8 +116,7 @@
 - Iniciada a etapa 2 apenas como planejamento e recuperação de schema; nenhum SQL/DDL foi executado nem aplicado remotamente.
 
 ### 2026-11-26 — Continuação da etapa 1 (inspeção do app principal)
-- Cruzadas as rotinas de loadWorld, mensagens/histórico, Realtime/polling, reações, tópicos, busca/menções, servidores/canais/convites, amizades/DMs/bloqueios, eventos e voz com as tabelas/RPCs correspondentes.- Confirmado que favoritos de servidores e várias preferências ficam em localStorage; modais, navegação e controles visuais são estado local. Ações de negócio continuam delegadas a REST/RPC/RLS.
-- Confirmado que a integração depende do schema original, inclusive messages bigint/thread_of, DMs e tabelas sociais ausentes no banco paralelo atual.
+- Cruzadas as rotinas de loadWorld, mensagens/histórico, Realtime/polling, reações, tópicos, busca/menções, servidores/canais/convites, amizades/DMs/bloqueios, eventos e voz com as tabelas/RPCs correspondentes.- Confirmado que favoritos de servidores e várias preferências ficam em localStorage; modais, navegação e controles visuais são estado local. Ações de negócio continuam delegadas a REST/RPC/RLS.- Confirmado que a integração depende do schema original, inclusive messages bigint/thread_of, DMs e tabelas sociais ausentes no banco paralelo atual.
 - QR permaneceu fora da inspeção e música fora do escopo. Nenhuma interface, funcionalidade, banco remoto ou produção foi alterada.
 
 ### 2026-11-26 — Continuação da etapa 1 (inspeção de módulos)
@@ -217,8 +225,7 @@
 
 ### 2026-11-26 — Continuação da recuperação das RPCs canônicas
 - Relidos `task.md` e `agents.md` da raiz, além do acompanhamento paralelo e do plano de reconciliação.- Consultado o catálogo do projeto original somente com SELECT e extraídas as definições completas de 40 funções públicas não relacionadas a música/QR, em lotes menores para evitar truncamento.
-- Criados na branch `shiqi-parallel-dev`:
-  - `docs/CANONICAL_SOCIAL_PROFILE_RPCS.sql` — amizades, DMs, bloqueios, perfil e configurações (15 definições, incluindo sobrecarga).
+- Criados na branch `shiqi-parallel-dev`:  - `docs/CANONICAL_SOCIAL_PROFILE_RPCS.sql` — amizades, DMs, bloqueios, perfil e configurações (15 definições, incluindo sobrecarga).
   - `docs/CANONICAL_MODERATION_EVENTS_VOICE_RPCS.sql` — moderação, reações, eventos, voz, exploração e destaques (17 definições).
   - `docs/CANONICAL_AUTH_ACCOUNT_RPCS.sql` — rotinas internas de autenticação e ciclo de vida da conta (8 definições).
 - As definições foram extraídas com `pg_get_functiondef` do banco original; são referências para reconciliação, não migrations prontas.
@@ -327,8 +334,7 @@
 - Próximo passo: executar o snapshot corrigido em consultas separadas e conferir todas as seções, revisar o rollback contra as ACLs reais e buscar um PostgreSQL isolado para validação de parser/runtime. O draft continua proibido de execução até validação e aprovação explícita.
 
 ### 2026-11-27 — Validação integral do snapshot e início da etapa final do banco
-- Reexecutadas, em consultas independentes e somente leitura, todas as seções de `CUTOVER_SNAPSHOT.sql`; nenhuma consulta apresentou erro.
-- Estado confirmado: cinco tabelas prototype e `auth.users` com zero linhas; proprietários das cinco tabelas `postgres`; 13 grants explícitos de UPDATE por coluna para `authenticated`; zero sequences em `public`; `private` com USAGE apenas para `authenticated` (owner `postgres`); publicação Realtime apenas em `public.messages`; nenhum bucket ou policy Storage e nenhuma policy em `realtime.messages`.
+- Reexecutadas, em consultas independentes e somente leitura, todas as seções de `CUTOVER_SNAPSHOT.sql`; nenhuma consulta apresentou erro.- Estado confirmado: cinco tabelas prototype e `auth.users` com zero linhas; proprietários das cinco tabelas `postgres`; 13 grants explícitos de UPDATE por coluna para `authenticated`; zero sequences em `public`; `private` com USAGE apenas para `authenticated` (owner `postgres`); publicação Realtime apenas em `public.messages`; nenhum bucket ou policy Storage e nenhuma policy em `realtime.messages`.
 - Capturados os cinco grupos de policies RLS prototype, três triggers, 13 índices, constraints, cinco migrations e cinco helpers privados. O trigger Auth e o corpo integral de `private.handle_new_user()` foram lidos.
 - Reexecutado `CUTOVER_PREFLIGHT.sql`: 18/18 checks booleanos passaram, incluindo nomes livres, pgcrypto, buckets, Storage, Realtime, índices e funções.
 - Supabase Advisors: zero avisos de segurança e zero de saúde. Cinco avisos INFO de índices não utilizados referem-se às tabelas prototype vazias; não remover índices por esse motivo.
