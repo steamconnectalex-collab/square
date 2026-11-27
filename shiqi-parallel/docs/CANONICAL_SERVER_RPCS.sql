@@ -1,6 +1,25 @@
 -- SHIQI — RPCs de servidores/canais/convites extraídas do PostgreSQL original.
 -- Referência SQL; tabelas, helpers e extensão pgcrypto/namespace extensions devem existir.
 
+-- Reconstrução mínima da função auxiliar da migration-base "servidores_e_canais",
+-- ausente do Git. A semântica é inferida das policies e do resumo versionado:
+-- retorna true somente quando auth.uid() pertence ao servidor informado.
+-- Validar contra a definição do banco original antes de aplicar qualquer migration.
+create or replace function public.is_server_member(p_server uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path to ''
+as $function$
+  select exists (
+    select 1
+    from public.server_members m
+    where m.server_id = p_server
+      and m.user_id = (select auth.uid())
+  )
+$function$;
+
 create or replace function public.create_server(p_name text)
 returns uuid
 language plpgsql
