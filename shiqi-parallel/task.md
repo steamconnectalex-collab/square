@@ -6,10 +6,11 @@
 **Migrar tecnologia sem mudar design, layout, identidade visual, navegação ou qualquer funcionalidade do aplicativo original que permaneça no escopo.** O diretório `site/` da raiz é a fonte de verdade. Música foi explicitamente retirada do produto pelo usuário e poderá ser removida somente da cópia paralela. Nenhuma outra simplificação/remoção de função sem autorização expressa.
 
 ## Em andamento agora
-- [ ] Continuar revisão de compatibilidade do pacote SQL e autenticação. MFA, matriz de ACL e checks estáticos foram atualizados; `is_server_member` foi conferida em `CANONICAL_TRIGGERS.sql` e no draft; a primeira varredura omitiu o arquivo de triggers e gerou um falso alerta. Validação PostgreSQL local dispensada; não aplicar DDL remoto.
+- [ ] Continuar revisão de compatibilidade do pacote SQL e autenticação. MFA, matriz de ACL e checks estáticos atualizados; auditoria de RPCs sociais/servidores/moderação em andamento. Validação PostgreSQL local dispensada; não aplicar DDL remoto.
 - [x] 2026-11-27 — Ampliado o snapshot para incluir grants de tabela concedidos a PUBLIC e privilégios de todas as sequences; o plano de rollback agora inclui remoção das sete policies Storage do cutover e restauração dos grants de sequence. Removidos grants duplicados do draft.
 
 ## Bloqueios atuais (27/11/2026)
+- A validação de runtime dos SQLs segue pendente. O helper `private.shares_server_with` foi endurecido para considerar apenas amizades aceitas; a verificação estática cobre o helper e o cutover draft, mas não substitui teste RLS com dois usuários.
 - Os fluxos MFA ainda não foram executados contra Supabase Auth; a correção foi estática. O comportamento de revogação de sessões ao excluir um fator verificado exige novo login no desligamento e sessão nova após recuperação.
 - Leitura do Supabase restabelecida em 2026-11-27 usando a conexão `Primary`; projeto `ujdosskjycrdkcgsswfa` confirmado `ACTIVE_HEALTHY`. A falha anterior era a conexão incorreta (`shiqi` apontava para o projeto antigo). O preflight foi executado somente com SELECT e todos os 17 checks retornaram true. Nenhum DDL/DML foi executado.
 - A validação de parser/runtime em PostgreSQL isolado foi dispensada pelo usuário para evitar aprofundamento em configuração local. Os SQLs continuam sem validação de runtime; manter bloqueio de execução remota até revisão e autorização.
@@ -17,6 +18,7 @@
 - O smoke test existente na raiz aponta para o site original e não valida a cópia paralela; não foi executado para evitar testar/altear o alvo errado.
 
 ## Concluído
+- [x] 2026-11-27 — Corrigida exposição de perfis por amizade pendente: `private.shares_server_with()` agora só reconhece amizades com `status = 'accepted'`, tanto no helper canônico quanto no `CUTOVER_DRAFT.sql`. O helper alimenta `profiles_select_visible` e `profiles_full`; a correção impede que uma solicitação pendente seja tratada como amizade para liberar perfil. Adicionada verificação ao teste estático de contrato.
 - [x] 2026-11-27 — Corrigida a consulta de ACLs do snapshot: removida a referência à visão inexistente `information_schema.sequence_privileges`; agora usa `pg_class`/`aclexplode` para capturar grants de tabelas, colunas e sequences, inclusive PUBLIC e privilégios PG17. Incluída também a ACL dos schemas `private`/`public`.
 - [x] 2026-11-27 — Leitura real do projeto paralelo restabelecida via `Primary`; projeto confirmado ACTIVE_HEALTHY. Os 17 checks do preflight retornaram true: cinco tabelas prototype vazias, zero usuários Auth, nomes livres, pgcrypto disponível, Realtime somente em `public.messages`, sem buckets/policies Storage conflitantes e sem colisões de funções/índices.
 - [x] 2026-11-27 — Capturadas definições exatas do trigger `auth.users` e do handler `private.handle_new_user()`. ACLs atuais identificadas: grants amplos de tabela para anon/authenticated nas cinco tabelas prototype; UPDATE por coluna para authenticated em 13 colunas; nenhuma sequence em `public`; nenhuma ACL de sequence para restaurar.
