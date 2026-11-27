@@ -6,10 +6,12 @@
 **Migrar tecnologia sem mudar design, layout, identidade visual, navegação ou qualquer funcionalidade do aplicativo original que permaneça no escopo.** O diretório `site/` da raiz é a fonte de verdade. Música foi explicitamente retirada do produto pelo usuário e poderá ser removida somente da cópia paralela. Nenhuma outra simplificação/remoção de função sem autorização expressa.
 
 ## Em andamento agora
-- [ ] Revisar compatibilidade final do pacote SQL e contratos da autenticação restaurada. A validação em PostgreSQL local foi dispensada pelo usuário nesta fase; não aplicar DDL remoto.
+- [ ] Continuar revisão de compatibilidade do pacote SQL e autenticação. MFA e matriz de ACL receberam correções estáticas; a função `is_server_member` foi reconstruída por falta da migration-base no Git e ainda precisa ser comparada com a definição original. Validação PostgreSQL local dispensada; não aplicar DDL remoto.
 - [x] 2026-11-27 — Ampliado o snapshot para incluir grants de tabela concedidos a PUBLIC e privilégios de todas as sequences; o plano de rollback agora inclui remoção das sete policies Storage do cutover e restauração dos grants de sequence. Removidos grants duplicados do draft.
 
 ## Bloqueios atuais (27/11/2026)
+- `public.is_server_member(uuid)` não estava definida em nenhum SQL canônico, embora seja chamada por três policies RLS e apareça na ACL. Foi adicionada uma reconstrução mínima em `CANONICAL_SERVER_RPCS.sql`; conferir com a definição original antes de qualquer migration. A migration-base `servidores_e_canais` está ausente do Git.
+- Os fluxos MFA ainda não foram executados contra Supabase Auth; a correção foi estática. O comportamento de revogação de sessões ao excluir um fator verificado exige novo login no desligamento e sessão nova após recuperação.
 - Leitura do Supabase restabelecida em 2026-11-27 usando a conexão `Primary`; projeto `ujdosskjycrdkcgsswfa` confirmado `ACTIVE_HEALTHY`. A falha anterior era a conexão incorreta (`shiqi` apontava para o projeto antigo). O preflight foi executado somente com SELECT e todos os 17 checks retornaram true. Nenhum DDL/DML foi executado.
 - A validação de parser/runtime em PostgreSQL isolado foi dispensada pelo usuário para evitar aprofundamento em configuração local. Os SQLs continuam sem validação de runtime; manter bloqueio de execução remota até revisão e autorização.
 - A Vercel continua com a última implantação READY, mas ela aponta para o commit 1a6f6706, anterior às alterações recentes de frontend. A proteção SSO está habilitada. Não disparar novo deploy enquanto a restrição/janela de limite registrada no projeto não terminar.
@@ -43,7 +45,7 @@
 - [x] Matriz de paridade funcional concluída em `docs/FEATURE_PARITY_MATRIX.md` em 2026-11-26, incluindo rotas, ações, persistência, contratos e critérios de regressão. Execução dos testes fica para a etapa de regressão.
 - [ ] **Etapa 2 — reconciliação/migração do banco:** auditoria e recuperação de schema/ACLs concluídas documentalmente; cinco tabelas prototype incompatíveis, cinco migrations remotas e grants amplos a anon foram identificados. Próximo: consolidar migration/rollback, validar em PostgreSQL isolado e revalidar o destino antes de qualquer DDL.
 - [x] 2026-11-27 — Edge Function Auth completa restaurada em `shiqi-parallel/supabase/functions/auth/index.ts` a partir da fonte versionada na raiz; origens antigas de produção removidas, URL padrão ajustada para o projeto paralelo e chave anon exigida por variável de ambiente. Sem deploy.
-- [ ] Validar contratos da Edge Function Auth restaurada, dependências, JWT e variáveis de ambiente antes de conectar a UI.
+- [ ] Validar contratos da Edge Function Auth restaurada, dependências, JWT e variáveis de ambiente antes de conectar a UI. Revisão estática MFA concluída em 2026-11-27; testes de runtime continuam pendentes.
 - [ ] Completar testes JWT assinados/negativos e validar algoritmo/chaves do projeto destino antes de integrar middleware.
 - [ ] Preparar migrations incrementais, RLS, grants, Storage e Realtime; não aplicar remotamente sem revisão.
 - [ ] Regressão de todos os fluxos que permanecem no produto.
@@ -336,3 +338,15 @@
 - Limitação: nenhuma checagem Deno/runtime, teste JWT, conexão da UI, envio de e-mail ou deploy foi executado. Não houve alteração no Supabase nem em produção.
 - Conferidos estaticamente os 13 endpoints contra `apps/web/app.js` e `settings-pages.js`: rotas e nomes dos payloads correspondem; o gerenciamento de cadastro/verificação TOTP usa Supabase Auth REST diretamente, enquanto a Edge Function trata recuperação e desligamento MFA. Detalhes registrados em `docs/AUTH_CONTRACT_INVENTORY.md` (commit `6ca01d5`).
 - Próximo passo: revisar as regras de segurança/ACL e preparar testes de contrato antes da integração.
+
+
+### 2026-11-27 — Revisão de segurança MFA e matriz de ACL
+- Corrigido o fluxo de recuperação MFA: agora verifica erros ao consumir códigos, limpar os códigos restantes e excluir o fator; após remover o fator verificado, gera uma sessão nova, pois o Supabase revoga as sessões ativas ao excluir o fator.
+- Corrigido o desligamento MFA nas configurações: backend valida erros de limpeza/exclusão e frontend encerra a sessão local após sucesso, orientando novo login. Referência: https://supabase.com/docs/reference/javascript/auth-admin-deletefactor
+- Corrigida a renovação de códigos de recuperação para não ignorar falhas ao apagar códigos antigos ou inserir os novos.
+- Auditoria estática da ACL: 58 definições (45 public + 13 private), 58 REVOKEs exatos, nenhum faltante/excedente, nenhum GRANT duplicado ou apontando para função ausente. Sete funções privadas sem GRANT explícito são helpers internos/trigger-only, intencionalmente restritos.
+- Encontrada lacuna de dependência: `public.is_server_member(uuid)` era chamada por três policies e referenciada pela ACL, mas faltava em todos os arquivos SQL canônicos. Adicionada implementação mínima `SECURITY DEFINER` com `search_path` vazio em `CANONICAL_SERVER_RPCS.sql`, baseada na semântica documentada. Como a migration-base `servidores_e_canais` não está no Git, comparar a reconstrução com a definição do banco original antes de aplicar.
+- Confirmado por inspeção estática: 18 tabelas e RLS habilitada em todas; 17 policies canônicas.
+- Atualizado `docs/AUTH_CONTRACT_INVENTORY.md` com achados e limites. Commits: `5a59fcd` (tratamento inicial de erros MFA), `0aed03d` (grants duplicados), `c6a636a` (helper de associação), `2991b06` (sessão nova após recuperação), `b3e50b4` (logout após desligar MFA), `437e646` (documentação).
+- Nenhum teste Deno/PostgreSQL/runtime foi executado; nenhuma migration, SQL, secret, e-mail, deploy ou banco remoto foi alterado.
+- Próximo passo: revisar contratos de Auth restantes e dependências do schema; obter a definição original de `is_server_member` por fonte autorizada antes de liberar o pacote SQL.
