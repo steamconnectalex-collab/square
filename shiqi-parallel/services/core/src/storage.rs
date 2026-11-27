@@ -107,10 +107,13 @@ fn validate_object_path<'a>(
     user_id: &str,
     format: ImageFormat,
 ) -> Result<&'a str, StorageError> {
+    if object_path.len() > 200 {
+        return Err(StorageError::InvalidPath);
+    }
     let mut parts = object_path.split('/');
     let owner = parts.next().ok_or(StorageError::InvalidPath)?;
     let filename = parts.next().ok_or(StorageError::InvalidPath)?;
-    if owner != user_id || parts.next().is_some() || filename.is_empty() {
+    if owner != user_id || parts.next().is_some() || filename.is_empty() || filename.len() > 128 {
         return Err(StorageError::InvalidPath);
     }
     if !filename
@@ -147,6 +150,12 @@ mod tests {
         assert!(validate_object_path("user-1/sub/file.jpg", "user-1", ImageFormat::Jpeg).is_err());
         assert!(validate_object_path("user-1/file.png", "user-1", ImageFormat::Jpeg).is_err());
         assert!(validate_object_path("user-1/%2fetc.jpg", "user-1", ImageFormat::Jpeg).is_err());
+        assert!(validate_object_path(
+            &format!("user-1/{}.jpg", "a".repeat(129)),
+            "user-1",
+            ImageFormat::Jpeg
+        )
+        .is_err());
     }
 
     #[test]
