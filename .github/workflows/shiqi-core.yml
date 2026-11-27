@@ -21,6 +21,31 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  supabase-jwks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect parallel Supabase JWKS (public metadata only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://ujdosskjycrdkcgsswfa.supabase.co/auth/v1/.well-known/jwks.json"
+          curl --fail --silent --show-error --location --retry 3 --retry-all-errors "$url" -o /tmp/shiqi-jwks.json
+          jq -e '.keys | type == "array" and length > 0' /tmp/shiqi-jwks.json >/dev/null
+          echo "Public JWKS key metadata (no key material):"
+          jq -r '.keys[] | [.kid // "no-kid", .kty // "no-kty", .alg // "alg-not-declared", .crv // "no-curve"] | @tsv' /tmp/shiqi-jwks.json
+          algorithms="$(jq -r '[.keys[] | (.alg // (if .kty == "EC" and .crv == "P-256" then "ES256" elif .kty == "RSA" then "RS256" else "UNSUPPORTED" end))] | unique | .[]' /tmp/shiqi-jwks.json)"
+          echo "Detected algorithms: $(echo "$algorithms" | paste -sd, -)"
+          if grep -qx "UNSUPPORTED" <<< "$algorithms"; then
+            echo "::error::Supabase JWKS contains a key type/algorithm not supported by shiqi-core."
+            exit 1
+          fi
+          while IFS= read -r algorithm; do
+            case "$algorithm" in
+              ES256|RS256) ;;
+              *) echo "::error::Unsupported Supabase JWT algorithm: $algorithm"; exit 1 ;;
+            esac
+          done <<< "$algorithms"
+          echo "JWKS algorithm compatibility check passed."
   rust:
     runs-on: ubuntu-latest
     defaults:
