@@ -1732,7 +1732,14 @@ with check (
 create policy messages_update_own on public.messages
 for update to authenticated
 using (author_id = (select auth.uid()))
-with check (author_id = (select auth.uid()) and private.can_post(channel_id));
+with check (
+  author_id = (select auth.uid())
+  and private.can_post(channel_id)
+  and (attachment_path is null or (
+    split_part(attachment_path, '/', 1) = (select auth.uid())::text
+    and split_part(attachment_path, '/', 2) <> ''
+  ))
+);
 
 create policy messages_delete_own_or_owner on public.messages
 for delete to authenticated
