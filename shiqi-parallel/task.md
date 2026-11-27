@@ -527,3 +527,13 @@
 - O usuário esclareceu que `square-chat` é o projeto principal e pediu para deixar o problema de envio de imagens para depois. Não investigar mais CORS/upload agora, não mexer no projeto Vercel principal e não ampliar permissões CORS.
 - Próxima frente: validar runtime do serviço Rust e autenticação (`/healthz`, `/readyz`, rejeição sem token, login real e `GET /v1/me`); depois avançar para testes de RLS/Realtime e RPCs com contas de teste.
 - Workflow `.github/workflows/shiqi-core.yml` ganhou job `railway-smoke` no commit `f8a8e2f213d0fc298de5960aa009c90213b9cd0c`. O job só roda em push/manual, depois de Rust e JWKS, e aguarda até 5 minutos pelos endpoints públicos. Não valida JWT real nem upload.
+
+
+### 2026-11-27 — Smoke runtime e auditoria de autenticação
+- CI run `46047484964` aprovado integralmente: `rust`, `supabase-jwks`, `web-contract` e `railway-smoke` passaram. O job Rust executou fmt, testes, Clippy e build Docker.
+- O job `railway-smoke` confirmou `GET /healthz` e `GET /readyz` saudáveis e `GET /v1/me` sem token respondendo `401 unauthorized`.
+- Auditoria estática: frontend guarda access/refresh token e tenta renovação pelo Supabase Auth; Edge Function protege rotas privadas com `admin.auth.getUser(token)`; Rust valida JWT via JWKS e confere assinatura, algoritmo ES256/RS256, issuer, audience, expiração, UUID do subject e role `authenticated`.
+- Limite: não houve login real nem chamada de `/v1/me` com JWT válido nesta etapa. O teste de upload permanece adiado.
+- A consulta do status de deployments via conector Railway foi bloqueada por permissão; não inferir o ID/status do deployment a partir disso. O smoke runtime acima é a confirmação pública disponível.
+- Próximo: login real e `/v1/me` com sessão de teste; depois regressão RLS/Realtime/RPCs com duas contas, sem pedir ou compartilhar tokens no chat.
+- Produção, `main` e projeto Vercel `square-chat` permanecem intocados.
