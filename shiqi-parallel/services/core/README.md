@@ -6,7 +6,7 @@ Serviço Rust independente em fase inicial, isolado do frontend existente.
 
 - HTTP server com Tokio + Axum.
 - `GET /healthz`: verifica se o processo responde.
-- `GET /readyz`: retorna 200 somente quando a configuração JWT do Supabase está válida; sem `SUPABASE_URL`, retorna 503.
+- `GET /readyz`: retorna 200 somente quando o verificador JWT e o proxy do Supabase Storage estão configurados; sem `SUPABASE_URL` ou `SUPABASE_PUBLISHABLE_KEY`, retorna 503.
 - `GET /v1/me`: rota protegida; valida o Bearer JWT do Supabase via JWKS e retorna somente o ID e o papel do usuário.
 - `POST /v1/attachments/validate`: exige JWT e valida assinatura JPEG/PNG/WebP/GIF, MIME declarado e limite de 3 MiB, sem gravar o arquivo.
 - `POST /v1/attachments/upload`: exige JWT, valida imagem e caminho de propriedade do usuário, e encaminha o upload ao bucket privado `attachments` usando o mesmo Bearer token. O Supabase Storage continua aplicando as policies RLS.
