@@ -84,6 +84,10 @@ As migrations `0001`–`0010`, `0012`–`0020`, `0022`–`0025` contêm SQL vers
 1. **Schema base de servidores:** `0002_chat_e_perfil.sql` declara que as tabelas `servers`, `server_members`, `channels` e funções `create_server` / `is_server_member` já existiam em uma migration anterior chamada `servidores_e_canais`, mas o SQL dessa migration base não está versionado no diretório.
 2. **Eventos:** `0021_eventos.sql` é apenas um resumo; não contém o SQL completo de `server_events`, `event_interest` e das funções de eventos.
 
+A inspeção adicional dos arquivos originais na raiz confirmou que 0001, 0002, 0003, 0005, 0021 e 0024 estão disponíveis em Git. 0002 contém a implementação de messages e helpers, mas apenas resume a migration-base `servidores_e_canais`; 0021 continua sendo apenas um resumo. Isso reduz a lacuna: não é necessário solicitar um dump completo por enquanto; primeiro recuperar as definições ausentes do catálogo autorizado e comparar os demais arquivos versionados.
+
+O alvo contém **18 tabelas**, excluindo `qr_sessions` e as três tabelas de música.
+
 As migrations 0011 e 0012 foram excluídas somente da cópia paralela. Os arquivos originais em `main` não foram alterados. A recuperação do SQL de música está dispensada.
 
 ## Divergências confirmadas entre original e banco paralelo
