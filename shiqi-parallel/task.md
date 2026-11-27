@@ -6,10 +6,11 @@
 **Migrar tecnologia sem mudar design, layout, identidade visual, navegação ou qualquer funcionalidade do aplicativo original que permaneça no escopo.** O diretório `site/` da raiz é a fonte de verdade. Música foi explicitamente retirada do produto pelo usuário e poderá ser removida somente da cópia paralela. Nenhuma outra simplificação/remoção de função sem autorização expressa.
 
 ## Em andamento agora
-- [ ] Continuar revisão de compatibilidade do pacote SQL e autenticação. Anexos privados implementados nos SQLs, draft e frontend; teste estático passou em harness em memória e os JS alterados passaram na análise de sintaxe. Próximo: continuar contratos Realtime/mensagens/DMs e revisar rollback. Validação PostgreSQL local dispensada; não aplicar DDL remoto.
+- [ ] Revisar concorrência das RPCs de mensagens, reações, canais e limites por usuário. Anexos privados implementados e teste estático passou em harness em memória. Depois continuar contratos Realtime/DMs e revisar rollback. Validação PostgreSQL local dispensada; não aplicar DDL remoto.
 - [x] 2026-11-27 — Ampliado o snapshot para incluir grants de tabela concedidos a PUBLIC e privilégios de todas as sequences; o plano de rollback agora inclui remoção das sete policies Storage do cutover e restauração dos grants de sequence. Removidos grants duplicados do draft.
 
 ## Bloqueios atuais (27/11/2026)
+- A RPC `private.messages_rate_limit()` conta envios sem lock por autor; inserções simultâneas podem ultrapassar os limites de 5 mensagens/5s e 40/60s. Em auditoria para correção transacional.
 - O limite de 10 participantes por voz agora tem locks transacionais por usuário e sala no SQL canônico e no draft; a proteção foi verificada estaticamente, mas ainda depende de teste concorrente em PostgreSQL. 
 - Anexos agora estão preparados para bucket privado, signed URLs de 60s e policy por acesso à mensagem nos SQLs/draft/frontend. Falta teste de integração com usuários reais e validação runtime do helper/Storage antes de liberar cutover.
 - A validação de runtime dos SQLs segue pendente. O helper `private.shares_server_with` foi endurecido para considerar apenas amizades aceitas; a verificação estática cobre o helper e o cutover draft, mas não substitui teste RLS com dois usuários.
