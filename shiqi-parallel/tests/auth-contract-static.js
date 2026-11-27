@@ -68,7 +68,8 @@ const attachmentHelper = privateSql.slice(
   privateSql.indexOf('function private.can_read_attachment('),
   privateSql.indexOf('create or replace function private.messages_rate_limit')
 );
-assert.ok(attachmentHelper.includes('m.attachment_path = p_path'),
+assert.ok(attachmentHelper.includes('m.attachment_path = p_path') &&
+  attachmentHelper.includes("split_part(p_path, '/', 1) = m.author_id::text"),
   'A leitura de anexos deve corresponder a um caminho realmente associado a uma mensagem.');
 assert.ok(attachmentHelper.includes("mine.state = 'active'") && attachmentHelper.includes('private.dm_allowed'),
   'A leitura de anexos em DM deve exigir membro ativo e respeitar bloqueios/regras de DM.');
@@ -80,6 +81,9 @@ assert.ok(storageBucketSql.includes("'attachments', 'attachments', false") &&
 assert.ok(draftSql.includes("'attachments', 'attachments', false") &&
   draftSql.includes("'avatars', 'avatars', true"),
   'O draft deve preservar os modelos de privacidade dos buckets.');
+assert.ok(rlsSql.includes("split_part(attachment_path, '/', 1) = (select auth.uid())::text") &&
+  draftSql.includes("split_part(attachment_path, '/', 1) = (select auth.uid())::text"),
+  'A mensagem só pode referenciar anexo dentro da pasta do próprio autor.');
 assert.ok(storagePolicySql.includes('private.can_read_attachment(name)') &&
   !storagePolicySql.includes('CREATE POLICY attachments_select_own'),
   'A policy de leitura deve autorizar pelo acesso à mensagem, não pelo dono da pasta.');
