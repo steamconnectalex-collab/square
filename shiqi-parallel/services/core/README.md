@@ -1,6 +1,6 @@
 # shiqi-core
 
-Serviço Rust independente em fase inicial, isolado do frontend existente.
+Serviço Rust do ambiente paralelo SHIQI, integrado inicialmente ao fluxo de envio de anexos do frontend.
 
 ## Estado atual
 
@@ -34,8 +34,9 @@ O serviço escuta em `0.0.0.0:8080` por padrão. Defina `PORT` para alterar a po
 
 ## Limites de integração
 
-- O verificador JWT está conectado às rotas protegidas do serviço Rust, mas o serviço ainda não foi implantado nem recebe tráfego do aplicativo.
+- O serviço está implantado no Railway paralelo (`https://shiqi-core-development.up.railway.app`) e `/readyz` foi confirmado pelo usuário. O frontend da branch `shiqi-parallel-dev` foi conectado ao endpoint de upload; a validação HTTP com uma sessão real e upload real ainda está pendente.
 - O algoritmo real do Supabase paralelo foi confirmado como ES256 (EC P-256) pelo job `supabase-jwks` do GitHub Actions. O teste unitário `parses_supabase_es256_jwks_and_verifies_signed_claims` valida o formato JWK e a assinatura com uma chave fixture exclusiva de testes; não usa nem representa a chave real do projeto.
-- O upload Rust encaminha a gravação ao bucket privado `attachments` com o JWT do usuário e a chave publicável. A policy `attachments_insert_own` continua validando a pasta do usuário; o serviço não usa privilégios administrativos. A leitura permanece via signed URLs de 60 segundos, sob as policies RLS existentes.
+- O frontend paralelo agora envia anexos por `POST /v1/attachments/upload`, configurado por `CORE_URL` em `apps/web/config.js`. O serviço encaminha o JWT do usuário e a chave publicável ao bucket privado `attachments`; a policy `attachments_insert_own` continua validando a pasta do usuário. O serviço não usa privilégios administrativos.
+- A leitura de anexos permanece diretamente no Supabase Storage por signed URLs de 60 segundos, sob as policies RLS existentes. Uploads de avatar continuam usando o Storage diretamente no bucket `avatars`.
 - O serviço ainda não conecta ao PostgreSQL nem executa operações privilegiadas. A próxima fase deve preservar a identidade JWT do usuário e deixar o Supabase Storage/RLS como autoridade de autorização; não adicionar service_role ao serviço.
-- A Edge Function Auth paralela ainda precisa ser publicada e validada separadamente antes de substituir qualquer fluxo de cadastro/login. Nenhuma UI foi alterada nesta etapa.
+- A Edge Function Auth paralela está publicada e o usuário confirmou cadastro com recebimento do e-mail de verificação. Login, sessão real em `/v1/me` e upload real pelo Rust ainda precisam de validação.
