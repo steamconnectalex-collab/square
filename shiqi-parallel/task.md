@@ -232,3 +232,12 @@
 - Consulta direta de ACL por aclexplode em coluna falhou por formato de array; substituída com sucesso por information_schema.column_privileges. Nenhum dado foi modificado.
 - Estado real: a documentação de schema/ACL está substancialmente recuperada, mas a migration atômica e rollback executáveis ainda precisam de validação isolada. A Edge Function auth ativa v9 ainda não foi recuperada integralmente para o Git; não conectar frontend nem publicar backend até resolver isso.
 - Commits desta rodada: 4cb88f6 adiciona matriz de grants; c94a2e0 corrige revogação de grants por coluna; 5d64b12 consolida o plano. Tudo exclusivamente em shiqi-parallel-dev.
+
+### 2026-11-26 — Backend Auth v10 recuperado
+
+- Recuperada do Supabase original a Edge Function auth ativa, versão 10 (ACTIVE, verify_jwt=false), incluindo index.ts completo (30.767 bytes) e mail.ts (7.951 bytes).
+- Atualizados os dois arquivos em supabase/functions/auth/ exclusivamente na branch shiqi-parallel-dev. A cópia truncada de 2.259 bytes foi substituída pela fonte ativa completa. Não houve deploy.
+- Rotas presentes: signup, verify, resend, login, login/totp, forgot, reset, email/change/request, email/change/confirm, account/deactivate, account/delete, mfa/recovery, mfa/disable e GET /health. QR não consta nesta versão.
+- RPCs chamadas: rate_check, get_auth_user_by_email, verify_email_code, get_login_email_by_username, revoke_user_sessions e purge_user_data. Variáveis lidas: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY, SITE_URL, EXTRA_ORIGINS, RESEND_API_KEY, RESEND_FROM, BRAND_NAME.
+- Nenhum segredo de service role foi copiado; segredos permanecem no Supabase. A chave publishable fallback é pública. Original e destino permanecem sem alteração remota.
+- Próximo passo: validar dependências de Auth, compatibilidade das RPCs/tabelas, build/checagem estática e testes de contrato; não publicar nem conectar frontend antes do aceite de regressão.
