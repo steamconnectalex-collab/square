@@ -105,6 +105,12 @@ FROM pg_policies
 WHERE schemaname='storage' AND tablename='objects'
 ORDER BY policyname;
 
+-- Policies do canal privado Realtime (voice:<channel-id>) também precisam ser restauradas.
+SELECT schemaname, tablename, policyname, permissive, roles, cmd, qual, with_check
+FROM pg_policies
+WHERE schemaname='realtime' AND tablename='messages'
+ORDER BY policyname;
+
 -- 7) Histórico de migrations (não apagar manualmente).
 SELECT version, name
 FROM supabase_migrations.schema_migrations
