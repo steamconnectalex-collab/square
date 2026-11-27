@@ -93,6 +93,10 @@ assert.ok(storageBucketSql.includes("'attachments', 'attachments', false") &&
 assert.ok(draftSql.includes("'attachments', 'attachments', false") &&
   draftSql.includes("'avatars', 'avatars', true"),
   'O draft deve preservar os modelos de privacidade dos buckets.');
+assert.equal(count(rlsSql, "split_part(attachment_path, '/', 1) = (select auth.uid())::text"), 2,
+  'INSERT e UPDATE de mensagens devem validar a pasta do autor.');
+assert.equal(count(draftSql, "split_part(attachment_path, '/', 1) = (select auth.uid())::text"), 2,
+  'INSERT e UPDATE do cutover devem validar a pasta do autor.');
 assert.ok(rlsSql.includes("split_part(attachment_path, '/', 1) = (select auth.uid())::text") &&
   draftSql.includes("split_part(attachment_path, '/', 1) = (select auth.uid())::text"),
   'A mensagem só pode referenciar anexo dentro da pasta do próprio autor.');
