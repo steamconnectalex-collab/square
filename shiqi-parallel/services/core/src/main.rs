@@ -109,9 +109,26 @@ fn parse_allowed_origins(raw: &str) -> Option<Vec<HeaderValue>> {
 
 fn browser_cors_layer() -> Option<CorsLayer> {
     let configured = env::var("SHIQI_ALLOWED_ORIGINS")
-        .or_else(|_| env::var("SHIQI_ALLOWED_ORIGIN"))
-        .ok()?;
-    let origins = parse_allowed_origins(&configured)?;
+        .or_else(|_| env::var("SHIQI_ALLOWED_ORIGIN"));
+    let mut origins = match configured {
+        Ok(value) => parse_allowed_origins(&value)?,
+        Err(_) => Vec::new(),
+    };
+
+    // Hosts explícitos do preview SHIQI; não usar wildcard em CORS.
+    for preview in [
+        "https://shiqi-parallel-git-shiqi-parallel-dev-steamconnectalex-9536.vercel.app",
+        "https://shiqi-parallel-q5nj8ia95-steamconnectalex-9536.vercel.app",
+    ] {
+        let value = HeaderValue::from_static(preview);
+        if !origins.contains(&value) {
+            origins.push(value);
+        }
+    }
+    if origins.is_empty() {
+        return None;
+    }
+
     Some(
         CorsLayer::new()
             .allow_origin(AllowOrigin::list(origins))
