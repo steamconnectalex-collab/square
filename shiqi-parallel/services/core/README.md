@@ -8,11 +8,11 @@ Serviço Rust independente em fase inicial, isolado do frontend existente.
 - `GET /healthz`: verifica se o processo responde.
 - `GET /readyz`: retorna 200 somente quando a configuração JWT do Supabase está válida; sem `SUPABASE_URL`, retorna 503.
 - `GET /v1/me`: rota protegida; valida o Bearer JWT do Supabase via JWKS e retorna somente o ID e o papel do usuário.
-- `POST /v1/attachments/validate`: exige JWT e valida assinatura JPEG/PNG/WebP, MIME declarado e limite de 3 MiB. Não grava arquivos nem substitui as policies/signed URLs do Storage.
+- `POST /v1/attachments/validate`: exige JWT e valida assinatura JPEG/PNG/WebP/GIF, MIME declarado e limite de 3 MiB. Não grava arquivos nem substitui as policies/signed URLs do Storage.
 - `TraceLayer` para rastreamento de requisições HTTP.
 - Logs via `tracing`.
 - Encerramento gracioso.
-- Validador de anexos JPEG/PNG/WebP alinhado ao limite atual de 3 MiB do Storage, conferindo assinatura binária e Content-Type.
+- Validador de anexos JPEG/PNG/WebP/GIF alinhado ao limite atual de 3 MiB do Storage, conferindo assinatura binária e Content-Type.
 - Verificador JWT Supabase por JWKS assimétrico (ES256/RS256), com validação de `kid`, assinatura, issuer, audience, expiração, `nbf` e `role=authenticated`, cache de chaves e atualização quando surge um `kid` novo.
 - Testes unitários do validador.
 - Build multi-stage em Docker.
