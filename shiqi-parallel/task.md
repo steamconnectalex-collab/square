@@ -470,3 +470,13 @@
 - Commits desta etapa: workflow `7bcf0f90e4df3f5f2241c611e099a491a7bf198e`; teste ES256 `fb239df8676c610db9e548f5442e19c8e7cced15`; formatação `dc5a43d48ea69b262d8aa9a5a7f94fac35896484`; README `c731d0ae633fd6693ddf7dbbcb0a35019d5e2ecd`; auditoria `f35f69d82b9f416f16989e6b219402e66b1cf54d`.
 - O serviço continua sem deploy e sem tráfego do frontend. Nenhum upload foi ativado e nenhuma policy/RLS foi contornada.
 - Próxima fase técnica: projetar e testar o proxy de upload Rust usando o JWT original do usuário e o Supabase Storage como autoridade de RLS; somente depois integrar UI.
+
+
+### 2026-11-27 — Proxy de upload Rust (em andamento)
+- Criado `services/core/src/storage.rs`: proxy para o bucket privado `attachments`, encaminhando o Bearer JWT do usuário junto da chave publicável; não usa service_role.
+- O proxy valida que o caminho seja exatamente `<user_id>/<filename>.<ext>`, que a pasta pertença ao usuário autenticado e que a extensão corresponda ao formato binário detectado.
+- Criada rota autenticada `POST /v1/attachments/upload`; mantém `POST /v1/attachments/validate`. A rota aplica o limite global de 3 MiB e retorna somente o caminho após upload aceito pelo Storage.
+- `/readyz` agora exige configuração JWT e `SUPABASE_PUBLISHABLE_KEY` para marcar o serviço pronto. README e comentário do validador atualizados.
+- Commits: `2ce1a8d` (proxy), `0d9996f` (rota), `c45f5da` (comentário), `c3acb4f` (README).
+- Aguardando GitHub Actions no commit mais recente; os runs intermediários foram cancelados por pushes consecutivos e o último ainda está pendente. Não integrar a UI nem implantar o serviço até CI verde e revisão final.
+- Nenhuma mudança na UI, Supabase remoto, Storage policies, produção ou branch `main`.
