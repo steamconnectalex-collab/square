@@ -205,3 +205,14 @@ Combinado com a pessoa em 2026-11-23: o que precisa de conta em aplicativo exter
 
 ### 2026-11-23
 - **Feito:** decoração de avatar corrigida; skeleton UI; permissões de amizade (migração 0018), filtro de spam e Apertar para Falar. Testes 164 OK. **Próximo passo:** a pessoa conferir no ar; decidir sobre tema escuro, trocar e-mail, 2 etapas e excluir conta (precisam de backend novo).
+
+
+## Auditoria pós-teste — 2026-11-27
+
+- O teste estático/preflight continua aprovado (18/18 verificações); isso não equivale a teste real de login, Auth ou Edge Function.
+- Supabase paralelo rechecado: 23/23 tabelas públicas com RLS habilitado (inclui tabelas legacy preservadas).
+- Storage: bucket `attachments` privado e `avatars` público; 7 políticas no bucket `objects`, todas atribuídas a `authenticated`.
+- Realtime: publicação `supabase_realtime` contém `friendships`, `messages` e `voice_members`.
+- Advisors atuais: 5 tabelas com RLS sem policies (incluem tabelas internas como `email_codes`, `mfa_recovery`, `rate_hits`; também `server_bans` e `server_invites`, que precisam de revisão funcional); 39 funções SECURITY DEFINER executáveis por authenticated; 6 FKs sem índice de cobertura; 1 tabela sem PK (`rate_hits`). Não aplicar revogações em lote: revisar corpo e chamadas autorizadas de cada função antes.
+- Edge Functions publicadas: nenhuma. Auth real e testes com duas contas continuam pendentes.
+- Próxima sequência: (1) auditoria individual das 39 funções SECURITY DEFINER e policies associadas; (2) corrigir apenas permissões comprovadamente excessivas; (3) publicar função `auth` no projeto paralelo com configuração segura de e-mail; (4) testar signup/login com duas contas, RLS, mensagens, anexos e voz.
