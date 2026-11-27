@@ -284,7 +284,10 @@ async fn main() {
             None
         }
     };
-    let storage = match (env::var("SUPABASE_URL"), env::var("SUPABASE_PUBLISHABLE_KEY")) {
+    let storage = match (
+        env::var("SUPABASE_URL"),
+        env::var("SUPABASE_PUBLISHABLE_KEY"),
+    ) {
         (Ok(url), Ok(key)) => match StorageProxy::new(&url, &key) {
             Ok(proxy) => {
                 tracing::info!("Supabase Storage proxy configured with publishable key");
@@ -296,7 +299,9 @@ async fn main() {
             }
         },
         _ => {
-            tracing::warn!("SUPABASE_URL/SUPABASE_PUBLISHABLE_KEY missing; attachment uploads are unavailable");
+            tracing::warn!(
+                "SUPABASE_URL/SUPABASE_PUBLISHABLE_KEY missing; attachment uploads are unavailable"
+            );
             None
         }
     };
@@ -357,7 +362,10 @@ mod tests {
     #[tokio::test]
     async fn protected_routes_reject_missing_bearer_token() {
         let headers = HeaderMap::new();
-        let state = AppState { jwt: None, storage: None };
+        let state = AppState {
+            jwt: None,
+            storage: None,
+        };
 
         assert_eq!(
             authenticate(&headers, &state).await.unwrap_err(),
@@ -372,7 +380,10 @@ mod tests {
             header::AUTHORIZATION,
             "Bearer placeholder".parse().expect("valid header"),
         );
-        let state = AppState { jwt: None, storage: None };
+        let state = AppState {
+            jwt: None,
+            storage: None,
+        };
 
         assert_eq!(
             authenticate(&headers, &state).await.unwrap_err(),
