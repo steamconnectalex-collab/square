@@ -259,3 +259,9 @@ Combinado com a pessoa em 2026-11-23: o que precisa de conta em aplicativo exter
 - Caminho de objeto limitado a 200 bytes, filename a 128 bytes.
 - CORS foi adicionado com allowlist de origem exata por `SHIQI_ALLOWED_ORIGIN`; CI `46004512804` ainda em andamento.
 - Sem deploy, sem alteração do frontend, do banco remoto, da produção ou da branch `main`.
+
+
+## Atualização SHIQI — 2026-11-27
+- Trabalho segue isolado em `shiqi-parallel-dev`; `main` e produção não devem receber commits sem autorização expressa.
+- CI Rust `46004512804` aprovado (JWKS, formatação, 21 testes e Clippy). Foi adicionado build Docker ao workflow; run `46006067078` está validando a imagem.
+- Guia de implantação do container: `shiqi-parallel/services/core/DEPLOYMENT.md`. O projeto Vercel `shiqi-parallel` hospeda o frontend, não o serviço Rust. Railway é opção de host Docker; a conexão ainda depende do usuário.
