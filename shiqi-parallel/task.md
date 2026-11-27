@@ -334,4 +334,5 @@
 - Revisão estática confirmou 13 rotas POST + GET `/health`; as tabelas `profiles`, `email_codes`, `mfa_recovery` e as seis RPCs utilizadas estão presentes nas referências SQL canônicas.
 - Atualizado `docs/AUTH_CONTRACT_INVENTORY.md` para corrigir o diagnóstico anterior. O prefixo HMAC histórico `square-v1:` foi preservado.
 - Limitação: nenhuma checagem Deno/runtime, teste JWT, conexão da UI, envio de e-mail ou deploy foi executado. Não houve alteração no Supabase nem em produção.
-- Próximo passo: revisar os handlers contra as definições/ACLs SQL e os payloads reais do frontend; depois preparar testes de contrato antes da integração.
+- Conferidos estaticamente os 13 endpoints contra `apps/web/app.js` e `settings-pages.js`: rotas e nomes dos payloads correspondem; o gerenciamento de cadastro/verificação TOTP usa Supabase Auth REST diretamente, enquanto a Edge Function trata recuperação e desligamento MFA. Detalhes registrados em `docs/AUTH_CONTRACT_INVENTORY.md` (commit `6ca01d5`).
+- Próximo passo: revisar as regras de segurança/ACL e preparar testes de contrato antes da integração.
