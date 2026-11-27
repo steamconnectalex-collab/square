@@ -320,3 +320,10 @@ Combinado com a pessoa em 2026-11-23: o que precisa de conta em aplicativo exter
 - Próxima fase iniciada: integração gradual do frontend ao serviço Rust do Railway paralelo. Primeiro escopo: uploads do bucket privado `attachments` via `POST /v1/attachments/upload`, mantendo JWT do usuário e RLS do Supabase como autoridade.
 - Uploads de avatar e leitura de anexos por signed URLs permanecem no fluxo atual. Sem alterações em Auth, design, `main`, produção ou secrets.
 - Acompanhamento detalhado atualizado em `shiqi-parallel/task.md`.
+
+
+## SHIQI — atualização de escopo (2026-11-27)
+- Usuário esclareceu que `square-chat` é o projeto principal e pediu para adiar o problema de envio de imagens; não investigar CORS/upload nem alterar o projeto Vercel principal nesta fase.
+- Próxima etapa no ambiente isolado `shiqi-parallel-dev`: smoke runtime do Railway (`/healthz`, `/readyz`, `/v1/me` sem token deve rejeitar), depois login real e `/v1/me` com sessão válida; em seguida RLS/Realtime/RPCs com contas de teste.
+- Workflow `.github/workflows/shiqi-core.yml` recebeu job `railway-smoke` no commit `f8a8e2f213d0fc298de5960aa009c90213b9cd0c`. Não testa JWT real nem upload.
+- Nenhuma alteração em `main`, produção ou no projeto `square-chat`.
