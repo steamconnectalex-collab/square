@@ -92,3 +92,12 @@
 - **Entregue nesta sessão:** primeira versão de `docs/FEATURE_PARITY_MATRIX.md` com áreas funcionais, contratos observados, dependências, bloqueios e lacunas de teste. Nenhum arquivo de interface, banco remoto, produção ou `main` foi alterado.
 - **Achados iniciais:** o app paralelo referencia as tabelas e RPCs do produto original, mas o Supabase paralelo continua com cinco tabelas incompatíveis; autenticação versionada continua stub; `tests/smoke.js` na raiz aponta para `../site` (site original), portanto não valida a cópia paralela.
 - **Próximo passo:** completar o cruzamento da matriz com todos os handlers e estados, separar persistência real de preferências locais/itens “em breve”, e elaborar a lista de regressão antes de marcar a etapa 1 concluída.
+
+### 2026-11-26 — Continuação da reconciliação e dependências do protótipo
+- Relidos os arquivos de acompanhamento e as regras permanentes antes de continuar.
+- Revalidadas por SELECT as cinco tabelas atuais do destino: todas continuam com zero linhas.
+- Recuperados os triggers e policies do protótipo: communities_add_owner, profiles_set_updated_at, o handler de auth.users e policies baseadas em is_community_admin/is_community_member. O handler atual cria perfis com username possivelmente nulo e precisa ser adaptado antes do schema canônico.
+- Definida como estratégia preferida para revisão a preservação das cinco tabelas por renomeação controlada, sem conversão destrutiva de UUID para bigint e sem reutilizar as policies do protótipo. Ainda não há migration DDL nem autorização para executar alterações remotas.
+- Encontrada diferença na função original voice_join: banco original usa 6; a branch paralela tem a exceção aprovada de 10 participantes. A migração manterá 10.
+- A extração de todas as definições de função original em uma única consulta foi truncada pelo limite de saída; será refeita em lotes menores antes de produzir SQL consolidado.
+- Nenhuma alteração remota em Supabase, produção, UI, domínio, main ou Vercel.
