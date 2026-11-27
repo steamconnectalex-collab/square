@@ -353,3 +353,10 @@ A conferência estática da branch paralela confirmou:
 - Criadas referências SQL para buckets Storage e publicação Realtime, antes descritas apenas em metadados.
 
 Esta foi uma revisão estática dos arquivos Git. Não substitui parser/execução PostgreSQL, teste de privilégios por papel ou ensaio de rollback em banco descartável. O conector Supabase negou permissão de leitura do projeto paralelo nesta sessão; nenhum SQL foi executado remotamente.
+
+## Draft de cutover — 27/11/2026
+
+- `voice_join` no destino paralelo deve aceitar 10 participantes; o SQL canônico extraído do original tinha 6 e foi corrigido na referência de RPC.
+- ACL revisada: `authenticated` e `service_role` precisam de USAGE em `private` para as rotinas/policies previstas; seis RPCs de backend devem ter EXECUTE somente em `service_role`.
+- Foi montado draft transacional, preflight somente leitura e snapshot para rollback. O draft renomeia índices ligados às cinco tabelas prototype antes de criar as tabelas canônicas, evitando colisões de nomes de índices/PK.
+- O draft ainda não está liberado para execução: não houve parser/ensaio PostgreSQL isolado nem leitura remota atual. Rollback executável depende do snapshot real de ACLs e da definição exata do trigger Auth.
