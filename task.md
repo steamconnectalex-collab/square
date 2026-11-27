@@ -227,3 +227,11 @@ Combinado com a pessoa em 2026-11-23: o que precisa de conta em aplicativo exter
 - Advisors atuais: 5 tabelas com RLS sem policies (incluem tabelas internas como `email_codes`, `mfa_recovery`, `rate_hits`; também `server_bans` e `server_invites`, que precisam de revisão funcional); 39 funções SECURITY DEFINER executáveis por authenticated; 6 FKs sem índice de cobertura; 1 tabela sem PK (`rate_hits`). Não aplicar revogações em lote: revisar corpo e chamadas autorizadas de cada função antes.
 - Edge Functions publicadas: nenhuma. Auth real e testes com duas contas continuam pendentes.
 - Próxima sequência: (1) auditoria individual das 39 funções SECURITY DEFINER e policies associadas; (2) corrigir apenas permissões comprovadamente excessivas; (3) publicar função `auth` no projeto paralelo com configuração segura de e-mail; (4) testar signup/login com duas contas, RLS, mensagens, anexos e voz.
+
+
+## SHIQI — atualização 2026-11-27 (verificação JWKS)
+- Projeto Supabase paralelo `ujdosskjycrdkcgsswfa` confirmado `ACTIVE_HEALTHY` via conexão Primary.
+- Endpoint JWKS público não ficou acessível diretamente pelo ambiente de ferramentas; algoritmo real ainda não confirmado.
+- Job `supabase-jwks` adicionado ao workflow Rust na branch `shiqi-parallel-dev` (commit `7bcf0f90e4df3f5f2241c611e099a491a7bf198e`). O job consulta o JWKS público e verifica compatibilidade com ES256/RS256 sem imprimir material das chaves nem usar secrets.
+- Aguardar o GitHub Actions. Não conectar o verificador ao tráfego até o job confirmar o algoritmo/chaves reais.
+- Produção e branch `main` permanecem intocadas.
