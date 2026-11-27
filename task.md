@@ -214,8 +214,8 @@ Combinado com a pessoa em 2026-11-23: o que precisa de conta em aplicativo exter
 - Primeira execução do commit `d5d7920` falhou exclusivamente no `cargo fmt --check`; log identificou diferenças de formatação em `src/main.rs`. Não chegou a executar testes nem Clippy.
 - Formatação corrigida em `src/main.rs`, commit `6257ca742a4791f0f5db677dee9db42c7c292afa`.
 - Workflow atualizado no commit `d366d0b6c80b5f5fd5f411ea39f45e181dcd5619`.
-- Nova execução automática para o commit de código `6257ca7`: run `45997615635`, em andamento na última consulta. **Ainda não declarar compilação/testes aprovados até a conclusão do run.**
-- Produção e branch `main` não foram alteradas. Próximo passo: obter resultado do run; corrigir quaisquer erros de compilação/testes/Clippy e só então avançar para integração funcional do core.
+- CI remoto concluído com sucesso em 27/11: run `45997615635` (commit `6257ca7`) passou em `cargo fmt`, `cargo test` e `cargo clippy`; run `45997628383` (commit `d366d0b`, com `--all-features`) também passou nas três etapas. A compilação/testes do núcleo Rust estão aprovados para esses commits.
+- Produção e branch `main` não foram alteradas. Compatibilidade adicional identificada: o frontend e o bucket privado de anexos aceitam GIF, mas o validador Rust inicialmente aceitava apenas JPEG/PNG/WebP. A implementação Rust agora reconhece GIF87a/GIF89a e `image/gif`; run `45998130147` está validando essa correção. Próximo passo: confirmar CI e então avançar com testes de contrato/autorização do serviço sem conectar a UI.
 
 ## Auditoria pós-teste — 2026-11-27
 
