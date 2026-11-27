@@ -1,6 +1,6 @@
 # SHIQI — plano de rollback do cutover canônico
 
-**Status: NÃO LIBERADO PARA EXECUÇÃO.** Snapshot real conferido em 2026-11-27; o rollback continua sem teste transacional em PostgreSQL isolado. O arquivo `CUTOVER_DRAFT.sql` é apenas uma proposta de revisão. Este plano registra as condições para reverter sem perda; não autoriza aplicar nem desfazer o banco.
+**Cutover aplicado em 2026-11-27 no Supabase paralelo `ujdosskjycrdkcgsswfa`. Rollback: NÃO LIBERADO PARA EXECUÇÃO.** O rollback continua sem teste transacional em PostgreSQL isolado. Este plano registra as condições para uma eventual reversão; não autoriza executar DDL destrutivo. Priorizar correção para frente até que o rollback seja testado e revisado.
 
 ## Por que o rollback ainda não é executável
 
@@ -13,11 +13,11 @@ O cutover preserva as cinco tabelas prototype renomeando-as para `legacy_*`, mas
 - membros da publicação Realtime, estado prévio dos buckets e todas as policies de `storage.objects`;
 - histórico de migrations.
 
-A leitura do Supabase foi restabelecida usando a conexão `Primary` (projeto `ujdosskjycrdkcgsswfa`, status `ACTIVE_HEALTHY`). A definição exata do trigger `on_auth_user_created_shiqi` foi capturada: `AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION private.handle_new_user()`. O corpo completo do handler também foi capturado. O preflight foi executado em modo somente leitura e todos os 18 checks booleanos atualizados retornaram `passed=true`. O snapshot real confirmou cinco tabelas vazias, zero usuários Auth, zero sequences no schema `public`, nenhum bucket/policy Storage e Realtime somente em `public.messages`. As ACLs brutas foram lidas pelos catálogos PostgreSQL; há grants amplos de tabela para `anon` e `authenticated` nas cinco tabelas prototype, além de grants por coluna de UPDATE para `authenticated`. Nenhum DDL/DML foi executado.
+A leitura do Supabase foi restabelecida usando a conexão `Primary` (projeto `ujdosskjycrdkcgsswfa`, status `ACTIVE_HEALTHY`). A definição exata do trigger `on_auth_user_created_shiqi` foi capturada: `AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION private.handle_new_user()`. O corpo completo do handler também foi capturado. O preflight foi executado em modo somente leitura e todos os 18 checks booleanos atualizados retornaram `passed=true`. O snapshot real confirmou cinco tabelas vazias, zero usuários Auth, zero sequences no schema `public`, nenhum bucket/policy Storage e Realtime somente em `public.messages`. As ACLs brutas foram lidas pelos catálogos PostgreSQL; há grants amplos de tabela para `anon` e `authenticated` nas cinco tabelas prototype, além de grants por coluna de UPDATE para `authenticated`. O cutover foi aplicado posteriormente, em 2026-11-27; consulte `CUTOVER_EXECUTION_REPORT.md` para o resultado.
 
 ## Snapshot obrigatório antes de qualquer cutover
 
-Preflight e snapshot foram consultados no projeto paralelo em 2026-11-27, somente leitura. A primeira versão de `CUTOVER_SNAPSHOT.sql` usava `information_schema.sequence_privileges`, visão inexistente neste PostgreSQL; foi corrigida para consultar ACLs diretamente via `pg_class`/`aclexplode`. O snapshot corrigido foi executado em consultas independentes em 2026-11-27 e todas as seções retornaram sem erro. O baseline resumido está em `CUTOVER_SNAPSHOT_BASELINE.md`; antes de um cutover futuro, repetir e arquivar a saída integral atualizada. Não executar `CUTOVER_DRAFT.sql`.
+Preflight e snapshot foram consultados no projeto paralelo em 2026-11-27, somente leitura. A primeira versão de `CUTOVER_SNAPSHOT.sql` usava `information_schema.sequence_privileges`, visão inexistente neste PostgreSQL; foi corrigida para consultar ACLs diretamente via `pg_class`/`aclexplode`. O snapshot corrigido foi executado em consultas independentes em 2026-11-27 e todas as seções retornaram sem erro. O baseline resumido está em `CUTOVER_SNAPSHOT_BASELINE.md`; o snapshot foi repetido integralmente imediatamente antes do cutover de 2026-11-27. A saída foi conferida; o baseline resumido continua preservado em `CUTOVER_SNAPSHOT_BASELINE.md`.
 
 ## Condições mínimas para um rollback futuro
 
@@ -52,3 +52,11 @@ Os buckets podem ser mantidos durante o rollback se estiverem vazios e com confi
 ## Regra de segurança
 
 Se dados de usuário, perfis, mensagens, objetos Storage ou outras informações forem criados após o cutover, este rollback destrutivo deixa de ser permitido. Nesse cenário, fazer correção para frente ou planejar migração de dados; nunca apagar dados para voltar ao protótipo.
+
+## Estado após o cutover (2026-11-27)
+
+- Migration `20261127112309_shiqi_canonical_schema_cutover` aplicada com sucesso no projeto paralelo.
+- As cinco tabelas antigas foram renomeadas para `legacy_*` e permanecem vazias; todas as 18 tabelas canônicas também estão vazias.
+- `auth.users` continua vazio; buckets existem sem objetos; trigger Auth prototype foi removido e `private.handle_new_user()` foi preservada.
+- Não executar este rollback sem completar e revisar um teste transacional em PostgreSQL isolado. Como ainda não há dados de usuários, priorizar correções para frente e manter a UI/Edge Function desconectadas até os testes de integração.
+- A primeira tentativa da migration falhou por terminadores ausentes em funções; a transação não deixou alterações, confirmado por consulta de estado. A versão corrigida foi aplicada com sucesso.
