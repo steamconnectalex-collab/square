@@ -70,7 +70,7 @@
 - [x] 2026-11-27 — Edge Function Auth completa restaurada em `shiqi-parallel/supabase/functions/auth/index.ts` a partir da fonte versionada na raiz; origens antigas de produção removidas, URL padrão ajustada para o projeto paralelo e chave anon exigida por variável de ambiente. Sem deploy.
 - [ ] Validar contratos da Edge Function Auth restaurada, dependências, JWT e variáveis de ambiente antes de conectar a UI. Revisão estática MFA concluída em 2026-11-27; testes de runtime continuam pendentes.
 - [x] 2026-11-27 — Testes JWT assinados/negativos concluídos: issuer, audience, expiração, `nbf`, UUID, role e rejeição de HS256; CI completo aprovado no run `45998473927`.
-- [ ] Confirmar o algoritmo e as chaves JWKS reais do Supabase paralelo antes de conectar o verificador ao tráfego; a chave RSA dos testes é exclusivamente fictícia e não representa a chave do projeto.
+- [x] 2026-11-27 — Confirmado o JWKS real do Supabase paralelo via GitHub Actions: chave EC P-256 / ES256; algoritmo compatível com o verificador. Teste unitário ES256 com fixture de teste validou parsing JWK, seleção por kid e assinatura. CI verde no run `45999868193`.
 - [x] 2026-11-27 — Compatibilidade de anexos Rust alinhada ao frontend e ao bucket `attachments`: adicionados GIF87a/GIF89a e MIME `image/gif`, mantendo limite de 3 MiB. Testes e Clippy passaram no run `45998130147` (commit `b03021f`). Frontend não foi alterado.
 - [ ] Testar em runtime os contratos de Auth/JWT, RLS, RPCs, Storage, Realtime e concorrência antes de conectar a UI; qualquer migration incremental futura exige revisão própria.
 - [ ] Regressão de todos os fluxos que permanecem no produto.
@@ -461,3 +461,12 @@
 - Ainda não conectar ao tráfego até o CI confirmar e até definir a etapa de integração/implantação sem misturar com a Edge Function Auth pendente.
 
 - Ajuste de formatação após o primeiro CI: o run `45999793815` confirmou JWKS ES256, mas parou no `cargo fmt` por uma linha em branco extra no teste novo. Corrigido no commit `dc5a43d48ea69b262d8aa9a5a7f94fac35896484`; os testes e Clippy ainda aguardam nova execução.
+
+
+### 2026-11-27 — Confirmação JWKS e CI ES256 concluídos
+- Job `supabase-jwks` consultou o endpoint real do projeto paralelo e confirmou chave EC P-256 / ES256.
+- Teste unitário assinado cobre JWK no formato Supabase, seleção por `kid` e verificação ES256 com chave fixture exclusiva de testes.
+- Run `45999868193` aprovado: `cargo fmt --all -- --check`, `cargo test --all-targets --all-features` e `cargo clippy --all-targets --all-features -- -D warnings`, além do job JWKS.
+- Commits desta etapa: workflow `7bcf0f90e4df3f5f2241c611e099a491a7bf198e`; teste ES256 `fb239df8676c610db9e548f5442e19c8e7cced15`; formatação `dc5a43d48ea69b262d8aa9a5a7f94fac35896484`; README `c731d0ae633fd6693ddf7dbbcb0a35019d5e2ecd`; auditoria `f35f69d82b9f416f16989e6b219402e66b1cf54d`.
+- O serviço continua sem deploy e sem tráfego do frontend. Nenhum upload foi ativado e nenhuma policy/RLS foi contornada.
+- Próxima fase técnica: projetar e testar o proxy de upload Rust usando o JWT original do usuário e o Supabase Storage como autoridade de RLS; somente depois integrar UI.
