@@ -9,6 +9,7 @@ O cutover preserva as cinco tabelas prototype renomeando-as para `legacy_*`, mas
 - ACLs de tabela, coluna e schema (especialmente `private`), incluindo `PUBLIC` e privilégios específicos do PostgreSQL 17, além das ACLs de todas as sequences do schema `public` (o snapshot consulta os catálogos diretamente);
 - definição exata do trigger `on_auth_user_created_shiqi` e do handler `private.handle_new_user()`;
 - índices, constraints, policies e triggers prototype;
+- policies da tabela `realtime.messages` (sinalização privada de voz), além da publicação;
 - membros da publicação Realtime, estado prévio dos buckets e todas as policies de `storage.objects`;
 - histórico de migrations.
 
@@ -34,7 +35,7 @@ O rollback só poderá ser considerado se:
 1. Confirmar as condições acima e abortar se qualquer tabela canônica ou bucket tiver dados.
 2. Retirar da publicação Realtime as tabelas canônicas e recolocar `public.legacy_messages`.
 3. Remover as policies `voice_topic_select` e `voice_topic_insert` de `realtime.messages`, além das policies e triggers criados para as tabelas canônicas.
-4. Remover as RPCs públicas e helpers privados canônicos, usando assinaturas exatas e sem `CASCADE`.
+4. Remover as RPCs públicas e helpers privados canônicos, incluindo `private.can_read_attachment(text)`, usando assinaturas exatas e sem `CASCADE`.
 5. Remover as 18 tabelas canônicas em ordem inversa das FKs, sem `CASCADE`.
 6. Renomear as cinco tabelas `legacy_*` para os nomes originais.
 7. Remover as sete policies Storage criadas pelo cutover (`attachments_delete_own`, `attachments_insert_own`, `attachments_select_message_member` e as quatro `avatars_*`); manter os buckets somente se estiverem vazios e a decisão de preservá-los estiver documentada.
