@@ -6,7 +6,7 @@
 **Migrar tecnologia sem mudar design, layout, identidade visual, navegação ou qualquer funcionalidade do aplicativo original que permaneça no escopo.** O diretório `site/` da raiz é a fonte de verdade. Música foi explicitamente retirada do produto pelo usuário e poderá ser removida somente da cópia paralela. Nenhuma outra simplificação/remoção de função sem autorização expressa.
 
 ## Em andamento agora
-- [ ] Continuar revisão de compatibilidade do pacote SQL e autenticação. MFA, matriz de ACL e checks estáticos atualizados; auditoria de RPCs sociais/servidores/moderação em andamento. Validação PostgreSQL local dispensada; não aplicar DDL remoto.
+- [ ] Continuar revisão de compatibilidade do pacote SQL e autenticação. Anexos privados implementados nos SQLs, draft e frontend; teste estático passou em harness em memória e os JS alterados passaram na análise de sintaxe. Próximo: continuar contratos Realtime/mensagens/DMs e revisar rollback. Validação PostgreSQL local dispensada; não aplicar DDL remoto.
 - [x] 2026-11-27 — Ampliado o snapshot para incluir grants de tabela concedidos a PUBLIC e privilégios de todas as sequences; o plano de rollback agora inclui remoção das sete policies Storage do cutover e restauração dos grants de sequence. Removidos grants duplicados do draft.
 
 ## Bloqueios atuais (27/11/2026)
@@ -20,7 +20,7 @@
 - O smoke test existente na raiz aponta para o site original e não valida a cópia paralela; não foi executado para evitar testar/altear o alvo errado.
 
 ## Concluído
-- [x] 2026-11-27 — Anexos protegidos por conversa: bucket `attachments` privado; signed URLs autenticadas de 60s no frontend; policy `attachments_select_message_member` baseada em `private.can_read_attachment`, exigindo membro atual de servidor ou participante ativo de DM (com bloqueios respeitados). Upload/exclusão seguem restritos à pasta do usuário. Teste estático ampliado; integração/runtime pendentes.
+- [x] 2026-11-27 — Anexos protegidos por conversa: bucket `attachments` privado; signed URLs autenticadas de 60s no frontend; policy `attachments_select_message_member` baseada em `private.can_read_attachment`, exigindo membro atual de servidor ou participante ativo de DM (com bloqueios respeitados). Upload/exclusão seguem restritos à pasta do usuário. Mensagens também validam que o caminho do anexo pertence ao autor em INSERT e UPDATE. Teste estático passou em harness em memória com 16 arquivos; integração/runtime pendentes.
 - [x] 2026-11-27 — Endurecida a concorrência de `voice_join`: locks transacionais por usuário e sala evitam que entradas simultâneas ultrapassem 10 participantes ou mantenham o mesmo usuário em duas salas. Atualizados SQL canônico, draft e teste estático.
 - [x] 2026-11-27 — Corrigida exposição de perfis por amizade pendente: `private.shares_server_with()` agora só reconhece amizades com `status = 'accepted'`, tanto no helper canônico quanto no `CUTOVER_DRAFT.sql`. O helper alimenta `profiles_select_visible` e `profiles_full`; a correção impede que uma solicitação pendente seja tratada como amizade para liberar perfil. Adicionada verificação ao teste estático de contrato.
 - [x] 2026-11-27 — Corrigida a consulta de ACLs do snapshot: removida a referência à visão inexistente `information_schema.sequence_privileges`; agora usa `pg_class`/`aclexplode` para capturar grants de tabelas, colunas e sequences, inclusive PUBLIC e privilégios PG17. Incluída também a ACL dos schemas `private`/`public`.
@@ -396,3 +396,5 @@
 - Atualizados teste estático, relatório de segurança e plano de rollback. Verificações pós-commit de conteúdo ainda serão feitas; não foi executado o teste Node completo nem integração Storage/PostgreSQL.
 - Nenhuma migration, policy, bucket, função ou dado foi alterado no Supabase remoto; sem deploy ou alteração em produção.
 - Próximo passo: revisar consistência e sintaxe dos arquivos alterados, conferir referências à policy antiga e validar contratos Realtime/mensagens/DMs restantes.
+
+- Verificação adicional da etapa de anexos: o teste `auth-contract-static.js` passou em harness JavaScript em memória com os 16 arquivos atuais da branch. A análise de sintaxe de `apps/web/app.js` e do teste também passou. O script não foi executado em um processo Node real e não houve teste de Storage/PostgreSQL em runtime.
