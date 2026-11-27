@@ -114,6 +114,8 @@ function saveSession(d) {
 function clearSession() {
   S.session = null; S.profile = null;
   attachmentUrlCache.clear();
+  if (attachmentRefreshTimer) clearTimeout(attachmentRefreshTimer);
+  attachmentRefreshTimer = null;
   store.del('sq.session'); store.del('sq.profile');
 }
 async function freshToken() {
@@ -804,6 +806,22 @@ const ONLINE_MS = 150000;
 const FIELDS = 'id,author_id,content,created_at,edited_at,attachment_path,attachment_alt,thread_of';
 const mapMsg = (r) => ({ id: r.id, from: r.author_id, text: r.content, at: r.created_at, edited: !!r.edited_at, img: r.attachment_path || '', alt: r.attachment_alt || '', thread: r.thread_of || null });
 const attachmentUrlCache = new Map();
+let attachmentRefreshTimer = null;
+function scheduleAttachmentRefresh() {
+  if (attachmentRefreshTimer) return;
+  attachmentRefreshTimer = setTimeout(() => {
+    attachmentRefreshTimer = null;
+    const now = Date.now();
+    let hasValidUrls = false;
+    for (const [path, entry] of attachmentUrlCache) {
+      if (!entry.url) continue;
+      if (entry.expiresAt <= now + 5000) attachmentUrlCache.delete(path);
+      else hasValidUrls = true;
+    }
+    if (A && S.view === 'app') paintMsgs('keep');
+    if (hasValidUrls) scheduleAttachmentRefresh();
+  }, 45000);
+}
 function ensureAttachmentUrl(path) {
   const cached = attachmentUrlCache.get(path), now = Date.now();
   if (cached && ((cached.url && cached.expiresAt > now) || cached.promise || cached.failed)) return;
@@ -829,6 +847,7 @@ function ensureAttachmentUrl(path) {
   })().then((url) => {
     if (attachmentUrlCache.get(path) !== entry) return;
     entry.url = url; entry.expiresAt = Date.now() + 50000; entry.promise = null;
+    scheduleAttachmentRefresh();
     if (A && S.view === 'app') paintMsgs('keep');
   }).catch(() => {
     if (attachmentUrlCache.get(path) !== entry) return;
