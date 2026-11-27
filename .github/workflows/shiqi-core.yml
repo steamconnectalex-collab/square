@@ -11,6 +11,14 @@ on:
     paths:
       - "shiqi-parallel/services/core/**"
       - ".github/workflows/shiqi-core.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shiqi-core-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   rust:
@@ -27,5 +35,5 @@ jobs:
         with:
           workspaces: shiqi-parallel/services/core
       - run: cargo fmt --all -- --check
-      - run: cargo test --all-targets
-      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test --all-targets --all-features
+      - run: cargo clippy --all-targets --all-features -- -D warnings
