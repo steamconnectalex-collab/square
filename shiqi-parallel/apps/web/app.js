@@ -791,6 +791,18 @@ const ERRS = {
   too_many_channels: 'Esse servidor já tem o máximo de canais.', not_owner: 'Só o dono do servidor pode fazer isso.',
   not_member: 'Você não faz parte deste servidor.', user_not_found: 'Não encontramos ninguém com esse @usuário.', requests_closed: 'Esta pessoa não está aceitando pedidos de amizade de você.', rate_limited: 'Calma! Você está enviando mensagens rápido demais. Espere alguns segundos.', banned: 'Você foi banido deste servidor.', cannot_remove_self: 'Você não pode fazer isso com você mesmo.', voice_full: 'A sala de voz está cheia (máximo de 10 pessoas).', not_member: 'Você não faz parte deste servidor.', you_blocked: 'Você bloqueou essa pessoa. Desbloqueie para adicioná-la.', cannot_add_self: 'Você não pode adicionar a si mesmo.',
   too_many_requests: 'Você já tem pedidos demais esperando resposta.', no_request: 'Esse pedido não existe mais.', not_friends: 'Vocês ainda não são amigos.', not_owner: 'Só o dono do servidor faz isso.', past_date: 'A data do evento precisa ser no futuro.', too_many_events: 'Este servidor já tem eventos demais marcados.', invalid_thread: 'Não dá para responder a essa mensagem.', dm_closed: 'Esta pessoa não está aceitando mensagens diretas de você.', invalid_invite: 'Convite inválido ou expirado.',
+  unauthorized: 'Sua sessão expirou. Entre novamente.',
+  auth_unavailable: 'Não foi possível validar sua sessão agora. Tente novamente.',
+  storage_unavailable: 'O serviço de anexos está temporariamente indisponível.',
+  storage_forbidden: 'Você não tem permissão para enviar este anexo.',
+  storage_unauthorized: 'Sua sessão expirou. Entre novamente.',
+  storage_upload_failed: 'Não foi possível salvar a imagem. Tente novamente.',
+  attachment_already_exists: 'Este anexo já existe. Tente enviar novamente.',
+  file_too_large: 'A imagem ficou maior que o limite de 3 MB.',
+  unsupported_image: 'Formato de imagem não compatível. Use JPG, PNG, WebP ou GIF.',
+  content_type_mismatch: 'Não foi possível validar o formato desta imagem.',
+  invalid_attachment_path: 'Não foi possível preparar o caminho do anexo.',
+  empty_file: 'O arquivo está vazio.',
   'row-level security': 'Você não tem permissão para isso.', 'violates check constraint': 'Algum campo está fora do tamanho permitido.'
 };
 function errText(e) {
@@ -1601,7 +1613,8 @@ async function sendImage(file) {
     const isGif = file.type === 'image/gif';
     const blob = isGif ? file : await shrinkMax(file, 1280);
     const path = myId() + '/' + (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '' + Math.random().toString(16).slice(2)) + (isGif ? '.gif' : '.jpg');
-    await storageCall('POST', path, blob, isGif ? 'image/gif' : 'image/jpeg', 'attachments');
+    if (blob.size > 3 * 1024 * 1024) throw { message: 'file_too_large' };
+    await uploadAttachmentViaCore(path, blob, isGif ? 'image/gif' : 'image/jpeg');
     let alt = '';
     if (SPV('img_desc', false)) { try { alt = (window.prompt('Descreva a imagem para quem usa leitor de tela (opcional):', '') || '').trim().slice(0, 300); } catch (e) { alt = ''; } }
     await sendTo(key, caption || '📷 Imagem', path, alt);
@@ -1830,6 +1843,30 @@ async function loadEvents(m) {
   render();
 }
 function focusModal() { setTimeout(() => { const f = document.querySelector('.modal [data-mf]'); if (f) f.focus(); }, 0); }
+async function uploadAttachmentViaCore(path, blob, contentType) {
+  const t = await freshToken();
+  if (!t) throw { message: 'not_authenticated', status: 401 };
+  if (!C.CORE_URL) throw { message: 'storage_unavailable' };
+  const base = C.CORE_URL.endsWith('/') ? C.CORE_URL.slice(0, -1) : C.CORE_URL;
+  let response;
+  try {
+    response = await fetch(base + '/v1/attachments/upload', {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer ' + t,
+        'content-type': contentType,
+        'x-attachment-path': path
+      },
+      body: blob
+    });
+  } catch (e) {
+    throw { message: 'network', status: 0 };
+  }
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw { message: data && data.error ? data.error : 'storage_upload_failed', status: response.status };
+  if (!data || data.ok !== true || data.path !== path) throw { message: 'storage_upload_failed' };
+  return data.path;
+}
 async function storageCall(method, path, body, type, bucket) {
   const t = await freshToken(); if (!t) throw { message: 'not_authenticated', status: 401 };
   const h = { apikey: C.SUPABASE_KEY, authorization: 'Bearer ' + t };
