@@ -243,3 +243,11 @@ Combinado com a pessoa em 2026-11-23: o que precisa de conta em aplicativo exter
 - README do serviço e auditoria Rust atualizados. O serviço ainda não foi implantado e não recebe tráfego; Storage/RLS continuam como autoridade e não foi adicionada service_role.
 - Próxima etapa: implementar/testar proxy de anexos preservando o JWT do usuário e policies do Storage antes de integrar a UI.
 - Produção e branch `main` intocadas.
+
+
+## SHIQI — atualização 2026-11-27 (proxy de anexos em andamento)
+- Implementado no serviço Rust um proxy de upload para o bucket privado `attachments`, com autenticação JWT, validação de assinatura/MIME/tamanho/caminho e encaminhamento do Bearer original + chave publicável ao Supabase Storage.
+- A autorização final continua nas policies Storage/RLS; não foi adicionada service_role.
+- Rota nova `POST /v1/attachments/upload`; frontend ainda não foi conectado e serviço não implantado.
+- GitHub Actions está pendente após pushes consecutivos; aguardar CI verde antes de integrar a UI.
+- Produção e branch `main` permanecem intocadas.
