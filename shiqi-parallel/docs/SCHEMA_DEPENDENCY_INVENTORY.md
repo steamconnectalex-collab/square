@@ -99,6 +99,17 @@ As migrations 0011 e 0012 foram excluídas somente da cópia paralela. Os arquiv
 
 Não tentar corrigir essas diferenças com renames, drops ou migrations antigas diretamente no schema paralelo.
 
+## Recuperação concluída das lacunas principais (26/11/2026)
+
+O catálogo vivo do banco original forneceu as definições que faltavam para:
+- schema base `servers`, `server_members`, `channels`;
+- RPCs `create_server` e `is_server_member`;
+- tabelas `server_events`, `event_interest`;
+- RPCs `create_event`, `delete_event`, `toggle_event_interest`;
+- constraints e policies de leitura dessas tabelas.
+
+Assim, não é necessário pedir ao usuário um dump completo neste momento. O próximo trabalho é consolidar essas definições com os SQLs versionados 0001–0024, extrair as definições completas dos objetos adicionais que ainda estejam resumidos/incompletos e revisar o plano de preservação dos cinco objetos atuais do destino.
+
 ## Próximas etapas técnicas seguras
 
 1. Completar o mapa de campos e operações lendo as chamadas e componentes do frontend original, sem editar esses arquivos.
