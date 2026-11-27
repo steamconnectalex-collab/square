@@ -62,6 +62,12 @@ Projeto Railway dedicado criado:
 - Variáveis configuradas no serviço: `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_JWT_AUDIENCE=authenticated`; os valores são do Supabase paralelo. Nenhuma service-role key foi configurada.
 - O projeto está isolado, sem serviços ou tráfego de produção.
 
-Bloqueio de origem: Railway recusou anexar `steamconnectalex-collab/square` com `User does not have access to the repo`. O serviço segue sem source e sem deployment. É necessário conceder ao app Railway acesso a esse repositório privado pela instalação/configuração do GitHub App Railway. Depois, anexar a branch `shiqi-parallel-dev`.
+Acesso GitHub App Railway liberado pelo usuário em 27/11/2026. A fonte do serviço `shiqi-core` está conectada ao repositório `steamconnectalex-collab/square`, branch `shiqi-parallel-dev`.
 
 Ainda pendente: configurar `SHIQI_ALLOWED_ORIGIN` com a origem HTTPS exata do frontend paralelo; publicar a imagem; gerar domínio público; verificar `/healthz` e `/readyz`; validar JWT; só então integrar upload na UI.
+
+
+### Primeiro deployment Railway — 27/11/2026
+- Deployment `566fe457-7c58-448b-8b85-9cbc18172004` iniciado automaticamente após conexão da branch.
+- Build Docker reconheceu `shiqi-parallel/services/core/Dockerfile` e iniciou `cargo build --release`.
+- Estado na última verificação: `BUILDING`; ainda não gerar domínio nem conectar frontend até sucesso e health checks.
