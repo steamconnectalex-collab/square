@@ -21,7 +21,7 @@ Serviço Rust independente em fase inicial, isolado do frontend existente.
 
 ## Configuração
 
-Defina `SUPABASE_URL` com a URL HTTPS do projeto Supabase e `SUPABASE_PUBLISHABLE_KEY` com a chave publicável do mesmo projeto. `SUPABASE_JWT_AUDIENCE` é opcional e assume `authenticated`. Não configure nem coloque `service_role` no serviço: o proxy encaminha o JWT original do usuário para o Storage, que aplica as policies RLS. `/readyz` só retorna 200 quando JWT e Storage estão configurados.
+Defina `SUPABASE_URL` com a URL HTTPS do projeto Supabase, `SUPABASE_PUBLISHABLE_KEY` com a chave publicável do mesmo projeto e `SHIQI_ALLOWED_ORIGIN` com a origem HTTPS exata do frontend (sem barra final). O CORS aceita somente essa origem, os métodos POST/OPTIONS e os headers Authorization, Content-Type e X-Attachment-Path. `SUPABASE_JWT_AUDIENCE` é opcional e assume `authenticated`. Não configure nem coloque `service_role` no serviço: o proxy encaminha o JWT original do usuário para o Storage, que aplica as policies RLS. `/readyz` só retorna 200 quando JWT e Storage estão configurados.
 
 ## Executar localmente
 
