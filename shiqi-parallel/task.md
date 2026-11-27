@@ -6,7 +6,8 @@
 **Migrar tecnologia sem mudar design, layout, identidade visual, navegação ou qualquer funcionalidade do aplicativo original que permaneça no escopo.** O diretório `site/` da raiz é a fonte de verdade. Música foi explicitamente retirada do produto pelo usuário e poderá ser removida somente da cópia paralela. Nenhuma outra simplificação/remoção de função sem autorização expressa.
 
 ## Em andamento agora
-- [ ] Finalizar rollback executável com snapshot real do destino; validar cutover e rollback em PostgreSQL isolado; executar preflight remoto e revisar todos os resultados antes de pedir autorização para aplicar.
+- [ ] Capturar snapshot real do destino; finalizar rollback executável; validar cutover e rollback em PostgreSQL isolado; executar preflight remoto e revisar todos os resultados antes de pedir autorização para aplicar.
+- [x] 2026-11-27 — Ampliado o snapshot para incluir grants de tabela concedidos a PUBLIC e privilégios de todas as sequences; o plano de rollback agora inclui remoção das sete policies Storage do cutover e restauração dos grants de sequence. Removidos grants duplicados do draft.
 
 ## Bloqueios atuais (27/11/2026)
 - O conector Supabase continua retornando permissão negada para leitura do projeto paralelo ujdosskjycrdkcgsswfa. Isso não comprova que o projeto esteja pausado. Nenhum SQL foi executado remotamente.
@@ -292,3 +293,13 @@
 - A cobertura nominal de funções na ACL corresponde às definições; as 46 referências de colunas na ACL existem nas tabelas canônicas; as policies e chamadas a helpers privados apontam para objetos documentados.
 - A definição duplicada de unban_member foi removida do arquivo Auth. Referências SQL de Storage e Realtime foram adicionadas e documentadas.
 - Limitação: nenhuma validação PostgreSQL em runtime nem teste de rollback. O conector Supabase negou leitura do projeto paralelo nesta sessão; nenhum DDL remoto foi executado.
+
+
+### 2026-11-27 — Revisão complementar de cutover/rollback
+- Releitura integral das instruções e do acompanhamento; branch confirmada em `shiqi-parallel-dev`.
+- A conexão Supabase vinculada à SHIQI retornou `permission denied` em `get_project`, `list_tables` e `list_migrations`; isso não permite inferir status pausado/ativo. Nenhuma consulta SQL nem alteração remota foi executada nesta retomada.
+- Revisão estática do draft confirmou 18 tabelas com RLS habilitada, 17 policies de produto + 7 policies Storage, 45 assinaturas públicas (44 nomes distintos) e 13 helpers privados; as funções definidas possuem entradas nominais de REVOKE na ACL.
+- Encontradas lacunas documentais no rollback: o cutover revoga privilégios de sequences e as policies Storage não estavam explicitadas na ordem de reversão. Atualizados `CUTOVER_SNAPSHOT.sql` e `CUTOVER_ROLLBACK_PLAN.md` para capturar/restaurar esses itens, incluir grants de tabela a PUBLIC e remover as sete policies Storage no rollback.
+- Removidas quatro linhas duplicadas de GRANT service_role no draft. Nenhuma migration foi executada; rollback ainda NÃO é executável porque falta snapshot real, validação em PostgreSQL isolado e confirmação do destino.
+- Commits desta retomada: `dd82dec` (snapshot), `283d303` (rollback), `85cdfab` (draft).
+- Próximo passo: restaurar leitura autorizada do Supabase paralelo, executar somente os SQLs de preflight/snapshot, conferir resultados e então finalizar o rollback executável/testar ambos em PostgreSQL isolado. Não executar o draft.
