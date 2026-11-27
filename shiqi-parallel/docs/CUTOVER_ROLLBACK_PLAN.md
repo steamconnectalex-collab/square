@@ -35,7 +35,7 @@ O rollback só poderá ser considerado se:
 1. Confirmar as condições acima e abortar se qualquer tabela canônica ou bucket tiver dados.
 2. Retirar da publicação Realtime as tabelas canônicas e recolocar `public.legacy_messages`.
 3. Remover as policies `voice_topic_select` e `voice_topic_insert` de `realtime.messages`, além das policies e triggers criados para as tabelas canônicas.
-4. Remover as RPCs públicas e helpers privados canônicos, incluindo `private.can_read_attachment(text)`, usando assinaturas exatas e sem `CASCADE`.
+4. Remover as RPCs públicas e helpers privados canônicos, incluindo `private.can_read_attachment(text)` e `private.can_voice_topic(text)`, usando assinaturas exatas e sem `CASCADE`.
 5. Remover as 18 tabelas canônicas nesta ordem, sem `CASCADE`, derivada das FKs atuais em `CANONICAL_TABLES.sql`: `profiles`, `email_codes`, `rate_hits`, `server_members`, `server_invites`, `dm_members`, `friendships`, `blocks`, `voice_members`, `server_bans`, `server_pins`, `mfa_recovery`, `message_reactions`, `event_interest`, `messages`, `server_events`, `channels`, `servers`. A FK autorreferente de `messages.thread_of` desaparece com a própria tabela; `message_reactions` deve sair antes de `messages`, e `event_interest` antes de `server_events`.
 6. Renomear as cinco tabelas `legacy_*` para os nomes originais.
 7. Remover as sete policies Storage criadas pelo cutover (`attachments_delete_own`, `attachments_insert_own`, `attachments_select_message_member` e as quatro `avatars_*`); manter os buckets somente se estiverem vazios e a decisão de preservá-los estiver documentada.
