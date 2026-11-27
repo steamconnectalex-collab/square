@@ -178,8 +178,12 @@ Object.assign(SET.acts, {
   'mfa-off-ok': async () => {
     const pw = document.getElementById('mo-pw').value, c = (document.getElementById('mo-code').value || '').trim(), er = document.getElementById('mo-err');
     const body = { password: pw }; if (/\d{6}/.test(c.replace(/\D/g, '')) && c.replace(/\D/g, '').length === 6 && !/[A-Za-z]/.test(c)) body.code = c; else body.recovery_code = c;
-    try { await api().fn('/mfa/disable', body); SET.modal(null); toast('Verificação em duas etapas desligada'); }
-    catch (e) { er.textContent = (e && e.message) || 'Não deu certo.'; }
+    try {
+      await api().fn('/mfa/disable', body);
+      SET.modal(null);
+      api().logout(); // o Supabase encerra as sessões ao remover um fator verificado
+      toast('Verificação em duas etapas desligada. Entre novamente para continuar.');
+    } catch (e) { er.textContent = (e && e.message) || 'Não deu certo.'; }
   },
   /* ---- desativar / excluir ---- */
   deact: () => SET.modal({ title: 'Desativar conta', body: '<p>Sua conta fica invisível e você será desconectado. Para voltar, é só entrar de novo: ela é reativada na hora. Nada é apagado.</p><label class="sgl" for="da-pw">Sua senha</label><input id="da-pw" class="sinp" type="password" autocomplete="current-password"><p class="smerr" id="da-err" role="alert"></p>', actions: [{ label: 'Cancelar', act: 'modal-close' }, { label: 'Desativar conta', act: 'deact-ok', cls: 'dangersolid' }] }),
