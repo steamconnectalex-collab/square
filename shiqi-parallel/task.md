@@ -329,8 +329,8 @@
 
 ### 2026-11-27 — Restauração da Edge Function Auth na cópia paralela
 - Identificada divergência entre a documentação e o arquivo: a implementação completa (30.767 bytes) existia em `supabase/functions/auth/index.ts` na raiz do repositório, mas a cópia paralela tinha somente 2.206 bytes e não continha `Deno.serve` nem handlers.
-- Restaurada a implementação completa em `shiqi-parallel/supabase/functions/auth/index.ts` no commit `0b61202ba9cd7f4d809e52253ef8ef7471b15a66`.
-- Adaptada a cópia paralela: `SUPABASE_ANON_KEY` passou a ser obrigatória via secret; `SITE_URL` usa por padrão `https://shiqi-parallel.vercel.app`; origens do domínio e deploys antigos de produção foram removidas da allow-list. Origens de preview podem ser adicionadas por `EXTRA_ORIGINS`.
+- Restaurada a implementação completa em `shiqi-parallel/supabase/functions/auth/index.ts` no commit `0b61202ba9cd7f4d809e52253ef8ef7471b15a66`; validações de secrets e metadado `via: shiqi` adicionados no commit `6ed90d08bc5230c03e3169d529246be1cbc8ca27`.
+- Adaptada a cópia paralela: `SUPABASE_ANON_KEY` passou a ser obrigatória via secret, com validação explícita dos três secrets essenciais; `SITE_URL` usa por padrão `https://shiqi-parallel.vercel.app`; origens do domínio e deploys antigos de produção foram removidas da allow-list. Origens de preview podem ser adicionadas por `EXTRA_ORIGINS`. Metadado de origem de novas contas atualizado para `shiqi`.
 - Revisão estática confirmou 13 rotas POST + GET `/health`; as tabelas `profiles`, `email_codes`, `mfa_recovery` e as seis RPCs utilizadas estão presentes nas referências SQL canônicas.
 - Atualizado `docs/AUTH_CONTRACT_INVENTORY.md` para corrigir o diagnóstico anterior. O prefixo HMAC histórico `square-v1:` foi preservado.
 - Limitação: nenhuma checagem Deno/runtime, teste JWT, conexão da UI, envio de e-mail ou deploy foi executado. Não houve alteração no Supabase nem em produção.
