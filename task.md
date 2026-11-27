@@ -327,3 +327,12 @@ Combinado com a pessoa em 2026-11-23: o que precisa de conta em aplicativo exter
 - Próxima etapa no ambiente isolado `shiqi-parallel-dev`: smoke runtime do Railway (`/healthz`, `/readyz`, `/v1/me` sem token deve rejeitar), depois login real e `/v1/me` com sessão válida; em seguida RLS/Realtime/RPCs com contas de teste.
 - Workflow `.github/workflows/shiqi-core.yml` recebeu job `railway-smoke` no commit `f8a8e2f213d0fc298de5960aa009c90213b9cd0c`. Não testa JWT real nem upload.
 - Nenhuma alteração em `main`, produção ou no projeto `square-chat`.
+
+
+## Registro de sessão — 2026-11-27 (smoke runtime SHIQI)
+- CI run `46047484964` concluído com sucesso na branch `shiqi-parallel-dev`; os quatro jobs passaram: `rust` (fmt, testes, Clippy e build Docker), `supabase-jwks`, `web-contract` e `railway-smoke`.
+- O smoke runtime confirmou `/healthz` e `/readyz` com resposta válida e `GET /v1/me` sem Bearer token rejeitado como não autorizado. Isso não valida JWT real nem login.
+- Auditoria estática confirmou que o frontend salva access/refresh tokens, renova a sessão pelo endpoint Supabase Auth; a Edge Function valida rotas privadas via `admin.auth.getUser(token)`; o Rust valida assinatura JWT por JWKS, issuer, audience, expiração, UUID e role antes de responder `/v1/me`.
+- A listagem de deployments Railway não pôde ser consultada nesta sessão por falta de permissão do conector; o smoke do GitHub Actions é a evidência disponível do runtime.
+- Próximo passo: validar login real e `/v1/me` com a sessão do usuário no preview, sem compartilhar senha ou JWT no chat; depois avançar para RLS/Realtime/RPCs com duas contas de teste. Upload de imagens segue adiado.
+- Nenhuma alteração em `main`, produção ou no projeto Vercel principal `square-chat`.
