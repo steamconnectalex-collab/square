@@ -4,6 +4,7 @@
 -- Revoke PUBLIC/anon explicitly; then grant only the roles listed below.
 -- Explicitly clear inherited/default API execution before granting the allow-list.
 REVOKE USAGE ON SCHEMA private FROM PUBLIC, anon, authenticated, service_role;
+GRANT USAGE ON SCHEMA private TO authenticated, service_role;
 REVOKE EXECUTE ON FUNCTION public.ban_member(uuid,uuid) FROM PUBLIC, anon, authenticated, service_role;
 REVOKE EXECUTE ON FUNCTION public.block_user(uuid) FROM PUBLIC, anon, authenticated, service_role;
 REVOKE EXECUTE ON FUNCTION public.change_username(text) FROM PUBLIC, anon, authenticated, service_role;
@@ -108,6 +109,10 @@ GRANT EXECUTE ON FUNCTION public.voice_set_state(boolean,boolean,boolean,boolean
 -- Backend-only public routines: service_role only (not exposed to browser users).
 GRANT EXECUTE ON FUNCTION public.get_auth_user_by_email(text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.get_login_email_by_username(text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.purge_user_data(uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.rate_check(text,integer,integer) TO service_role;
+GRANT EXECUTE ON FUNCTION public.revoke_user_sessions(uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.verify_email_code(text,text,text,integer) TO service_role;
 GRANT EXECUTE ON FUNCTION public.purge_user_data(uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.rate_check(text,integer,integer) TO service_role;
 GRANT EXECUTE ON FUNCTION public.revoke_user_sessions(uuid) TO service_role;
