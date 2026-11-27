@@ -122,6 +122,8 @@ assert.ok(realtimeSql.includes('CREATE POLICY voice_topic_select ON realtime.mes
   realtimeSql.includes('CREATE POLICY voice_topic_insert ON realtime.messages') &&
   realtimeSql.includes('private.can_voice_topic'),
   'Realtime de voz deve ter policies privadas de SELECT e INSERT.');
+assert.ok(draftSql.includes('CREATE POLICY attachments_select_message_member ON storage.objects') && !draftSql.includes('CREATE POLICY attachments_select_own'),
+  'O draft não deve manter a policy antiga de leitura por dono da pasta.');
 assert.ok(draftSql.includes('CREATE POLICY voice_topic_select ON realtime.messages') &&
   draftSql.includes('CREATE POLICY voice_topic_insert ON realtime.messages'),
   'O cutover draft deve instalar as policies privadas de voz.');
