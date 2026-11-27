@@ -241,3 +241,10 @@
 - RPCs chamadas: rate_check, get_auth_user_by_email, verify_email_code, get_login_email_by_username, revoke_user_sessions e purge_user_data. Variáveis lidas: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY, SITE_URL, EXTRA_ORIGINS, RESEND_API_KEY, RESEND_FROM, BRAND_NAME.
 - Nenhum segredo de service role foi copiado; segredos permanecem no Supabase. A chave publishable fallback é pública. Original e destino permanecem sem alteração remota.
 - Próximo passo: validar dependências de Auth, compatibilidade das RPCs/tabelas, build/checagem estática e testes de contrato; não publicar nem conectar frontend antes do aceite de regressão.
+
+### 2026-11-26 — Revisão de dependências SQL e ACL explícita
+
+- Revisão estática detectou que private.can_post (LANGUAGE SQL) referencia private.dm_allowed; o bloco dm_allowed foi movido antes de can_post em CANONICAL_PRIVATE_FUNCTIONS.sql.
+- CANONICAL_FUNCTION_ACL.sql agora revoga EXECUTE explicitamente nas 58 assinaturas (45 public + 13 private), revoga USAGE do schema private e reaplica somente as permissões allow-list. Antes havia apenas comentário para revogação; corrigido.
+- Não foi possível rodar parser PostgreSQL/TypeScript nesta sessão: psql, Deno, sqlfluff e pg_format não estão instalados. Os arquivos não devem ser tratados como compilados/testados; validação em branch descartável e runtime Deno permanece obrigatória.
+- Commits: ef1fff0 (ordem de helpers), 76a9546 (revogação de ACL), f57bdaef (registro no plano).
