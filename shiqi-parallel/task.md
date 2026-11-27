@@ -47,6 +47,12 @@
 3. Recuperar a migration base ausente de servidores e eventos; pedir ao usuário dump SQL somente de estrutura (sem dados) se não houver fonte Git autorizada.
 4. Corrigir e testar autenticação antes de conectar a UI.
 5. Expandir testes de JWT e middleware Rust; validar algoritmo e chaves antes da integração.
+### 2026-11-26 — Recuperação de schema ausente via catálogo PostgreSQL
+- Consultado o banco original somente com SELECT para recuperar as definições ausentes de `servers`, `server_members`, `channels`, `create_server`, `is_server_member`, `server_events`, `event_interest`, `create_event`, `delete_event` e `toggle_event_interest`.
+- Recuperados também constraints, policies e colunas dessas tabelas. Regras de servidor, canais e eventos agora estão documentadas.
+- Atualizados os docs de reconciliação e dependências. Não foi necessário pedir dump SQL ao usuário nesta fase.
+- Banco original e paralelo continuam sem alterações.
+
 ### 2026-11-26 — Recuperação de migrations versionadas para etapa 2
 - Inspecionados os diretórios de migrations na raiz e na cópia paralela da branch. Os SQLs originais 0001–0024 estão na raiz; a cópia paralela omite 0011/0012 (música) e contém a exceção de voz 0025.
 - Lidos integralmente 0001, 0002, 0003, 0005, 0021 e 0024. 0002 contém a estrutura de mensagens e helpers, mas apenas resume a migration-base `servidores_e_canais`; 0021 é resumo, não SQL executável de eventos.
