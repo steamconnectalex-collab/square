@@ -293,3 +293,30 @@ A consulta a `pg_constraint` recuperou as definições funcionais e PK/FK, sem o
 - A futura migration deve começar por revogar defaults amplos e conceder apenas o necessário; não copiar grants amplos do protótipo paralelo.
 
 A extração de policies, constraints, colunas e grants foi feita somente por SELECT. Não houve alteração no banco original ou paralelo.
+
+
+## Índices e ACL explícita das funções — 26/11/2026
+
+### Índices recuperados
+
+Foram listadas as definições reais de todos os índices das 18 tabelas-alvo. Além das PKs, preservar especialmente:
+- `profiles_username_lower_key` (único em `lower(username)`);
+- `channels_server_idx` (`server_id, position`);
+- `messages_channel_created_idx`, `messages_author_created_idx`, `messages_author_idx` e índice parcial `messages_thread_idx`;
+- `email_codes_lookup_idx` (`email, purpose, created_at DESC`) e `email_codes_expires_idx`;
+- `friendships_b_idx`, `dm_members_user_idx`, `server_members_user_idx`, `voice_members_user_idx`;
+- `server_events_srv_idx`, `server_invites_server_idx` e `server_invites_creator_idx`;
+- índices de reações por mensagem e rate_hits por `key, at DESC`.
+As PKs e demais índices estão listados na consulta do catálogo; não substituir por índices genéricos.
+
+### ACLs explícitas de funções
+
+A leitura de `pg_proc.proacl` com `aclexplode` distinguiu grants explícitos de privilégios efetivos herdados:
+- RPCs de produto em `public`: EXECUTE para `authenticated`, `service_role` e `postgres`; não para `anon`/PUBLIC.
+- Rotinas internas de autenticação/gestão (`get_auth_user_by_email`, `get_login_email_by_username`, `purge_user_data`, `rate_check`, `revoke_user_sessions`, `verify_email_code`) não devem ser expostas a `authenticated`; no original ficam para backend privilegiado.
+- Helpers privados chamados por RLS/RPCs têm grants distintos por assinatura. A consulta revelou funções de trigger com EXECUTE herdado por PUBLIC e helpers como `dm_allowed`/`is_dm_member` com ACL PUBLIC no original. Isso é um detalhe histórico do original, não uma recomendação para reproduzir. No destino, o hardening deverá revogar EXECUTE de PUBLIC/anon e conceder somente aos papéis estritamente necessários, preservando funcionamento de triggers, policies e funções chamadoras.
+- Nenhum grant é copiado automaticamente: a lista por assinatura precisa ser aplicada junto com testes de chamadas pelo cliente e pelas rotinas internas.
+
+### Status
+
+Índices e ACLs foram consultados em modo somente leitura. A estrutura lógica, policies, constraints, índices e corpos de funções do original estão agora mapeados para reconstrução. A estratégia de preservação do protótipo e o SQL de migration ainda precisam de revisão antes de qualquer DDL remoto.
