@@ -130,3 +130,55 @@ A etapa 1 estará concluída quando:
 - os itens sem backend ou com comportamento “em breve” estiverem explicitamente classificados;
 - existir uma lista de testes de regressão correspondente;
 - nenhuma tela ou funcionalidade tiver sido alterada nesta etapa.
+
+## Complemento da inspeção dos módulos (26/11/2026)
+
+Esta seção registra a leitura dos handlers dos módulos de configurações, perfil, loja, missões, Plus, download e orientação mobile. É inspeção estática do código da cópia paralela; não equivale a teste funcional em navegador ou contra serviços remotos.
+
+### Configurações — persistência e efeitos observados
+
+- settings.js mantém preferências por usuário em localStorage na chave sq.prefs.<uid>. Ao alterar opções, grava localmente imediatamente e tenta sincronizar após 900 ms com save_my_settings({p: prefs}); falha remota é silenciosa e mantém o navegador como fonte local.
+- Na inicialização, get_my_settings() só substitui o estado local quando o objeto remoto tem _t mais recente. Preferências de tema também podem usar sq.theme.local e sq.theme.last, dependendo da opção de sincronização.
+- Controles de alternância, rádio, seleção, faixa deslizante e abas alteram estado/preferências; faixa deslizante salva com atraso de 250 ms. Navegação entre páginas/subseções, modais, acordeões, pesquisa do menu e fechar/voltar são estados de interface.
+- Efeitos locais incluem aplicação do tema, escala/densidade/contraste, redução de movimento, sons e prévia de fala via speechSynthesis. Permissão de notificações desktop depende da API do navegador.
+- Preferências específicas por servidor (ex.: exceções de DM e compartilhamento de atividade) são guardadas dentro de prefs; não foi observado RPC dedicado para elas.
+- A interface contém categorias de conta, privacidade, mensagens, notificações, cobrança, voz, aparência, acessibilidade, jogos/apps, desenvolvedor, idioma e sistema/atalhos.
+
+### Conta e segurança nas configurações
+
+- Alterar nome de usuário chama change_username(p_username); senha usa PUT /auth/v1/user.
+- Troca de e-mail chama /email/change/request e /email/change/confirm, com código enviado ao novo endereço.
+- MFA TOTP consulta /auth/v1/user e usa /auth/v1/factors para cadastrar, desafiar, verificar e excluir fator não verificado. Códigos de recuperação vêm de /mfa/recovery; desligar usa /mfa/disable.
+- Encerrar outras sessões usa POST /auth/v1/logout?scope=others. Exportação de dados chama uma ação própria da interface; o corpo completo do handler ainda precisa ser mapeado e testado.
+- my_age_group carrega a classificação etária; confirmação documental de idade é explicitamente indisponível. Configurar família, login por telefone, integrações externas e conexões de apps exibem aviso/placeholder.
+- Marketing usa unsubscribe_marketing(). Configurações de cobrança, métodos de pagamento, histórico, Plus e impulsos não realizam transações: os handlers mostram indisponibilidade.
+- Idioma permite selecionar apenas pt-BR; outras opções exibidas mostram aviso de que ainda não estão disponíveis.
+
+### Perfil e personalização
+
+- perfil.js salva nome exibido, status, bio e cor via SQ_API.saveProfile. Avatar é enviado/removido via SQ_API.uploadAvatar/removeAvatar; recorte e miniatura são processados localmente no navegador.
+- Avatares recentes e widgets de perfil são guardados em localStorage por usuário. Lista de desejos do perfil lê a mesma chave sq.wish.<uid> usada pela loja.
+- A prévia do Plus é explicitamente local e não salva. Insígnias, perfis por servidor, conexões, widgets completos, jogos e avatar GIF exibem “em breve”.
+- O mapeamento exato de saveProfile/uploadAvatar/removeAvatar para tabela/campo/bucket deve ser confirmado no adapter SQ_API durante a próxima inspeção de app.js.
+
+### Loja, pontos, missões e Plus
+
+- loja.js declara no próprio cabeçalho que o catálogo é de exemplo, com arte CSS e nomes inventados; não há backend de catálogo/pagamentos.
+- Lista de desejos persiste em localStorage por usuário. Busca, filtros, ordenação, paginação, alternância de abas, modal de item, carrosséis e prévia são estado local da interface.
+- A ação de aceitar/cancelar missão só altera ST.qdone em memória e mostra aviso; não concede pontos nem persiste progresso.
+- Comprar/resgatar itens, assinar/presentear Plus, pagamentos, lojas de jogos e compras de coleções exibem aviso de indisponibilidade. Não tratar valores, recompensas, datas promocionais ou catálogo como dados de negócio confirmados.
+- Não criar integração de pagamento, carteira, inventário ou sistema de pontos nesta migração; preservar exatamente os placeholders atuais.
+
+### Download e orientação mobile
+
+- baixar.js identifica Windows/Linux/macOS/mobile pelo user-agent. Windows/Linux apontam para artefatos da página de releases externa shiqi-downloads; Mac ainda aparece como “em breve”; celular orienta a usar o site.
+- mobile.js acrescenta uma dica de uso no desktop e a dispensa apenas na sessão (sessionStorage). Não há backend.
+- home.js é uma landing page estática, sem chamadas de backend identificadas nesta inspeção; seus links e botões precisam ser cruzados com index.html e o roteamento do app para registrar destinos e estados.
+
+### Itens ainda não fechados nesta etapa
+
+1. Cruzar cada ação de settings-pages.js e settings-pages2.js com os defaults e efeitos efetivos de settings.js, incluindo opções sem implementação.
+2. Completar o mapeamento de app.js por grupos de handlers e eventos, sem entrar no código de QR nem nos recursos de música.
+3. Inspecionar index.html, rotas legais e CSS de navegação para confirmar telas, pontos de entrada e comportamento desktop/mobile sem alterar a interface.
+4. Classificar a página inicial e os conteúdos promocionais como estáticos, demonstrativos ou dinâmicos com base nos handlers reais.
+5. Construir o roteiro/harness de regressão isolado da cópia paralela. O teste raiz não deve ser alterado nem usado como evidência da cópia paralela.
