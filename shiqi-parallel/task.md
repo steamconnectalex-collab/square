@@ -119,3 +119,9 @@
 - Atualizados `docs/REMOTE_SCHEMA_AUDIT.md` e `docs/DATABASE_RECONCILIATION_PLAN.md`.
 - Nenhum DDL, migration ou alteração remota foi executado.
 - Próximo passo: fechar índices/ACLs de função e confirmar o plano reversível de preservação do protótipo; só depois preparar migrations para revisão.
+
+### 2026-11-26 — Índices e ACLs de funções
+- Extraídos os índices reais das 18 tabelas-alvo e as ACLs explícitas por assinatura de função.
+- Diferenciados grants explícitos de permissões herdadas via PUBLIC; identificados helpers privados e rotinas internas que exigem hardening no destino.
+- Registrada a diretriz de não reproduzir grants históricos amplos de helpers/rotinas internas.
+- Próximo passo: fechar o desenho reversível para isolar as cinco tabelas incompatíveis do protótipo e iniciar a montagem local do schema canônico, ainda sem executar DDL remoto.
