@@ -175,3 +175,10 @@
 - Definida ordem de montagem: tabelas → funções/helpers → triggers → RLS → grants.
 - Arquivos são referências; ainda faltam RPCs públicas/ACLs para fechar migration completa.
 - Nenhum DDL remoto.
+
+### 2026-11-26 — RPCs de servidores
+- Extraídas as definições completas de `create_server`, `create_channel`, `create_invite`, `join_server` e `join_public_server`.
+- Criado `docs/CANONICAL_SERVER_RPCS.sql` como referência.
+- Confirmados limites de servidores/canais, defaults de convite, lock de convite, bloqueio por ban e limites de membership.
+- Próximo grupo: RPCs de amizade/DM e bloqueios; depois demais funções públicas e ACLs.
+- Nenhuma alteração remota.
