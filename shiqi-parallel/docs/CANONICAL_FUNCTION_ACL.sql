@@ -55,6 +55,7 @@ REVOKE EXECUTE ON FUNCTION private.can_voice_topic(text) FROM PUBLIC, anon, auth
 REVOKE EXECUTE ON FUNCTION private.is_channel_member(uuid) FROM PUBLIC, anon, authenticated, service_role;
 REVOKE EXECUTE ON FUNCTION private.is_channel_owner(uuid) FROM PUBLIC, anon, authenticated, service_role;
 REVOKE EXECUTE ON FUNCTION private.is_dm_member(uuid) FROM PUBLIC, anon, authenticated, service_role;
+REVOKE EXECUTE ON FUNCTION private.can_read_attachment(text) FROM PUBLIC, anon, authenticated, service_role;
 REVOKE EXECUTE ON FUNCTION private.shares_server_with(uuid) FROM PUBLIC, anon, authenticated, service_role;
 REVOKE EXECUTE ON FUNCTION private.accept_on_reply() FROM PUBLIC, anon, authenticated, service_role;
 REVOKE EXECUTE ON FUNCTION private.check_thread_parent() FROM PUBLIC, anon, authenticated, service_role;
@@ -121,12 +122,14 @@ GRANT EXECUTE ON FUNCTION private.can_voice_topic(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION private.is_channel_member(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION private.is_channel_owner(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION private.is_dm_member(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION private.can_read_attachment(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION private.shares_server_with(uuid) TO authenticated;
 
 -- Trigger-only functions remain executable by their owner/postgres, not API roles.
 -- Do not grant authenticated/anon on accept_on_reply, check_thread_parent,
 -- dm_allowed, messages_rate_limit, touch_edited_at or touch_profile.
 -- private.is_dm_member is required by channels_select_member and is granted above.
+-- private.can_read_attachment is required by the private attachments Storage SELECT policy.
 -- private.remove_from_server is callable only from its owning privileged routines.
 -- Apply REVOKE EXECUTE ... FROM PUBLIC, anon, authenticated, service_role first,
 -- then grants above. Confirm trigger execution and policy calls with role tests.
