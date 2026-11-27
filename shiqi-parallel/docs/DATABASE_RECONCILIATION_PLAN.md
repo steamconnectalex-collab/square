@@ -170,3 +170,12 @@ Foram recuperados diretamente do catálogo original:
 Resumo de segurança: as policies de aplicação são para `authenticated`; não há grants diretos de tabela para `anon` no inventário original. Leitura direta é concedida a `authenticated` apenas onde o frontend precisa, e mutations sensíveis são mediadas por RPCs e RLS. Tabelas internas de códigos, rate limit, convites, bans e MFA não têm policies públicas.
 
 O conjunto de definições de funções (13 private/45 public), estrutura de colunas, constraints, policies e grants agora está recuperado para a referência original. Falta fechar índices, ACL explícita por função, detalhes finais de Storage/Realtime e a revisão das dependências internas do protótipo no destino. A auditoria não autoriza DDL; o plano reversível ainda precisa ser fechado e revisado antes de qualquer mudança remota.
+
+
+## 11. Índices e ACLs (26/11/2026)
+
+A auditoria recuperou todos os índices públicos das 18 tabelas-alvo e consultou ACLs explícitas de funções por assinatura com `aclexplode`. Isso evita confundir privilégios herdados de PUBLIC com GRANTs explícitos.
+
+Diretriz para o destino: não reproduzir ACLs históricas amplas em helpers privados; revogar EXECUTE de PUBLIC/anon e conceder o mínimo necessário, garantindo execução de triggers, policies e RPCs chamadoras. Rotinas de backend devem ficar inacessíveis ao cliente autenticado. Os índices únicos funcionais e índices de consulta por canal/data, autor/data, threads, membership, convites, eventos, reações e rate limit precisam ser preservados.
+
+O inventário estrutural do original está suficientemente recuperado para iniciar a montagem local do schema canônico. Isso não autoriza aplicação no projeto remoto. Antes, será documentado o plano reversível de isolamento das cinco tabelas do protótipo e será feita revisão estática das migrations geradas.
