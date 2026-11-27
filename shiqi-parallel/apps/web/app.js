@@ -113,6 +113,7 @@ function saveSession(d) {
 }
 function clearSession() {
   S.session = null; S.profile = null;
+  attachmentUrlCache.clear();
   store.del('sq.session'); store.del('sq.profile');
 }
 async function freshToken() {
@@ -802,7 +803,45 @@ let A = null;
 const ONLINE_MS = 150000;
 const FIELDS = 'id,author_id,content,created_at,edited_at,attachment_path,attachment_alt,thread_of';
 const mapMsg = (r) => ({ id: r.id, from: r.author_id, text: r.content, at: r.created_at, edited: !!r.edited_at, img: r.attachment_path || '', alt: r.attachment_alt || '', thread: r.thread_of || null });
-const attUrl = (path) => C.SUPABASE_URL + '/storage/v1/object/public/attachments/' + path.split('/').map(encodeURIComponent).join('/');
+const attachmentUrlCache = new Map();
+function ensureAttachmentUrl(path) {
+  const cached = attachmentUrlCache.get(path), now = Date.now();
+  if (cached && ((cached.url && cached.expiresAt > now) || cached.promise || cached.failed)) return;
+  const entry = { url: '', expiresAt: 0, promise: null, failed: false };
+  attachmentUrlCache.set(path, entry);
+  entry.promise = (async () => {
+    const userId = S.session && S.session.user && S.session.user.id;
+    const token = await freshToken();
+    if (!token || !userId) throw new Error('not_authenticated');
+    const objectPath = path.split('/').map(encodeURIComponent).join('/');
+    const base = C.SUPABASE_URL.replace(/\\/+$/, '');
+    const response = await fetch(base + '/storage/v1/object/sign/attachments/' + objectPath, {
+      method: 'POST',
+      headers: { apikey: C.SUPABASE_KEY, authorization: 'Bearer ' + token, 'content-type': 'application/json' },
+      body: JSON.stringify({ expiresIn: 60 })
+    });
+    if (!response.ok) throw new Error('attachment_unavailable');
+    const data = await response.json(), signed = data && (data.signedURL || data.signedUrl);
+    if (!signed || !S.session || !S.session.user || S.session.user.id !== userId) throw new Error('attachment_unavailable');
+    return /^https?:\\/\\//i.test(signed)
+      ? signed
+      : base + '/storage/v1' + (signed.charAt(0) === '/' ? signed : '/' + signed);
+  })().then((url) => {
+    if (attachmentUrlCache.get(path) !== entry) return;
+    entry.url = url; entry.expiresAt = Date.now() + 50000; entry.promise = null;
+    if (A && S.view === 'app') paintMsgs('keep');
+  }).catch(() => {
+    if (attachmentUrlCache.get(path) !== entry) return;
+    entry.failed = true; entry.promise = null;
+    if (A && S.view === 'app') paintMsgs('keep');
+  });
+}
+const attUrl = (path) => {
+  const cached = attachmentUrlCache.get(path);
+  if (cached && cached.url && cached.expiresAt > Date.now()) return cached.url;
+  ensureAttachmentUrl(path);
+  return '';
+};
 const mentionsMe = (text) => { const u = A && A.me && A.me.user; return !!u && new RegExp('(^|[^a-z0-9_])@' + u.replace(/[^a-z0-9_.]/gi, '') + '(?![a-z0-9_])', 'i').test(text || ''); };
 /* filtro de spam (regra simples): 2+ links ou link encurtado; "all" vale para todos, "unknown" só para quem não é amigo */
 function isSpam(m) {
@@ -827,10 +866,15 @@ function msgBody(m) {
   let img = '';
   if (m.img) {
     const u = attUrl(m.img), alt = SPV2('img_desc') && m.alt ? m.alt : 'Imagem enviada';
-    const gif = /\.gif(\?|$)/i.test(m.img), still = gif && SPV2('play_gifs') === false;
-    img = SPV2('msg_upload') === false
-      ? `<button type="button" class="lnk attshow" data-act="att-show" data-src="${esc(u)}" data-alt="${esc(alt)}">Mostrar imagem</button>`
-      : `<a class="att${still ? ' gifstill' : ''}" href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="${esc(alt)}" loading="lazy"${still ? ' data-still="1"' : ''}>${still ? '<span class="gifbadge">GIF</span>' : ''}</a>`;
+    const gif = /\\.gif(\\?|$)/i.test(m.img), still = gif && SPV2('play_gifs') === false;
+    if (!u) {
+      const state = attachmentUrlCache.get(m.img);
+      img = `<span class="attpending">${state && state.failed ? 'Imagem indisponível' : 'Carregando imagem…'}</span>`;
+    } else {
+      img = SPV2('msg_upload') === false
+        ? `<button type="button" class="lnk attshow" data-act="att-show" data-src="${esc(u)}" data-alt="${esc(alt)}">Mostrar imagem</button>`
+        : `<a class="att${still ? ' gifstill' : ''}" href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="${esc(alt)}" loading="lazy"${still ? ' data-still="1"' : ''}>${still ? '<span class="gifbadge">GIF</span>' : ''}</a>`;
+    }
     if (SPV2('img_desc') && m.alt) img += `<small class="altd">${esc(m.alt)}</small>`;
   }
   return t + img;
