@@ -1720,7 +1720,14 @@ using (private.is_channel_member(channel_id));
 
 create policy messages_insert_member on public.messages
 for insert to authenticated
-with check (author_id = (select auth.uid()) and private.can_post(channel_id));
+with check (
+  author_id = (select auth.uid())
+  and private.can_post(channel_id)
+  and (attachment_path is null or (
+    split_part(attachment_path, '/', 1) = (select auth.uid())::text
+    and split_part(attachment_path, '/', 2) <> ''
+  ))
+);
 
 create policy messages_update_own on public.messages
 for update to authenticated
@@ -2021,7 +2028,7 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'attachments') THEN
     INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
     VALUES (
-      'attachments', 'attachments', true, 3145728,
+      'attachments', 'attachments', false, 3145728,
       ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif']::text[]
     );
   END IF;
