@@ -664,7 +664,8 @@ as $function$
     where a.user_id = (select auth.uid()) and b.user_id = p_user
   ) or exists (
     select 1 from public.friendships f
-    where f.user_a = least((select auth.uid()), p_user)
+    where f.status = 'accepted'
+      and f.user_a = least((select auth.uid()), p_user)
       and f.user_b = greatest((select auth.uid()), p_user)
   )
 $function$;
