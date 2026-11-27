@@ -60,6 +60,7 @@ AS $function$
 declare
   n integer;
 begin
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('shiqi:rate:' || coalesce(p_key, ''), 0));
   delete from public.rate_hits
   where key = p_key and at < now() - make_interval(secs => p_window_seconds);
 
