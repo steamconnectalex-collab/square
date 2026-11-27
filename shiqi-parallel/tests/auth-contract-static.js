@@ -73,11 +73,25 @@ const draftSharesHelper = draftSql.slice(
 );
 assert.ok(draftSharesHelper.includes("f.status = 'accepted'"),
   'O cutover draft deve preservar a proteção contra amizades pendentes.');
+const voiceStart = moderationRpcSql.toLowerCase().indexOf('function public.voice_join(');
+const voiceEnd = moderationRpcSql.toLowerCase().indexOf('function public.voice_leave()', voiceStart);
+const voiceJoinSql = moderationRpcSql.slice(voiceStart, voiceEnd);
+const draftVoiceStart = draftSql.toLowerCase().indexOf('function public.voice_join(');
+const draftVoiceEnd = draftSql.toLowerCase().indexOf('function public.voice_leave()', draftVoiceStart);
+const draftVoiceJoinSql = draftSql.slice(draftVoiceStart, draftVoiceEnd);
+for (const [label, fn] of [['RPC canônica', voiceJoinSql], ['cutover draft', draftVoiceJoinSql]]) {
+  assert.ok(fn.includes("pg_advisory_xact_lock(pg_catalog.hashtextextended('shiqi:voice:user:' || uid::text, 0))"),
+    label + ': voice_join deve serializar entradas simultâneas do mesmo usuário.');
+  assert.ok(fn.includes("pg_advisory_xact_lock(pg_catalog.hashtextextended('shiqi:voice:channel:' || p_channel::text, 0))"),
+    label + ': voice_join deve serializar a contagem de vagas da sala.');
+  assert.ok(fn.includes('if n >= 10 then raise exception \'voice_full\'; end if;'),
+    label + ': limite de 10 participantes deve permanecer ativo.');
+}
 
 assert.ok(auth.includes('factorError') && auth.includes('clearError'), 'Erros de operação MFA não estão sendo verificados.');
 assert.ok(auth.includes('s = await mintSession(email)'), 'Recuperação MFA deve emitir sessão nova após excluir o fator.');
 assert.ok(ui.includes('api().logout(); // o Supabase encerra as sessões'),
   'A interface deve encerrar a sessão local após desligar MFA.');
 
-console.log('SHIQI static contract: OK (13 rotas Auth, 18 tabelas/RLS, 17 policies, 58 ACL revokes, privacidade de perfil).');
+console.log('SHIQI static contract: OK (13 rotas Auth, 18 tabelas/RLS, 17 policies, 58 ACL revokes, privacidade de perfil e concorrência de voz).');
 console.log('Atenção: teste estático; não valida Deno, JWT, Supabase Auth, PostgreSQL ou envio de e-mail.');
