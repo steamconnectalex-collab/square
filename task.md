@@ -265,3 +265,10 @@ Combinado com a pessoa em 2026-11-23: o que precisa de conta em aplicativo exter
 - Trabalho segue isolado em `shiqi-parallel-dev`; `main` e produção não devem receber commits sem autorização expressa.
 - CI Rust `46004512804` aprovado (JWKS, formatação, 21 testes e Clippy). Foi adicionado build Docker ao workflow; run `46006067078` está validando a imagem.
 - Guia de implantação do container: `shiqi-parallel/services/core/DEPLOYMENT.md`. O projeto Vercel `shiqi-parallel` hospeda o frontend, não o serviço Rust. Railway é opção de host Docker; a conexão ainda depende do usuário.
+
+
+## SHIQI — Railway isolado (2026-11-27)
+- CI `46006067078` aprovado incluindo build Docker (JWKS, fmt, 21 testes e Clippy).
+- Projeto Railway dedicado `SHIQI Core Parallel` criado no ambiente `development`; serviço `shiqi-core` configurado com Dockerfile, health check `/healthz` e variáveis do Supabase paralelo (sem service-role).
+- Source ainda não conectado: Railway App não tem acesso ao repositório privado `steamconnectalex-collab/square`. Solicitar ao usuário habilitar o repositório na instalação do GitHub App Railway; depois conectar a branch `shiqi-parallel-dev`.
+- Não há deployment, tráfego nem domínio público; produção/main preservadas. Detalhes e IDs em `shiqi-parallel/services/core/DEPLOYMENT.md`.
