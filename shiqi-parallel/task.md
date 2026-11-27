@@ -6,11 +6,10 @@
 **Migrar tecnologia sem mudar design, layout, identidade visual, navegação ou qualquer funcionalidade do aplicativo original que permaneça no escopo.** O diretório `site/` da raiz é a fonte de verdade. Música foi explicitamente retirada do produto pelo usuário e poderá ser removida somente da cópia paralela. Nenhuma outra simplificação/remoção de função sem autorização expressa.
 
 ## Em andamento agora
-- [ ] Continuar revisão de compatibilidade do pacote SQL e autenticação. MFA, matriz de ACL e checks estáticos foram atualizados; `is_server_member` foi reconstruída por falta da migration-base no Git e ainda precisa ser comparada com a definição original. Validação PostgreSQL local dispensada; não aplicar DDL remoto.
+- [ ] Continuar revisão de compatibilidade do pacote SQL e autenticação. MFA, matriz de ACL e checks estáticos foram atualizados; `is_server_member` foi conferida em `CANONICAL_TRIGGERS.sql` e no draft; a primeira varredura omitiu o arquivo de triggers e gerou um falso alerta. Validação PostgreSQL local dispensada; não aplicar DDL remoto.
 - [x] 2026-11-27 — Ampliado o snapshot para incluir grants de tabela concedidos a PUBLIC e privilégios de todas as sequences; o plano de rollback agora inclui remoção das sete policies Storage do cutover e restauração dos grants de sequence. Removidos grants duplicados do draft.
 
 ## Bloqueios atuais (27/11/2026)
-- `public.is_server_member(uuid)` não estava definida em nenhum SQL canônico, embora seja chamada por três policies RLS e apareça na ACL. Foi adicionada uma reconstrução mínima em `CANONICAL_SERVER_RPCS.sql`; conferir com a definição original antes de qualquer migration. A migration-base `servidores_e_canais` está ausente do Git.
 - Os fluxos MFA ainda não foram executados contra Supabase Auth; a correção foi estática. O comportamento de revogação de sessões ao excluir um fator verificado exige novo login no desligamento e sessão nova após recuperação.
 - Leitura do Supabase restabelecida em 2026-11-27 usando a conexão `Primary`; projeto `ujdosskjycrdkcgsswfa` confirmado `ACTIVE_HEALTHY`. A falha anterior era a conexão incorreta (`shiqi` apontava para o projeto antigo). O preflight foi executado somente com SELECT e todos os 17 checks retornaram true. Nenhum DDL/DML foi executado.
 - A validação de parser/runtime em PostgreSQL isolado foi dispensada pelo usuário para evitar aprofundamento em configuração local. Os SQLs continuam sem validação de runtime; manter bloqueio de execução remota até revisão e autorização.
@@ -358,3 +357,10 @@
 - A função `is_server_member` permanece marcada como reconstrução de contrato e não deve ser aplicada antes de comparação com a fonte original.
 - Nenhuma alteração em banco remoto, migration, secret, e-mail, deploy, produção ou branch `main`.
 - Próximo passo: obter/confirmar a definição original da função base ausente e continuar a revisão dos contratos restantes; só depois consolidar migration final e rollback.
+
+### 2026-11-27 — Correção da auditoria de is_server_member
+- Uma segunda conferência do pacote completo mostrou que `public.is_server_member(uuid)` já estava definida em `CANONICAL_TRIGGERS.sql` e em `CUTOVER_DRAFT.sql`. A varredura anterior havia omitido o arquivo de triggers e produziu um falso alerta de função ausente.
+- A cópia redundante adicionada temporariamente em `CANONICAL_SERVER_RPCS.sql` foi removida. A definição canônica original preservada não foi modificada.
+- O teste estático foi ajustado para buscar a função em `CANONICAL_TRIGGERS.sql`; documentação corrigida para registrar a origem correta.
+- Não há mais bloqueio por ausência de `is_server_member`; a migration-base `servidores_e_canais` continua sem arquivo versionado, mas a função auxiliar está presente nos arquivos canônicos/draft.
+- Commits: `4413d82` (remoção da duplicata), `eb907d1` (teste), `f810b5c` (documentação).
