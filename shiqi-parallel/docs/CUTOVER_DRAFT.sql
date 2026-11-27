@@ -581,8 +581,13 @@ as $function$
     join public.server_members m on m.server_id = c.server_id
     where c.id = p_channel and m.user_id = (select auth.uid())
   ) or exists (
-    select 1 from public.dm_members d
-    where d.channel_id = p_channel and d.user_id = (select auth.uid())
+    select 1
+    from public.dm_members d
+    join public.dm_members other_member
+      on other_member.channel_id = d.channel_id and other_member.user_id <> d.user_id
+    where d.channel_id = p_channel
+      and d.user_id = (select auth.uid())
+      and private.dm_allowed(d.user_id, other_member.user_id)
   )
 $function$;
 
@@ -608,8 +613,13 @@ security definer
 set search_path to ''
 as $function$
   select exists (
-    select 1 from public.dm_members d
-    where d.channel_id = p_channel and d.user_id = (select auth.uid())
+    select 1
+    from public.dm_members d
+    join public.dm_members other_member
+      on other_member.channel_id = d.channel_id and other_member.user_id <> d.user_id
+    where d.channel_id = p_channel
+      and d.user_id = (select auth.uid())
+      and private.dm_allowed(d.user_id, other_member.user_id)
   )
 $function$;
 
@@ -644,16 +654,13 @@ as $function$
             where mine.channel_id = c.id
               and mine.user_id = (select auth.uid())
               and mine.state = 'active'
-              and (
-                m.author_id = (select auth.uid())
-                or exists (
-                  select 1
-                  from public.dm_members other_member
-                  where other_member.channel_id = c.id
-                    and other_member.user_id <> (select auth.uid())
-                    and other_member.state = 'active'
-                    and private.dm_allowed((select auth.uid()), other_member.user_id)
-                )
+              and exists (
+                select 1
+                from public.dm_members other_member
+                where other_member.channel_id = c.id
+                  and other_member.user_id <> (select auth.uid())
+                  and private.dm_allowed((select auth.uid()), other_member.user_id)
+                  and (m.author_id = (select auth.uid()) or other_member.state = 'active')
               )
           )
         )
