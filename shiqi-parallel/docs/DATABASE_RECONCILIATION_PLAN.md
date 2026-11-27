@@ -262,3 +262,14 @@ Portanto, o contrato original é **criação explícita de perfil pela Edge Func
 O arquivo versionado `supabase/functions/auth/index.ts` na branch consultada contém apenas 2.259 bytes e termina antes das rotas, enquanto a função ativa v9 no Supabase contém o código completo. Não sobrescrever nem publicar o arquivo incompleto. A reconciliação do código da Edge Function precisa ser feita na etapa de backend, recuperando a versão ativa completa e comparando com o repositório antes de qualquer deploy.
 
 Nenhuma alteração remota foi executada.
+
+
+## 16. DDL canônico das tabelas e índices recuperado (26/11/2026)
+
+Foram gerados diretamente do catálogo original, em três lotes, os comandos `CREATE TABLE` das 18 tabelas-alvo, incluindo tipos, defaults, identity, NOT NULL, PKs, FKs, CHECKs e regras ON DELETE. Os arquivos de referência foram adicionados à branch:
+- `docs/CANONICAL_TABLES.sql`
+- `docs/CANONICAL_INDEXES.sql`
+
+Os índices não-PK também foram extraídos por `pg_indexes` e registrados separadamente; os índices de PK já são criados pelas constraints. Os arquivos são **referências SQL**, não migrations prontas: precisam de revisão da ordem de dependências, integração com funções/RLS/grants, validação de sintaxe e inclusão no fluxo transacional com preflight/rollback. Não executar isoladamente.
+
+Importante: a tabela `rate_hits` não tem PK, por decisão do schema original; não adicionar chave artificial sem evidência. `messages.id` usa identity ALWAYS bigint e as FKs de reações/tópicos dependem disso. A ordem das tabelas deve respeitar dependências: servers antes de channels; channels antes de messages/DM/voice; messages antes de reactions; server_events antes de event_interest.
