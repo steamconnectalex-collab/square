@@ -33,7 +33,7 @@
 - [x] 2026-11-27 — Corrigida ACL de funções: schema private com USAGE para authenticated/service_role e as seis RPCs internas de conta/autenticação com EXECUTE somente para service_role.
 - [x] 2026-11-27 — Criado CUTOVER_PREFLIGHT.sql (somente leitura), com verificações de tabelas/dados, colisões, trigger Auth, pgcrypto, Realtime, Storage, índices, funções e papéis.
 - [x] 2026-11-27 — Montado CUTOVER_DRAFT.sql em transação, com renomeação das cinco tabelas prototype, renomeação de índices legados, remoção do trigger Auth conflitante e criação do schema canônico completo. É somente rascunho de revisão, não aplicado.
-- [x] 2026-11-27 — Criados CUTOVER_SNAPSHOT.sql e CUTOVER_ROLLBACK_PLAN.md. O rollback executável continua bloqueado até validar snapshot corrigido em todas as seções e testar em PostgreSQL isolado.
+- [x] 2026-11-27 — Criados CUTOVER_SNAPSHOT.sql e CUTOVER_ROLLBACK_PLAN.md. O rollback continua bloqueado até teste transacional em PostgreSQL isolado e revisão final das dependências.
 - [x] 2026-11-27 — Corrigidos dois pontos na referência canônica: voice_join agora respeita o limite aprovado de 10 participantes; ACL concede USAGE do schema private aos papéis que precisam executar policies/helpers e EXECUTE service_role às seis RPCs internas de autenticação/conta.
 - [x] 2026-11-27 — Revisão estática cruzada dos SQLs canônicos, ACLs, funções, triggers, Storage, Realtime e dependências: 18 tabelas, 17 policies, 45 RPCs públicas, 13 funções privadas e 46 referências de colunas verificadas.
 - [x] 2026-11-27 — Removida a funcionalidade musical da cópia paralela: exportação não consulta mais music_favorites/playlists; campo de última música removido do editor de perfil; integrações Spotify/Amazon Music e textos promocionais de atividade musical removidos. Arquivos originais em site/ e branch main preservados.
@@ -107,7 +107,6 @@
 - Detectados: nenhum bucket no destino; Realtime apenas para messages; nenhuma RPC pública do app original; policies de communities; concessões diretas amplas a anon que precisam ser revistas/revogadas no hardening.
 - Criado `docs/DATABASE_RECONCILIATION_PLAN.md` com inventário, estratégia sem perda, fases, decisões pendentes e bloqueio explícito de DDL até revisão.
 - Nenhum SQL/DDL, migration, grant, bucket, policy, trigger, função, Realtime, dado ou Edge Function foi alterado.
-
 ### 2026-11-26 — Fechamento da etapa 1 e início da etapa 2
 - Etapa 1 encerrada por inspeção estática: telas, rotas, grupos de ações, persistência local, REST/RPC, Storage, Realtime, APIs do navegador e placeholders foram registrados na matriz.
 - Confirmado adapter de perfil: saveProfile faz PATCH em profiles; avatar é JPEG 256×256 no bucket avatars, com remoção do objeto anterior; anexos usam attachments e messages.attachment_path/attachment_alt.
@@ -217,8 +216,7 @@
 
 ### 2026-11-26 — RPCs de servidores
 - Extraídas as definições completas de `create_server`, `create_channel`, `create_invite`, `join_server` e `join_public_server`.
-- Criado `docs/CANONICAL_SERVER_RPCS.sql` como referência.
-- Confirmados limites de servidores/canais, defaults de convite, lock de convite, bloqueio por ban e limites de membership.
+- Criado `docs/CANONICAL_SERVER_RPCS.sql` como referência.- Confirmados limites de servidores/canais, defaults de convite, lock de convite, bloqueio por ban e limites de membership.
 - Próximo grupo: RPCs de amizade/DM e bloqueios; depois demais funções públicas e ACLs.
 - Nenhuma alteração remota.
 
@@ -327,8 +325,7 @@
 - Confirmado HEAD inicial da branch `shiqi-parallel-dev` em `19c98a96b9d0441bef511c9fad9733a9dc8b2705`; relidos `agents.md` e `shiqi-parallel/task.md` antes de prosseguir.
 - Identificada a conexão correta: `Primary` aponta para `shiqi-parallel` (`ujdosskjycrdkcgsswfa`, ACTIVE_HEALTHY); a conexão `shiqi` apontava para o projeto antigo `square`. Nenhuma mudança de permissão solicitada ao usuário.
 - Executado o `CUTOVER_PREFLIGHT.sql` em leitura. Para tornar os resultados individualmente auditáveis, os checks foram repetidos em uma consulta consolidada; os 17 checks passaram. Cinco tabelas prototype existem e estão vazias; `auth.users` tem zero contas; trigger/handler esperados existem; pgcrypto está em `extensions`; Realtime contém somente `public.messages`; não há buckets nem policies Storage canônicas; os nomes de tabelas, índices e funções canônicas estão livres (índices existentes pertencem às tabelas prototype que serão renomeadas).
-- Capturados metadados do snapshot: definição do trigger `AFTER INSERT ON auth.users ... EXECUTE FUNCTION private.handle_new_user()`, corpo integral do handler, policies, triggers, índices, constraints, publicação Realtime, histórico das cinco migrations e helpers privados.
-- A primeira execução do snapshot falhou porque `information_schema.sequence_privileges` não existe no PostgreSQL do projeto. Nenhuma alteração foi feita. O arquivo foi corrigido no commit `7a693e3`, usando `pg_class` + `aclexplode` para ACLs de tabela, coluna e sequence, incluindo PUBLIC e privilégio PG17 MAINTAIN.
+- Capturados metadados do snapshot: definição do trigger `AFTER INSERT ON auth.users ... EXECUTE FUNCTION private.handle_new_user()`, corpo integral do handler, policies, triggers, índices, constraints, publicação Realtime, histórico das cinco migrations e helpers privados.- A primeira execução do snapshot falhou porque `information_schema.sequence_privileges` não existe no PostgreSQL do projeto. Nenhuma alteração foi feita. O arquivo foi corrigido no commit `7a693e3`, usando `pg_class` + `aclexplode` para ACLs de tabela, coluna e sequence, incluindo PUBLIC e privilégio PG17 MAINTAIN.
 - O cruzamento das ACLs mostrou grants amplos de tabela a `anon` e `authenticated` nas cinco tabelas prototype; grants de UPDATE por coluna para authenticated em 13 colunas; nenhum grant a PUBLIC observado; nenhuma sequence no schema public. O catálogo mostra também o privilégio PG17 MAINTAIN, não exibido pelas views information_schema usadas antes.
 - Atualizado `CUTOVER_ROLLBACK_PLAN.md` no commit `61dcd4a` com os achados e a correção. Nenhum DDL/DML remoto, migration, deploy ou alteração de produção foi executado.
 - Próximo passo: executar o snapshot corrigido em consultas separadas e conferir todas as seções, revisar o rollback contra as ACLs reais e buscar um PostgreSQL isolado para validação de parser/runtime. O draft continua proibido de execução até validação e aprovação explícita.
@@ -419,6 +416,6 @@
 
 - Complemento de DMs: a auditoria identificou que bloquear impedia novos envios, mas SELECT de histórico ainda era permitido. Helpers de leitura e Storage foram alinhados à regra de bloqueio; teste estático cobre a correção.
 
-- Realtime: consulta somente leitura no projeto paralelo retornou zero policies em `realtime.messages` e zero função `private.can_voice_topic`, compatível com o estado pré-cutover. A nova consulta de colisões de policies retornou zero linhas. O preflight atualizado tem 18 checks; os 17 checks anteriores já haviam passado, mas o arquivo completo atualizado ainda não foi reexecutado em bloco.
+- Realtime: consulta somente leitura no projeto paralelo retornou zero policies em `realtime.messages` e zero função `private.can_voice_topic`, compatível com o estado pré-cutover. A nova consulta de colisões de policies retornou zero linhas. O preflight atualizado foi reexecutado em 2026-11-27: os 18 checks booleanos passaram, além das duas consultas adicionais de definição do trigger e handler.
 
-- Snapshot/rollback atualizado para capturar e remover/restaurar policies de `realtime.messages`; helper `private.can_read_attachment(text)` foi incluído explicitamente na lista de remoção do rollback. O snapshot completo corrigido ainda não foi reexecutado em seções separadas.
+- Snapshot/rollback atualizado para capturar e remover/restaurar policies de `realtime.messages`; helper `private.can_read_attachment(text)` foi incluído explicitamente na lista de remoção do rollback. O snapshot completo corrigido foi reexecutado em seções separadas em 2026-11-27; o resumo foi registrado em `docs/CUTOVER_SNAPSHOT_BASELINE.md`.
