@@ -161,3 +161,10 @@
 - Confirmados pontos sensíveis: `rate_hits` sem PK; `messages.id` bigint identity ALWAYS; dependências de ordem para canais/mensagens/reactions/eventos.
 - Estes arquivos são referências, ainda não migrations prontas nem aplicadas.
 - Próximo passo: gerar definições completas de RLS/funções/triggers e revisar o frontend/backend contra o contrato canônico; só depois montar a migration atômica e seu rollback.
+
+### 2026-11-26 — Policies RLS exatas
+- Extraídas as expressões completas de `pg_policies` em três lotes.
+- Criado `docs/CANONICAL_RLS_POLICIES.sql` com as 18 policies existentes e RLS nas 18 tabelas.
+- Confirmado que tabelas internas `email_codes`, `rate_hits`, `server_invites`, `server_bans`, `mfa_recovery` não possuem policies públicas; não adicionar policies genéricas.
+- Arquivo depende de helpers privados/RPCs criadas previamente e é referência, não migration pronta.
+- Próximo passo: revisar as definições dos helpers e das funções públicas para produzir SQL executável, ACLs e testes de contrato.
