@@ -6,9 +6,13 @@ Branch de documentação: `shiqi-parallel-dev`.
 
 ## Resultado principal
 
-A Edge Function versionada em `supabase/functions/auth/index.ts` não contém um servidor HTTP nem handlers. O arquivo termina após constantes, tipos, helpers HMAC/código e regex de validação de e-mail. Não há `Deno.serve`, roteador ou implementação das rotas anunciadas no cabeçalho. A mesma limitação foi confirmada na cópia de referência da branch principal. Portanto, não existe implementação completa no Git para simplesmente copiar ou migrar para Rust.
+**Atualização de 2026-11-27:** foi identificado que a implementação completa da Edge Function estava em `supabase/functions/auth/index.ts` na raiz do repositório, enquanto a cópia paralela `shiqi-parallel/supabase/functions/auth/index.ts` continha somente o início do arquivo. A implementação completa foi restaurada na cópia paralela no commit `0b61202`.
 
-O frontend original, entretanto, chama essa função e depende de contratos concretos. A reconstrução precisa partir das chamadas reais do cliente, dos fluxos de UI e de testes de contrato; não assumir payloads/respostas não comprovados.
+A versão paralela agora contém `Deno.serve`, roteamento e handlers para cadastro, verificação de e-mail, reenvio, login, TOTP, recuperação de senha, alteração de e-mail, desativação/exclusão de conta e operações de MFA. Foram mantidas as configurações isoladas: `SUPABASE_ANON_KEY` é obrigatória por variável de ambiente, o endereço padrão é `https://shiqi-parallel.vercel.app` e as origens de produção do projeto antigo foram removidas da allow-list. Origens adicionais de preview devem ser configuradas por `EXTRA_ORIGINS`.
+
+A cópia paralela não inclui rotas de QR, conforme o escopo aprovado. O prefixo HMAC histórico `square-v1:` foi preservado para consistência do formato interno; não foi alterado nenhum segredo.
+
+A restauração foi verificada estaticamente: 13 rotas POST e GET `/health`; as três tabelas acessadas diretamente (`profiles`, `email_codes`, `mfa_recovery`) existem no SQL canônico, assim como as seis RPCs chamadas. **Isso não equivale a teste de runtime**: ainda faltam validar os contratos de cada rota, dependências, JWT e variáveis de ambiente antes de conectar a interface ou publicar a função.
 
 ## Transporte comum observado
 
