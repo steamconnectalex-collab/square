@@ -52,12 +52,13 @@ for (const rpc of [
   'rate_check', 'get_auth_user_by_email', 'verify_email_code',
   'get_login_email_by_username', 'revoke_user_sessions', 'purge_user_data',
 ]) {
-  assert.ok(sql.includes('function public.' + rpc + '('), 'Definição SQL ausente: ' + rpc);
+  assert.ok(sql.toLowerCase().includes('function public.' + rpc + '('), 'Definição SQL ausente: ' + rpc);
   assert.ok(auth.includes('.rpc("' + rpc + '"') || auth.includes(".rpc('" + rpc + "'"),
     'Chamada RPC ausente: ' + rpc);
 }
 
-const memberHelper = triggersSql.slice(triggersSql.indexOf('function public.is_server_member('));
+const memberHelperStart = triggersSql.toLowerCase().indexOf('function public.is_server_member(');
+const memberHelper = triggersSql.slice(memberHelperStart).toLowerCase();
 assert.ok(memberHelper.includes('security definer') && memberHelper.includes("set search_path to ''"),
   'Helper is_server_member precisa de SECURITY DEFINER e search_path vazio.');
 assert.equal(count(tablesSql, 'create table public.'), 18, 'Contagem inesperada de tabelas.');
