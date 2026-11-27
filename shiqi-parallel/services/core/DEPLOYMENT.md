@@ -48,3 +48,20 @@ O serviço aceita uma única origem exata em `SHIQI_ALLOWED_ORIGIN`, métodos PO
 ## Situação
 
 Preparação documental. O serviço ainda não foi implantado, não recebe tráfego e não está conectado ao frontend. O projeto Vercel `shiqi-parallel` é o frontend (raiz `shiqi-parallel/apps/web`); não reutilizá-lo como host do container Rust.
+
+
+## Provisionamento Railway (27/11/2026)
+
+Projeto Railway dedicado criado:
+- Projeto: `SHIQI Core Parallel` (`19a82042-88ea-4111-871d-85e828c73110`)
+- Ambiente: `development` (`ab58538a-ad7b-43a6-a904-7ec0ef7ae735`)
+- Serviço: `shiqi-core` (`6ea4bd77-edcb-4741-89eb-d7a6548310b7`)
+- Root Directory: `/shiqi-parallel/services/core`
+- Builder: Dockerfile; arquivo `Dockerfile`
+- Health check: `/healthz`
+- Variáveis configuradas no serviço: `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_JWT_AUDIENCE=authenticated`; os valores são do Supabase paralelo. Nenhuma service-role key foi configurada.
+- O projeto está isolado, sem serviços ou tráfego de produção.
+
+Bloqueio de origem: Railway recusou anexar `steamconnectalex-collab/square` com `User does not have access to the repo`. O serviço segue sem source e sem deployment. É necessário conceder ao app Railway acesso a esse repositório privado pela instalação/configuração do GitHub App Railway. Depois, anexar a branch `shiqi-parallel-dev`.
+
+Ainda pendente: configurar `SHIQI_ALLOWED_ORIGIN` com a origem HTTPS exata do frontend paralelo; publicar a imagem; gerar domínio público; verificar `/healthz` e `/readyz`; validar JWT; só então integrar upload na UI.
