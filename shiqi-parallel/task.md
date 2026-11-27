@@ -445,3 +445,10 @@
 - **Problema resolvido:** primeira tentativa falhou por falta de ponto e vírgula ao fim de 39 definições de função; consulta confirmou que a primeira tentativa não alterou schema nem histórico. Corrigido o draft na branch antes da aplicação bem-sucedida.
 - **Limites:** sem deploy, sem alteração do projeto original/produção. Ainda faltam testes runtime de Auth/JWT, RLS com dois usuários, RPCs, Storage, Realtime e concorrência. Rollback não foi testado isoladamente e não deve ser executado sem revisão.
 - **Próximo passo:** executar testes de integração controlados no Supabase paralelo, sem publicar a UI/Edge Function até validar os contratos.
+
+
+### 2026-11-27 — Verificação automatizada do JWKS real (em andamento)
+- O projeto Supabase paralelo foi confirmado como `ACTIVE_HEALTHY` via conexão Primary.
+- A leitura direta do endpoint público JWKS não pôde ser feita pelo ambiente de ferramentas desta sessão; isso não foi tratado como confirmação do algoritmo.
+- Adicionado ao workflow `.github/workflows/shiqi-core.yml` um job independente, sem secrets, que consulta o JWKS público do projeto paralelo, registra somente metadados não secretos (`kid`, `kty`, `alg`, `crv`) e falha se encontrar algoritmo/tipo de chave fora de ES256/RS256.
+- Aguardando execução do GitHub Actions para concluir a compatibilidade real. Até lá, o verificador Rust não deve ser conectado ao tráfego.
