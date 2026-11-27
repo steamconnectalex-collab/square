@@ -6,7 +6,7 @@
 
 O cutover preserva as cinco tabelas prototype renomeando-as para `legacy_*`, mas revoga os privilégios de `anon` e `authenticated` nessas tabelas e troca a publicação Realtime. Para reverter com exatidão, precisamos ter o snapshot anterior de:
 
-- ACLs de tabela e coluna, incluindo `PUBLIC` e privilégios específicos do PostgreSQL 17, além das ACLs de todas as sequences do schema `public` (o snapshot foi corrigido para consultar os catálogos diretamente);
+- ACLs de tabela, coluna e schema (especialmente `private`), incluindo `PUBLIC` e privilégios específicos do PostgreSQL 17, além das ACLs de todas as sequences do schema `public` (o snapshot consulta os catálogos diretamente);
 - definição exata do trigger `on_auth_user_created_shiqi` e do handler `private.handle_new_user()`;
 - índices, constraints, policies e triggers prototype;
 - membros da publicação Realtime, estado prévio dos buckets e todas as policies de `storage.objects`;
@@ -39,9 +39,12 @@ O rollback só poderá ser considerado se:
 6. Renomear as cinco tabelas `legacy_*` para os nomes originais.
 7. Remover as sete policies Storage criadas pelo cutover (`attachments_*` e `avatars_*`); manter os buckets somente se estiverem vazios e a decisão de preservá-los estiver documentada.
 8. Restaurar os nomes dos índices/constraints conforme o snapshot.
-9. Restaurar os privilégios de tabela, coluna e sequence exatamente conforme o snapshot, incluindo entradas concedidas a `PUBLIC`.
-10. Recriar o trigger Auth usando a definição exata capturada — não aproximar evento, timing ou condição.
-11. Validar policies, triggers, FKs, índices, grants de tabela/coluna/sequence, Realtime, Storage e histórico de migrations.
+9. Restaurar os privilégios de tabela, coluna e sequence exatamente conforme o snapshot, incluindo entradas concedidas a `PUBLIC` e privilégios PG17 como `MAINTAIN`.
+10. Restaurar a ACL do schema `private` ao estado capturado (USAGE somente para `authenticated`, além do proprietário).
+11. Recriar o trigger Auth usando a definição exata capturada — não aproximar evento, timing ou condição.
+12. Validar policies, triggers, FKs, índices, grants de tabela/coluna/sequence/schema, Realtime, Storage e histórico de migrations.
+
+Restaurar também a ACL do schema `private`: no estado capturado antes do cutover, `authenticated` tem `USAGE`; `anon`, `service_role` e `PUBLIC` não têm `USAGE`. O draft concede `USAGE` temporariamente a `service_role`, portanto o rollback deve revogá-lo e manter o grant somente para `authenticated`.
 
 Os buckets podem ser mantidos durante o rollback se estiverem vazios e com configuração compatível; as sete policies Storage criadas pela migration devem ser removidas para restaurar o estado anterior. Não excluir linhas de `storage.buckets` diretamente. Se for necessário removê-los, usar o fluxo oficial do Storage após confirmar que não há objetos.
 
