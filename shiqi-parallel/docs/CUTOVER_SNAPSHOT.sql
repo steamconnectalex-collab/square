@@ -9,32 +9,40 @@ WHERE schemaname='public'
   AND tablename IN ('profiles','communities','community_members','channels','messages')
 ORDER BY tablename;
 
-SELECT table_name, grantee, privilege_type, is_grantable
-FROM information_schema.role_table_grants
-WHERE table_schema='public'
-  AND table_name IN ('profiles','communities','community_members','channels','messages')
-ORDER BY table_name, grantee, privilege_type;
+-- ACL de tabela pelo catálogo PostgreSQL: inclui PUBLIC e privilégios PG17
+-- (por exemplo MAINTAIN), que podem não aparecer nas views information_schema.
+SELECT c.relname AS table_name,
+       CASE WHEN a.grantee=0 THEN 'PUBLIC' ELSE pg_get_userbyid(a.grantee) END AS grantee,
+       a.privilege_type, a.is_grantable
+FROM pg_class c
+JOIN pg_namespace n ON n.oid=c.relnamespace
+CROSS JOIN LATERAL aclexplode(c.relacl) a
+WHERE n.nspname='public'
+  AND c.relname IN ('profiles','communities','community_members','channels','messages')
+  AND c.relkind IN ('r','p')
+ORDER BY c.relname, grantee, a.privilege_type;
 
--- Grants explícitos de tabela incluindo grantee PUBLIC (role_table_grants não o lista).
-SELECT table_name, grantee, privilege_type, is_grantable
-FROM information_schema.table_privileges
-WHERE table_schema='public'
-  AND table_name IN ('profiles','communities','community_members','channels','messages')
-ORDER BY table_name, grantee, privilege_type;
+-- ACLs explícitas por coluna (NULL significa ausência de ACL específica).
+SELECT c.relname AS table_name, att.attname AS column_name,
+       CASE WHEN a.grantee=0 THEN 'PUBLIC' ELSE pg_get_userbyid(a.grantee) END AS grantee,
+       a.privilege_type, a.is_grantable
+FROM pg_class c
+JOIN pg_namespace n ON n.oid=c.relnamespace
+JOIN pg_attribute att ON att.attrelid=c.oid AND att.attnum>0 AND NOT att.attisdropped
+CROSS JOIN LATERAL aclexplode(att.attacl) a
+WHERE n.nspname='public'
+  AND c.relname IN ('profiles','communities','community_members','channels','messages')
+ORDER BY c.relname, att.attname, grantee, a.privilege_type;
 
--- Grants de sequences: o cutover revoga anon/authenticated em TODAS as sequences
--- do schema public, inclusive qualquer sequence ligada ao protótipo.
-SELECT sequence_name, grantee, privilege_type, is_grantable
-FROM information_schema.sequence_privileges
-WHERE sequence_schema='public'
-ORDER BY sequence_name, grantee, privilege_type;
-
--- 2) Privilégios por coluna (não são restaurados por REVOKE de tabela).
-SELECT table_name, column_name, grantee, privilege_type, is_grantable
-FROM information_schema.column_privileges
-WHERE table_schema='public'
-  AND table_name IN ('profiles','communities','community_members','channels','messages')
-ORDER BY table_name, column_name, grantee, privilege_type;
+-- ACLs de todas as sequences public; aclexplode captura PUBLIC e todos os papéis.
+SELECT c.relname AS sequence_name,
+       CASE WHEN a.grantee=0 THEN 'PUBLIC' ELSE pg_get_userbyid(a.grantee) END AS grantee,
+       a.privilege_type, a.is_grantable
+FROM pg_class c
+JOIN pg_namespace n ON n.oid=c.relnamespace
+CROSS JOIN LATERAL aclexplode(c.relacl) a
+WHERE n.nspname='public' AND c.relkind='S'
+ORDER BY c.relname, grantee, a.privilege_type;
 
 -- 3) Policies RLS das tabelas antigas (permanecem anexadas aos OIDs após rename).
 SELECT schemaname, tablename, policyname, permissive, roles, cmd, qual, with_check
