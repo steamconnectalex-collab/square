@@ -58,7 +58,7 @@ assert.ok(memberHelper.includes('security definer') && memberHelper.includes("se
 assert.equal(count(tablesSql, 'create table public.'), 18, 'Contagem inesperada de tabelas.');
 assert.equal(count(rlsSql, 'enable row level security'), 18, 'Todas as tabelas devem ter RLS.');
 assert.equal(count(rlsSql, 'create policy '), 17, 'Contagem inesperada de policies.');
-assert.equal(count(aclSql, 'revoke execute on function '), 58, 'A ACL deve revogar as 58 assinaturas.');
+assert.equal(count(aclSql.toLowerCase(), 'revoke execute on function '), 58, 'A ACL deve revogar as 58 assinaturas.');
 
 assert.ok(auth.includes('factorError') && auth.includes('clearError'), 'Erros de operação MFA não estão sendo verificados.');
 assert.ok(auth.includes('s = await mintSession(email)'), 'Recuperação MFA deve emitir sessão nova após excluir o fator.');
