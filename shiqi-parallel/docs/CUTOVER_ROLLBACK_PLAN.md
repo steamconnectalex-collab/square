@@ -33,7 +33,7 @@ O rollback só poderá ser considerado se:
 
 1. Confirmar as condições acima e abortar se qualquer tabela canônica ou bucket tiver dados.
 2. Retirar da publicação Realtime as tabelas canônicas e recolocar `public.legacy_messages`.
-3. Remover policies e triggers criados para as tabelas canônicas.
+3. Remover as policies `voice_topic_select` e `voice_topic_insert` de `realtime.messages`, além das policies e triggers criados para as tabelas canônicas.
 4. Remover as RPCs públicas e helpers privados canônicos, usando assinaturas exatas e sem `CASCADE`.
 5. Remover as 18 tabelas canônicas em ordem inversa das FKs, sem `CASCADE`.
 6. Renomear as cinco tabelas `legacy_*` para os nomes originais.
