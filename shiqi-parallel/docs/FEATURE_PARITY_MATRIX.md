@@ -224,3 +224,33 @@ Esta seção registra a leitura dos handlers dos módulos de configurações, pe
 ### Nota de segurança da migração
 - O app principal faz chamadas REST diretas e RPCs com token do usuário; preservar RLS e permissões no banco é essencial. Não mover privilégios de escrita para cliente anônimo nem confiar apenas em esconder botões.
 - Nenhuma chamada foi executada contra o banco nesta inspeção; os vínculos acima foram lidos estaticamente do código. A compatibilidade do schema paralelo continua bloqueando integração e testes reais.
+## Fechamento da etapa 1 — rotas, ações e critérios de regressão (26/11/2026)
+
+### Pontos de entrada e carregamento
+- index.html carrega os estilos style.css, settings.css, shell.css, loja.css e perfil.css; scripts config.js, qr.js, home.js, settings.js, settings-pages.js, settings-pages2.js, mobile.js, loja.js, perfil.js e app.js, nesta ordem. A presença do script QR é legado e não o inclui no escopo de trabalho.
+- O app de uma página usa hash para home, cadastro, verificação, login, recuperação, redefinição e app autenticado. O bootstrap restaura a sessão local, renova token se necessário, carrega perfil e resolve a rota.
+- Páginas independentes: /baixar, /termos e /privacidade. A página de download seleciona instruções/artefato por sistema operacional; Termos e Privacidade têm links de retorno e cruzados. O cadastro liga o aceite dos documentos ao fluxo de conta.
+- Home pública é HTML gerado e conteúdo estático. Os cards de notícias/jogos vistos em módulos antigos não são tratados como fonte de dados nem como nova integração; o produto atual preserva o conteúdo que o frontend efetivamente apresenta.
+
+### Eventos e ações de interface mapeados
+- app.js delega cliques por data-act; entradas de formulário e preferências usam eventos input/change/submit com atributos data-app-bind e data-pv. Ações são classificadas como: navegação/estado local; operação de backend; integração com API do navegador (mídia, fullscreen, notificações, clipboard); ou aviso “em breve”.
+- Casca autenticada: trilho de servidores, navegação de amigos/DMs/oficial/Loja/Missões/Plus, lista de servidores/canais, recolher seções, menu do servidor, convites, busca rápida, painéis de membros/menções/busca, modais e toast.
+- Mensagens: campo de composição, envio por botão/Enter, emoji/figurinhas existentes, upload de imagem, respostas em tópico, reações, editar/apagar, histórico anterior, busca, menções, não lidas e navegação ao resultado. GIFs e presentes permanecem avisos de indisponibilidade.
+- Voz: entrar/voltar/sair, convite/aviso para canal de texto, mudo, ensurdecer, PTT com Ctrl direito, câmera, compartilhamento de tela, fullscreen, dispositivos, volumes, sensibilidade, efeitos e preferências. WebRTC e permissões são capacidades do navegador; voice_members/RPC/Realtime guardam presença e sinalização.
+- Social e comunidade: cartão de perfil, adicionar/aceitar/recusar/remover amigo, abrir DM, aceitar/recusar solicitação de DM, bloquear/desbloquear, criar/abrir servidor, explorar/entrar público, criar canais, criar convite, listar/expulsar/banir/desbanir membros, criar/listar/excluir evento e marcar interesse.
+- Configurações: categorias/subpáginas, busca, abas, acordeões, toggles, radios, selects, sliders, reset e preview. Preferências comuns usam localStorage com sincronização RPC; ações de conta/MFA usam RPC, Supabase Auth ou endpoints da Edge Function; itens sem implementação exibem aviso/placeholder.
+- Perfil: abrir/fechar editor, alterar nome/status/bio/acento, selecionar/recortar/girar/posicionar avatar, enviar/remover, histórico recente local, lista de desejos e prévias; elementos ainda indisponíveis mantêm seus avisos.
+- Loja/Missões/Plus: navegação, filtros, pesquisa, ordenação, páginas, wishlist, detalhes e prévias locais; comprar, resgatar, pontos, missões e assinatura não geram transação ou persistência comercial no estado atual.
+- Download e orientação: seleção por user-agent, link de release, retorno à home, aviso desktop/mobile dispensável por sessionStorage.
+
+### Contrato de perfil e arquivos confirmado
+- SQ_API.saveProfile faz PATCH em profiles filtrando pelo ID do usuário e recarrega o mundo. Campos enviados pelo editor: display_name, status_text, bio e accent.
+- SQ_API.uploadAvatar envia JPEG ao bucket avatars em caminho <user_id>/<timestamp>.jpg; após upload remove o avatar anterior quando aplicável. SQ_API.removeAvatar remove o objeto atual e limpa avatar_path no perfil. A imagem é recortada no cliente para 256×256 antes do upload.
+- O upload de anexos de mensagem usa bucket attachments, grava caminho em messages.attachment_path e legenda alternativa em attachment_alt; acesso deve continuar limitado por RLS/storage policy.
+- A interface de configurações de exportação/encerramento/exclusão tem handlers de conta. A validação de ponta a ponta depende do contrato Edge Function e Auth, não deve ser inferida apenas pelo texto do botão.
+
+### Aceite e fronteira de testes
+- Critério da etapa 1 satisfeito por inspeção estática: todas as telas de entrada, áreas funcionais e famílias de ação da cópia paralela foram inventariadas; operações foram associadas a REST/RPC/Storage/Realtime, APIs do navegador, armazenamento local, conteúdo estático ou placeholder.
+- A lista de regressão por grupos já consta acima e será convertida em testes automatizados na etapa de testes. O smoke test existente na raiz aponta para ../site e contém mocks/fluxos legados; ele não é evidência de paridade da cópia paralela e não será executado/alterado para esta migração.
+- Não foi feito teste funcional real nesta etapa: o Supabase paralelo ainda tem schema incompatível e a autenticação paralela permanece stub. A etapa 1 encerra o levantamento, não declara a migração funcional.
+- Nenhuma tela, CSS, JS de produto, banco remoto, usuário, e-mail, Edge Function, deploy, domínio ou branch main foi alterado.
