@@ -13,7 +13,7 @@ Serviço Rust independente em fase inicial, isolado do frontend existente.
 - Logs via `tracing`.
 - Encerramento gracioso.
 - Validador de anexos JPEG/PNG/WebP/GIF alinhado ao limite atual de 3 MiB do Storage, conferindo assinatura binária e Content-Type.
-- Verificador JWT Supabase por JWKS assimétrico (ES256/RS256), com validação de `kid`, assinatura, issuer, audience, expiração, `nbf` e `role=authenticated`, cache de chaves e atualização quando surge um `kid` novo.
+- Verificador JWT Supabase por JWKS assimétrico (ES256/RS256), com validação de `kid`, assinatura, issuer, audience, expiração, `nbf` e `role=authenticated`, cache de chaves e atualização quando surge um `kid` novo. O JWKS público do Supabase paralelo foi consultado pelo GitHub Actions em 27/11/2026 e confirmou chave EC P-256 / ES256.
 - Testes unitários do validador.
 - Build multi-stage em Docker.
 - GitHub Actions para format, testes e Clippy.
@@ -33,4 +33,8 @@ O serviço escuta em `0.0.0.0:8080` por padrão. Defina `PORT` para alterar a po
 
 ## Limites de integração
 
-O validador de imagem ainda é uma função interna, não uma rota HTTP. O verificador JWT foi implementado como módulo isolado, mas ainda não está conectado a rotas de negócio. Ele aceita apenas chaves assimétricas ES256/RS256 publicadas no JWKS do projeto; não aceita HS256 legado nem usa segredo compartilhado. Como o projeto Supabase original ainda não está acessível pela integração, precisamos confirmar o algoritmo de assinatura ativo antes de ligar esse verificador ao tráfego real. O serviço ainda não conecta ao Supabase/PostgreSQL, não grava anexos e não recebe tráfego do aplicativo. Isso é intencional: primeiro precisamos implementar autenticação e autorização equivalentes às policies RLS/Storage e testar compatibilidade. Nenhum endpoint, tela ou arquivo visual do frontend foi alterado.
+- O verificador JWT está conectado às rotas protegidas do serviço Rust, mas o serviço ainda não foi implantado nem recebe tráfego do aplicativo.
+- O algoritmo real do Supabase paralelo foi confirmado como ES256 (EC P-256) pelo job `supabase-jwks` do GitHub Actions. O teste unitário `parses_supabase_es256_jwks_and_verifies_signed_claims` valida o formato JWK e a assinatura com uma chave fixture exclusiva de testes; não usa nem representa a chave real do projeto.
+- `POST /v1/attachments/validate` apenas autentica e valida o arquivo. Não faz upload. O armazenamento continua no Supabase Storage, com bucket privado e signed URLs de 60 segundos, sob as policies RLS existentes.
+- O serviço ainda não conecta ao PostgreSQL nem executa operações privilegiadas. A próxima fase deve preservar a identidade JWT do usuário e deixar o Supabase Storage/RLS como autoridade de autorização; não adicionar service_role ao serviço.
+- A Edge Function Auth paralela ainda precisa ser publicada e validada separadamente antes de substituir qualquer fluxo de cadastro/login. Nenhuma UI foi alterada nesta etapa.
