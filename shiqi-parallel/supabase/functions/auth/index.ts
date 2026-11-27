@@ -7,6 +7,9 @@ import { MailError, mailConfigured, sendCodeMail } from "./mail.ts";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+if (!SUPABASE_URL || !SERVICE_KEY || !ANON_KEY) {
+  throw new Error("Configure SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY e SUPABASE_ANON_KEY nos secrets da função.");
+}
 const SITE_URL = (Deno.env.get("SITE_URL") ?? "https://shiqi-parallel.vercel.app").replace(/\/+$/, "");
 
 const CODE_TTL_MS = 15 * 60_000;
@@ -257,7 +260,7 @@ async function signup(body: Record<string, unknown>, ip: string) {
     const { error: pe } = await admin.from("profiles").upsert({ id: existing.id, ...fields });
     if (pe) throw pe.code === "23505" ? taken() : pe;
   } else {
-    const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: false, app_metadata: { via: "square" } });
+    const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: false, app_metadata: { via: "shiqi" } });
     if (error || !data.user) {
       if (error && /already|registered|exists/i.test(error.message)) {
         throw new HttpError(409, "email_taken", "Já existe uma conta com esse e-mail. Entre ou recupere a senha.");
