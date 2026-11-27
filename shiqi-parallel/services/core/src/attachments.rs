@@ -109,7 +109,6 @@ mod tests {
         );
     }
 
-
     #[test]
     fn accepts_gif87a_and_gif89a_with_matching_mime() {
         assert_eq!(
