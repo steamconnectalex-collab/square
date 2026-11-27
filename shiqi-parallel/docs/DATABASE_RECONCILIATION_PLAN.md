@@ -273,3 +273,12 @@ Foram gerados diretamente do catálogo original, em três lotes, os comandos `CR
 Os índices não-PK também foram extraídos por `pg_indexes` e registrados separadamente; os índices de PK já são criados pelas constraints. Os arquivos são **referências SQL**, não migrations prontas: precisam de revisão da ordem de dependências, integração com funções/RLS/grants, validação de sintaxe e inclusão no fluxo transacional com preflight/rollback. Não executar isoladamente.
 
 Importante: a tabela `rate_hits` não tem PK, por decisão do schema original; não adicionar chave artificial sem evidência. `messages.id` usa identity ALWAYS bigint e as FKs de reações/tópicos dependem disso. A ordem das tabelas deve respeitar dependências: servers antes de channels; channels antes de messages/DM/voice; messages antes de reactions; server_events antes de event_interest.
+
+
+## 17. Policies RLS exatas recuperadas
+
+As definições completas de `pg_policies` foram extraídas em lotes e salvas em `docs/CANONICAL_RLS_POLICIES.sql`. O arquivo registra as 18 policies existentes (não uma policy por tabela): leitura e atualização de perfil, leitura de servidores/membros/canais, CRUD restrito de mensagens, leitura de amizades/bloqueios/DM/voz/fixados/reações/eventos/interesse.
+
+As tabelas internas `email_codes`, `rate_hits`, `server_invites`, `server_bans` e `mfa_recovery` não têm policies públicas no original. Não adicionar policies genéricas para elas. Mutations nessas áreas devem continuar mediadas pelas RPCs/Edge Function privilegiadas.
+
+O SQL de referência depende de helpers privados e RPC `public.is_server_member`; ele não é executável isoladamente. Antes de formar a migration final, as funções devem ser criadas antes das policies, e os grants devem ser aplicados com least privilege. A política de canal DM e mensagens deve ser validada com testes de usuário participante/não participante, incluindo DM em estado request.
