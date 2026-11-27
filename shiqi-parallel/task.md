@@ -15,13 +15,12 @@
 - [x] README e arquitetura corrigidos para registrar preservação visual/funcional como requisito obrigatório.
 
 ## Em andamento
-- [ ] 2026-11-26 — Iniciada a etapa 1 da sequência aprovada pelo usuário: fechar a matriz funcional da SHIQI, mapeando telas, operações, RPCs, tabelas, estados e critérios de regressão. Escopo fechado: sem novas funcionalidades; QR fora desta etapa; música excluída; preservar UI e funções restantes.
+- [x] 2026-11-26 — Etapa 1 concluída por inspeção estática: matriz funcional, pontos de entrada, famílias de ações, contratos REST/RPC/Storage/Realtime/local e lista de regressão registrados em docs/FEATURE_PARITY_MATRIX.md. Não representa teste funcional real.
 - [x] 2026-11-26 — Inventário de dependências do schema documentado em `docs/SCHEMA_DEPENDENCY_INVENTORY.md`.
 - [x] 2026-11-26 — Contratos iniciais de autenticação documentados em `docs/AUTH_CONTRACT_INVENTORY.md`.
 - [x] 2026-11-26 — Música excluída do escopo: migrations 0011 e 0012 removidas somente da pasta paralela; originals em `main` preservados.
-- [ ] Completar/revisar matriz de paridade funcional em `docs/FEATURE_PARITY_MATRIX.md`, detalhando campos, filtros, estados e critérios de regressão. Complementos de persistência/configurações/loja e primeiro cruzamento dos handlers do app.js registrados em 2026-11-26; ainda falta revisão de todos os caminhos de erro, rotas e harness de testes.
-- [ ] Recuperar SQL ausente da base de servidores/canais e dos eventos por fonte Git autorizada ou material fornecido pelo proprietário. Histórico Git acessível já pesquisado sem localizar o SQL base.
-- [ ] Reconciliar o schema paralelo de cinco tabelas com o modelo alvo sem drops/renames destrutivos.
+- [x] Matriz de paridade funcional concluída em `docs/FEATURE_PARITY_MATRIX.md` em 2026-11-26, incluindo rotas, ações, persistência, contratos e critérios de regressão. Execução dos testes fica para a etapa de regressão.
+- [ ] **Etapa 2 — planejamento/reconciliação do banco:** recuperar SQL ausente da base de servidores/canais e eventos por fonte Git autorizada; confirmar definições no projeto original autorizado; propor reconciliação do schema paralelo de cinco tabelas com o modelo alvo sem drops/renames destrutivos. Nenhum DDL será aplicado antes da revisão do plano.
 - [ ] Reconstruir e testar contratos de autenticação; o arquivo versionado atual é apenas stub.
 - [ ] Completar testes JWT assinados/negativos e validar algoritmo/chaves do projeto destino antes de integrar middleware.
 - [ ] Preparar migrations incrementais, RLS, grants, Storage e Realtime; não aplicar remotamente sem revisão.
@@ -48,6 +47,13 @@
 3. Recuperar a migration base ausente de servidores e eventos; pedir ao usuário dump SQL somente de estrutura (sem dados) se não houver fonte Git autorizada.
 4. Corrigir e testar autenticação antes de conectar a UI.
 5. Expandir testes de JWT e middleware Rust; validar algoritmo e chaves antes da integração.
+### 2026-11-26 — Fechamento da etapa 1 e início da etapa 2
+- Etapa 1 encerrada por inspeção estática: telas, rotas, grupos de ações, persistência local, REST/RPC, Storage, Realtime, APIs do navegador e placeholders foram registrados na matriz.
+- Confirmado adapter de perfil: saveProfile faz PATCH em profiles; avatar é JPEG 256×256 no bucket avatars, com remoção do objeto anterior; anexos usam attachments e messages.attachment_path/attachment_alt.
+- A lista de regressão foi consolidada. O smoke test da raiz aponta para ../site (app original), inclui fluxos legados e não serve como teste da cópia paralela; será criada/ajustada cobertura isolada na etapa de regressão.
+- Limitação explícita: etapa 1 foi inspeção estática, sem teste real no navegador/banco paralelo. O app não está declarado funcional na nova infraestrutura.
+- Iniciada a etapa 2 apenas como planejamento e recuperação de schema; nenhum SQL/DDL foi executado nem aplicado remotamente.
+
 ### 2026-11-26 — Continuação da etapa 1 (inspeção do app principal)
 - Cruzadas as rotinas de loadWorld, mensagens/histórico, Realtime/polling, reações, tópicos, busca/menções, servidores/canais/convites, amizades/DMs/bloqueios, eventos e voz com as tabelas/RPCs correspondentes.
 - Confirmado que favoritos de servidores e várias preferências ficam em localStorage; modais, navegação e controles visuais são estado local. Ações de negócio continuam delegadas a REST/RPC/RLS.
