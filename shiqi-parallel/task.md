@@ -132,3 +132,9 @@
 - Documentado rollback separado, sem `DROP CASCADE` e sem remoção automática de dados.
 - A proposta ainda exige conferência final dos objetos/colisões e revisão do SQL. Nenhuma renomeação ou DDL foi executada.
 - Próximo passo: revisar o trigger de criação de perfil e a dependência da publicação Realtime; depois montar migrations locais para revisão.
+
+### 2026-11-26 — Conferência final do trigger Auth no destino
+- Recuperada integralmente a definição de `private.handle_new_user()` do Supabase paralelo.
+- Confirmado conflito concreto: fallback atual insere username NULL, mas a tabela canônica exige username válido e NOT NULL; regex atual também difere.
+- A função do trigger precisa ser adaptada na mesma migration que cria a nova `public.profiles`; os helpers de communities ficam associados ao legado.
+- Nenhuma função, trigger, usuário ou dado foi alterado remotamente.
