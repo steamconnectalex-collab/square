@@ -11,7 +11,7 @@
 
 ## Bloqueios atuais (27/11/2026)
 - O limite de 10 participantes por voz agora tem locks transacionais por usuário e sala no SQL canônico e no draft; a proteção foi verificada estaticamente, mas ainda depende de teste concorrente em PostgreSQL. 
-- O bucket canônico `attachments` está configurado como público e o frontend monta URLs `/object/public/attachments/`; URLs de anexos de DMs/canais privados podem ser acessadas por qualquer pessoa que as possua. Antes do lançamento, migrar para bucket privado, signed URLs e policy de leitura por participação no canal; não tornar o bucket privado isoladamente porque quebraria o frontend atual.
+- Anexos agora estão preparados para bucket privado, signed URLs de 60s e policy por acesso à mensagem nos SQLs/draft/frontend. Falta teste de integração com usuários reais e validação runtime do helper/Storage antes de liberar cutover.
 - A validação de runtime dos SQLs segue pendente. O helper `private.shares_server_with` foi endurecido para considerar apenas amizades aceitas; a verificação estática cobre o helper e o cutover draft, mas não substitui teste RLS com dois usuários.
 - Os fluxos MFA ainda não foram executados contra Supabase Auth; a correção foi estática. O comportamento de revogação de sessões ao excluir um fator verificado exige novo login no desligamento e sessão nova após recuperação.
 - Leitura do Supabase restabelecida em 2026-11-27 usando a conexão `Primary`; projeto `ujdosskjycrdkcgsswfa` confirmado `ACTIVE_HEALTHY`. A falha anterior era a conexão incorreta (`shiqi` apontava para o projeto antigo). O preflight foi executado somente com SELECT e todos os 17 checks retornaram true. Nenhum DDL/DML foi executado.
@@ -20,6 +20,7 @@
 - O smoke test existente na raiz aponta para o site original e não valida a cópia paralela; não foi executado para evitar testar/altear o alvo errado.
 
 ## Concluído
+- [x] 2026-11-27 — Anexos protegidos por conversa: bucket `attachments` privado; signed URLs autenticadas de 60s no frontend; policy `attachments_select_message_member` baseada em `private.can_read_attachment`, exigindo membro atual de servidor ou participante ativo de DM (com bloqueios respeitados). Upload/exclusão seguem restritos à pasta do usuário. Teste estático ampliado; integração/runtime pendentes.
 - [x] 2026-11-27 — Endurecida a concorrência de `voice_join`: locks transacionais por usuário e sala evitam que entradas simultâneas ultrapassem 10 participantes ou mantenham o mesmo usuário em duas salas. Atualizados SQL canônico, draft e teste estático.
 - [x] 2026-11-27 — Corrigida exposição de perfis por amizade pendente: `private.shares_server_with()` agora só reconhece amizades com `status = 'accepted'`, tanto no helper canônico quanto no `CUTOVER_DRAFT.sql`. O helper alimenta `profiles_select_visible` e `profiles_full`; a correção impede que uma solicitação pendente seja tratada como amizade para liberar perfil. Adicionada verificação ao teste estático de contrato.
 - [x] 2026-11-27 — Corrigida a consulta de ACLs do snapshot: removida a referência à visão inexistente `information_schema.sequence_privileges`; agora usa `pg_class`/`aclexplode` para capturar grants de tabelas, colunas e sequences, inclusive PUBLIC e privilégios PG17. Incluída também a ACL dos schemas `private`/`public`.
@@ -384,3 +385,14 @@
 - Adicionados advisory transaction locks por usuário e por canal, sempre na ordem usuário → canal, antes da limpeza e contagem. Isso também serializa duas chamadas simultâneas do mesmo usuário para canais diferentes.
 - Alterados `CANONICAL_MODERATION_EVENTS_VOICE_RPCS.sql`, `CUTOVER_DRAFT.sql` e `tests/auth-contract-static.js`; `SECURITY_AUDIT.md` documenta o risco e a correção.
 - Verificação pós-commit estática pendente após salvar; teste de concorrência real em PostgreSQL continua não executado por decisão de evitar setup local.
+
+
+### 2026-11-27 — Anexos privados e signed URLs
+- Revisados os fluxos completos de upload/renderização em `apps/web/app.js`, os contratos de DM e os SQLs de Storage.
+- Alterado o bucket `attachments` para `public = false` em `CANONICAL_STORAGE_BUCKETS.sql` e no draft. O bucket `avatars` continua público.
+- Criado `private.can_read_attachment(text)`: associa o caminho a uma mensagem real, exige membro atual do servidor para canais de texto e, em DMs, exige membro ativo. O remetente mantém acesso ao próprio anexo enquanto a solicitação está pendente; o destinatário só ganha acesso depois de aceitar. Participantes ativos também precisam passar por `private.dm_allowed`, que respeita bloqueios.
+- Substituída a policy `attachments_select_own` por `attachments_select_message_member`; INSERT/DELETE continuam limitados à pasta do usuário. Incluída a função na ACL: 59 REVOKEs e EXECUTE para authenticated.
+- Frontend agora solicita signed URLs autenticadas com expiração de 60 segundos e cache local de 50 segundos; removida a montagem de URL pública. Erros não caem para URL pública.
+- Atualizados teste estático, relatório de segurança e plano de rollback. Verificações pós-commit de conteúdo ainda serão feitas; não foi executado o teste Node completo nem integração Storage/PostgreSQL.
+- Nenhuma migration, policy, bucket, função ou dado foi alterado no Supabase remoto; sem deploy ou alteração em produção.
+- Próximo passo: revisar consistência e sintaxe dos arquivos alterados, conferir referências à policy antiga e validar contratos Realtime/mensagens/DMs restantes.
