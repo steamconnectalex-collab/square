@@ -17,6 +17,7 @@ const tablesSql = read('docs/CANONICAL_TABLES.sql');
 const authRpcSql = read('docs/CANONICAL_AUTH_ACCOUNT_RPCS.sql');
 const socialRpcSql = read('docs/CANONICAL_SOCIAL_PROFILE_RPCS.sql');
 const serverRpcSql = read('docs/CANONICAL_SERVER_RPCS.sql');
+const triggersSql = read('docs/CANONICAL_TRIGGERS.sql');
 const moderationRpcSql = read('docs/CANONICAL_MODERATION_EVENTS_VOICE_RPCS.sql');
 const privateSql = read('docs/CANONICAL_PRIVATE_FUNCTIONS.sql');
 const aclSql = read('docs/CANONICAL_FUNCTION_ACL.sql');
@@ -52,7 +53,7 @@ for (const rpc of [
     'Chamada RPC ausente: ' + rpc);
 }
 
-const memberHelper = serverRpcSql.slice(serverRpcSql.indexOf('function public.is_server_member('));
+const memberHelper = triggersSql.slice(triggersSql.indexOf('function public.is_server_member('));
 assert.ok(memberHelper.includes('security definer') && memberHelper.includes("set search_path to ''"),
   'Helper is_server_member precisa de SECURITY DEFINER e search_path vazio.');
 assert.equal(count(tablesSql, 'create table public.'), 18, 'Contagem inesperada de tabelas.');
