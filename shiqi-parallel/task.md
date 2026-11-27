@@ -14,6 +14,7 @@
 - O smoke test existente na raiz aponta para o site original e não valida a cópia paralela; não foi executado para evitar testar/altear o alvo errado.
 
 ## Concluído
+- [x] 2026-11-27 — Corrigidos dois pontos na referência canônica: voice_join agora respeita o limite aprovado de 10 participantes; ACL concede USAGE do schema private aos papéis que precisam executar policies/helpers e EXECUTE service_role às seis RPCs internas de autenticação/conta.
 - [x] 2026-11-27 — Revisão estática cruzada dos SQLs canônicos, ACLs, funções, triggers, Storage, Realtime e dependências: 18 tabelas, 17 policies, 45 RPCs públicas, 13 funções privadas e 46 referências de colunas verificadas.
 - [x] 2026-11-27 — Removida a funcionalidade musical da cópia paralela: exportação não consulta mais music_favorites/playlists; campo de última música removido do editor de perfil; integrações Spotify/Amazon Music e textos promocionais de atividade musical removidos. Arquivos originais em site/ e branch main preservados.
 - [x] Branch isolada `shiqi-parallel-dev` e pasta `shiqi-parallel/`.
