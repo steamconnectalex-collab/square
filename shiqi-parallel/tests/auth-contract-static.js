@@ -103,6 +103,8 @@ assert.ok(rlsSql.includes("split_part(attachment_path, '/', 1) = (select auth.ui
 assert.ok(storagePolicySql.includes('private.can_read_attachment(name)') &&
   !storagePolicySql.includes('CREATE POLICY attachments_select_own'),
   'A policy de leitura deve autorizar pelo acesso à mensagem, não pelo dono da pasta.');
+assert.ok(appSql.includes('scheduleAttachmentRefresh') && appSql.includes('expiresAt <= now + 10000'),
+  'O frontend deve renovar signed URLs antes da expiração.');
 assert.ok(appSql.includes('/storage/v1/object/sign/attachments/') &&
   appSql.includes('expiresIn: 60') &&
   !appSql.includes('/storage/v1/object/public/attachments/'),
@@ -146,6 +148,8 @@ const lockChecks = [
   [moderationRpcSql, "shiqi:event:create:", 'Limite de eventos deve ser serializado por servidor.'],
   [moderationRpcSql, "shiqi:pins:limit:", 'Limite de servidores fixados deve ser serializado por usuário.'],
   [moderationRpcSql, "shiqi:reaction:message:", 'Limite de reações deve ser serializado por mensagem.'],
+  [moderationRpcSql, 'shiqi:event-interest:', 'Alternância de interesse em evento deve ser serializada por usuário/evento.'],
+  [draftSql, 'shiqi:event-interest:', 'O draft deve serializar interesse em eventos.'],
   [authRpcSql, "shiqi:rate:", 'Rate check de Auth deve ser serializado por chave.'],
   [draftSql, "shiqi:rate:", 'O draft deve serializar rate check de Auth.'],
 ];
