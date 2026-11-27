@@ -340,3 +340,16 @@ A leitura de `pg_proc.proacl` com `aclexplode` distinguiu grants explícitos de 
 Não copiar automaticamente o trigger do destino nem inventar um trigger novo no canônico. Primeiro comparar o fluxo de signup da Edge Function original: se ela cria o perfil explicitamente, manter o mesmo contrato e retirar o trigger prototype na fase de corte; se o novo frontend depender de Auth signup direto, desenhar o trigger canônico e cobrir ambos os fluxos com testes. A definição antiga do trigger deve ser preservada para rollback.
 
 Nenhuma alteração remota foi feita.
+
+## Revisão estática cruzada da documentação canônica — 27/11/2026
+
+A conferência estática da branch paralela confirmou:
+- 18 tabelas canônicas e 18 comandos de habilitação RLS.
+- 17 policies RLS efetivamente definidas (não 18); o checklist foi corrigido para 17.
+- 45 definições públicas únicas e 13 funções privadas; a matriz ACL contém 45 revogações/grants públicos e 13 revogações privadas, com seis helpers privados concedidos a authenticated.
+- Os nomes das funções presentes nas referências correspondem nominalmente às entradas da ACL; as 46 referências de colunas do arquivo CANONICAL_TABLE_ACL.sql existem nas definições das tabelas.
+- Todas as tabelas referenciadas pelas policies existem no conjunto canônico; as referências às 13 funções privadas foram resolvidas.
+- Removida uma duplicação de public.unban_member entre os arquivos de RPCs; a definição permanece no grupo de moderação.
+- Criadas referências SQL para buckets Storage e publicação Realtime, antes descritas apenas em metadados.
+
+Esta foi uma revisão estática dos arquivos Git. Não substitui parser/execução PostgreSQL, teste de privilégios por papel ou ensaio de rollback em banco descartável. O conector Supabase negou permissão de leitura do projeto paralelo nesta sessão; nenhum SQL foi executado remotamente.
