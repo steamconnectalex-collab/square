@@ -668,6 +668,7 @@ security definer
 set search_path to ''
 as $function$
 begin
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('shiqi:messages:rate:' || new.author_id::text, 0));
   if (select count(*) from public.messages
       where author_id = new.author_id and created_at > now() - interval '5 seconds') >= 5
      or (select count(*) from public.messages
@@ -801,6 +802,7 @@ declare
 begin
   if uid is null then raise exception 'not_authenticated'; end if;
   if char_length(nm) < 2 or char_length(nm) > 40 then raise exception 'invalid_name'; end if;
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('shiqi:server:create:' || uid::text, 0));
   select count(*) into n from public.servers where owner_id = uid;
   if n >= 10 then raise exception 'too_many_servers'; end if;
   insert into public.servers (name, owner_id) values (nm, uid) returning id into sid;
@@ -830,6 +832,7 @@ begin
   if not exists (select 1 from public.servers s where s.id = p_server and s.owner_id = uid) then
     raise exception 'not_owner';
   end if;
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('shiqi:channel:create:' || p_server::text, 0));
   select count(*), coalesce(max(position), -1) + 1 into n, pos
   from public.channels where server_id = p_server;
   if n >= 30 then raise exception 'too_many_channels'; end if;
@@ -874,6 +877,7 @@ begin
   if exists (select 1 from public.server_bans b where b.server_id = p_server and b.user_id = uid) then
     raise exception 'banned';
   end if;
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('shiqi:membership:limit:' || uid::text, 0));
   if exists (select 1 from public.server_members m where m.server_id = p_server and m.user_id = uid) then
     return p_server;
   end if;
@@ -905,6 +909,7 @@ begin
   if exists (select 1 from public.server_bans b where b.server_id = inv.server_id and b.user_id = uid) then
     raise exception 'banned';
   end if;
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('shiqi:membership:limit:' || uid::text, 0));
   if exists (select 1 from public.server_members m where m.server_id = inv.server_id and m.user_id = uid) then
     return inv.server_id;
   end if;
@@ -933,6 +938,7 @@ declare me uuid := auth.uid();
 begin
   if me is null then raise exception 'not_authenticated'; end if;
   if p_other is null or p_other = me then raise exception 'cannot_add_self'; end if;
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('shiqi:block:limit:' || me::text, 0));
   if (select count(*) from public.blocks where blocker = me) >= 200 then raise exception 'too_many_requests'; end if;
   insert into public.blocks (blocker, blocked) values (me, p_other) on conflict do nothing;
   delete from public.friendships where user_a = least(me, p_other) and user_b = greatest(me, p_other);
@@ -1176,6 +1182,7 @@ begin
   select id into other from public.profiles where lower(username) = lower(regexp_replace(btrim(coalesce(p_username, '')), '^@', ''));
   if other is null then raise exception 'user_not_found'; end if;
   if other = me then raise exception 'cannot_add_self'; end if;
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('shiqi:friend-request:limit:' || me::text, 0));
   if exists (select 1 from public.blocks where blocker = me and blocked = other) then raise exception 'you_blocked'; end if;
   if exists (select 1 from public.blocks where blocker = other and blocked = me) then raise exception 'user_not_found'; end if;
   a := least(me, other); b := greatest(me, other);
@@ -1276,6 +1283,7 @@ begin
   if not exists (select 1 from public.servers s where s.id = p_server and s.owner_id = me) then raise exception 'not_owner'; end if;
   if char_length(t) < 2 or char_length(t) > 80 then raise exception 'invalid_title'; end if;
   if p_starts is null or p_starts < now() - interval '5 minutes' then raise exception 'past_date'; end if;
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('shiqi:event:create:' || p_server::text, 0));
   if (select count(*) from public.server_events e where e.server_id = p_server and e.starts_at > now()) >= 25 then raise exception 'too_many_events'; end if;
   insert into public.server_events (server_id, creator_id, title, description, place, starts_at)
   values (p_server, me, t, left(btrim(coalesce(p_description, '')), 500), left(btrim(coalesce(p_place, '')), 80), p_starts) returning id into eid;
@@ -1409,6 +1417,7 @@ begin
     return;
   end if;
   if not exists (select 1 from public.server_members m where m.server_id = p_server and m.user_id = uid) then raise exception 'not_member'; end if;
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('shiqi:pins:limit:' || uid::text, 0));
   if exists (select 1 from public.server_pins p where p.user_id = uid and p.server_id = p_server) then return; end if;
   if (select count(*) from public.server_pins p join public.server_members m on m.server_id = p.server_id and m.user_id = p.user_id where p.user_id = uid) >= 4 then
     raise exception 'too_many_pins';
@@ -1467,6 +1476,7 @@ begin
   if char_length(e) < 1 or char_length(e) > 16 then raise exception 'invalid_emoji'; end if;
   select channel_id into ch from public.messages where id = p_message;
   if ch is null or not private.can_post(ch) then raise exception 'not_member'; end if;
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('shiqi:reaction:message:' || p_message::text, 0));
   delete from public.message_reactions where message_id = p_message and user_id = me and emoji = e;
   get diagnostics n = row_count;
   if n > 0 then return false; end if;
@@ -1630,6 +1640,7 @@ AS $function$
 declare
   n integer;
 begin
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('shiqi:rate:' || coalesce(p_key, ''), 0));
   delete from public.rate_hits
   where key = p_key and at < now() - make_interval(secs => p_window_seconds);
 
