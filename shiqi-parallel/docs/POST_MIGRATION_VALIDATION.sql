@@ -30,7 +30,7 @@ FROM expected e
 JOIN pg_class c ON c.oid = to_regclass('public.' || e.table_name);
 
 SELECT 'canonical_policy_count' AS check_name,
-       count(*) = 18 AS passed, count(*)::text AS observed
+       count(*) = 17 AS passed, count(*)::text || '/17' AS observed
 FROM pg_policies
 WHERE schemaname='public'
   AND tablename IN (
