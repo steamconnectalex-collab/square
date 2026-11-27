@@ -272,3 +272,12 @@ Combinado com a pessoa em 2026-11-23: o que precisa de conta em aplicativo exter
 - Projeto Railway dedicado `SHIQI Core Parallel` criado no ambiente `development`; serviço `shiqi-core` configurado com Dockerfile, health check `/healthz` e variáveis do Supabase paralelo (sem service-role).
 - Source ainda não conectado: Railway App não tem acesso ao repositório privado `steamconnectalex-collab/square`. Solicitar ao usuário habilitar o repositório na instalação do GitHub App Railway; depois conectar a branch `shiqi-parallel-dev`.
 - Não há deployment, tráfego nem domínio público; produção/main preservadas. Detalhes e IDs em `shiqi-parallel/services/core/DEPLOYMENT.md`.
+
+
+### 2026-11-27 — Railway conectado e primeiro deploy iniciado
+- O usuário confirmou que concedeu ao GitHub App Railway acesso ao repositório.
+- O serviço existente `shiqi-core` no projeto isolado `SHIQI Core Parallel` foi conectado ao repositório `steamconnectalex-collab/square`, branch `shiqi-parallel-dev`.
+- Primeiro deployment Railway: `566fe457-7c58-448b-8b85-9cbc18172004`; estado observado durante a compilação: `BUILDING`.
+- A origem e o Dockerfile foram reconhecidos em `shiqi-parallel/services/core`; nenhum domínio foi criado ainda.
+- Próximo passo: acompanhar build/deploy, corrigir eventual falha, gerar domínio no serviço após sucesso e validar `/healthz` e `/readyz`. A origem CORS só será configurada depois de confirmar o domínio do frontend paralelo.
+- Produção e `main` permanecem intocadas.
