@@ -13,7 +13,7 @@ Correção aplicada em `CANONICAL_PRIVATE_FUNCTIONS.sql` e na cópia do helper d
 
 ## Corrigido nesta rodada — anexos privados com autorização por conversa
 
-O bucket `attachments` agora é definido como privado nos SQLs canônicos e no `CUTOVER_DRAFT.sql`. O frontend não monta mais URLs públicas: solicita signed URLs autenticadas com validade de 60 segundos e mantém cache local por até 50 segundos. A renovação é feita quando a mensagem é renderizada novamente; falhas são exibidas como imagem indisponível, sem liberar URL pública.
+O bucket `attachments` agora é definido como privado nos SQLs canônicos e no `CUTOVER_DRAFT.sql`. O frontend não monta mais URLs públicas: solicita signed URLs autenticadas com validade de 60 segundos e mantém cache local por até 50 segundos. A renovação automática é agendada antes da expiração enquanto a tela de conversa está aberta; falhas são exibidas como imagem indisponível, sem liberar URL pública.
 
 A policy de SELECT foi trocada de `attachments_select_own` para `attachments_select_message_member`, que chama `private.can_read_attachment(name)`. O helper só autoriza caminhos associados a uma mensagem existente. Em canais de servidor, exige associação atual ao servidor. Em DMs, exige que a pessoa esteja com estado `active`; quem enviou uma solicitação ainda pode ver o próprio anexo, mas o destinatário não recebe acesso até aceitar. Depois do aceite, ambos precisam passar por `private.dm_allowed`, que respeita bloqueios e regras existentes. Upload e exclusão continuam limitados à pasta do próprio usuário.
 
@@ -57,6 +57,7 @@ A revisão encontrou contadores com padrão "consultar quantidade e depois inser
 - `create_event`: serializa o limite de 25 eventos futuros por servidor.
 - `pin_server`: serializa o limite de 4 servidores fixados por usuário.
 - `toggle_reaction`: serializa o limite de 20 emojis distintos por mensagem.
+- `toggle_event_interest`: serializa a alternância por combinação evento/usuário, evitando conflito de duas chamadas simultâneas.
 - `voice_join`: locks por usuário e sala mantêm o limite de 10 participantes e uma sala por usuário.
 
 As alterações foram aplicadas às referências SQL canônicas e às cópias correspondentes no `CUTOVER_DRAFT.sql`. O teste estático agora verifica a presença dos locks nos contratos canônicos e no draft. O teste passou em harness JavaScript em memória com os arquivos atuais da branch; a análise de sintaxe JS também passou. Ainda não foi executado teste de concorrência real em PostgreSQL, então a eficácia operacional deve ser confirmada antes do cutover.
