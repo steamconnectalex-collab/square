@@ -44,18 +44,23 @@ async fn healthz() -> Json<HealthResponse> {
 async fn readyz(State(state): State<AppState>) -> (StatusCode, Json<HealthResponse>) {
     let configured = state.jwt.is_some();
     (
-        if configured { StatusCode::OK } else { StatusCode::SERVICE_UNAVAILABLE },
+        if configured {
+            StatusCode::OK
+        } else {
+            StatusCode::SERVICE_UNAVAILABLE
+        },
         Json(HealthResponse {
             service: "shiqi-core",
-            status: if configured { "ready" } else { "missing_supabase_jwt_config" },
+            status: if configured {
+                "ready"
+            } else {
+                "missing_supabase_jwt_config"
+            },
         }),
     )
 }
 
-async fn authenticate(
-    headers: &HeaderMap,
-    state: &AppState,
-) -> Result<SupabaseClaims, StatusCode> {
+async fn authenticate(headers: &HeaderMap, state: &AppState) -> Result<SupabaseClaims, StatusCode> {
     let token = headers
         .get(header::AUTHORIZATION)
         .and_then(|value| value.to_str().ok())
@@ -64,10 +69,13 @@ async fn authenticate(
         .ok_or(StatusCode::UNAUTHORIZED)?;
 
     let verifier = state.jwt.as_ref().ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
-    verifier.verify_bearer(token).await.map_err(|error| match error {
-        AuthError::InvalidToken => StatusCode::UNAUTHORIZED,
-        _ => StatusCode::SERVICE_UNAVAILABLE,
-    })
+    verifier
+        .verify_bearer(token)
+        .await
+        .map_err(|error| match error {
+            AuthError::InvalidToken => StatusCode::UNAUTHORIZED,
+            _ => StatusCode::SERVICE_UNAVAILABLE,
+        })
 }
 
 fn api_error(status: StatusCode, code: &'static str) -> Response {
@@ -146,7 +154,9 @@ async fn validate_attachment(
         )
             .into_response(),
         Err(AttachmentError::Empty) => api_error(StatusCode::BAD_REQUEST, "empty_file"),
-        Err(AttachmentError::TooLarge) => api_error(StatusCode::PAYLOAD_TOO_LARGE, "file_too_large"),
+        Err(AttachmentError::TooLarge) => {
+            api_error(StatusCode::PAYLOAD_TOO_LARGE, "file_too_large")
+        }
         Err(AttachmentError::UnsupportedFormat) => {
             api_error(StatusCode::UNSUPPORTED_MEDIA_TYPE, "unsupported_image")
         }
