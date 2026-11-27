@@ -65,14 +65,7 @@ impl StorageProxy {
         url.path_segments_mut()
             .map_err(|_| StorageError::InvalidConfig)?
             .pop_if_empty()
-            .extend([
-                "storage",
-                "v1",
-                "object",
-                "attachments",
-                user_id,
-                filename,
-            ]);
+            .extend(["storage", "v1", "object", "attachments", user_id, filename]);
 
         let response = self
             .http
