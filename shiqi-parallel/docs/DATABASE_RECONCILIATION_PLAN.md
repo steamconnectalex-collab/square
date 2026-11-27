@@ -374,3 +374,16 @@ Foram adicionados dois arquivos de referência para cobrir objetos que não esta
 - docs/CANONICAL_REALTIME.sql: valida a publicação supabase_realtime, remove a tabela arquivada legacy_messages da publicação quando presente e adiciona friendships, messages e voice_members somente quando ausentes.
 
 Ambos são referências para a futura migration, não foram executados. A sequência depende de as tabelas canônicas existirem e de a renomeação do protótipo já ter ocorrido. A validação PostgreSQL e o rollback ainda estão pendentes.
+
+## 11. Resultado da revisão estática cruzada (27/11/2026)
+
+A documentação canônica foi cruzada por contagem e referências:
+- 18 tabelas e RLS habilitado nas 18.
+- 17 policies RLS (corrigida a expectativa anterior de 18 no checklist).
+- 45 RPCs públicas únicas e 13 funções privadas; ACL com cobertura nominal correspondente.
+- 46 referências de colunas no arquivo de ACL conferidas contra as definições das 18 tabelas, sem coluna inexistente.
+- Policies apontam somente para tabelas existentes; referências às 13 funções privadas foram resolvidas.
+- Duplicação de public.unban_member removida do arquivo de Auth; a definição única permanece no grupo de moderação.
+- Referências de buckets e Realtime agora têm SQL próprio e validação de configuração.
+
+**Limite:** revisão estática, sem compilação/execução PostgreSQL. O acesso de leitura ao Supabase paralelo foi negado pelo conector nesta sessão. A próxima fase continua sendo consolidar migration/rollback revisáveis e validar em ambiente PostgreSQL isolado; não executar DDL remoto até concluir isso.
