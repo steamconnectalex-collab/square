@@ -6,7 +6,7 @@
 **Migrar tecnologia sem mudar design, layout, identidade visual, navegação ou qualquer funcionalidade do aplicativo original que permaneça no escopo.** O diretório `site/` da raiz é a fonte de verdade. Música foi explicitamente retirada do produto pelo usuário e poderá ser removida somente da cópia paralela. Nenhuma outra simplificação/remoção de função sem autorização expressa.
 
 ## Em andamento agora
-- [ ] Continuar auditoria dos contratos Realtime, mensagens e DMs e revisar rollback/snapshot. Policies de sinalização privada de voz restauradas e preflight ampliado; anexos privados, bloqueios de leitura em DMs e locks transacionais implementados. Teste estático passou em harness em memória; validação PostgreSQL local dispensada; não aplicar DDL remoto.
+- [ ] Revisar rollback/snapshot após os novos objetos de Storage e Realtime; continuar auditoria final de mensagens/DMs. Policies de sinalização privada de voz restauradas e preflight ampliado; anexos privados, bloqueios de leitura em DMs e locks transacionais implementados. Teste estático passou em harness em memória; validação PostgreSQL local dispensada; não aplicar DDL remoto.
 - [x] 2026-11-27 — Ampliado o snapshot para incluir grants de tabela concedidos a PUBLIC e privilégios de todas as sequences; o plano de rollback agora inclui remoção das sete policies Storage do cutover e restauração dos grants de sequence. Removidos grants duplicados do draft.
 
 ## Bloqueios atuais (27/11/2026)
@@ -409,3 +409,5 @@
 - Complemento de DMs: a auditoria identificou que bloquear impedia novos envios, mas SELECT de histórico ainda era permitido. Helpers de leitura e Storage foram alinhados à regra de bloqueio; teste estático cobre a correção.
 
 - Realtime: consulta somente leitura no projeto paralelo retornou zero policies em `realtime.messages` e zero função `private.can_voice_topic`, compatível com o estado pré-cutover. A nova consulta de colisões de policies retornou zero linhas. O preflight atualizado tem 18 checks; os 17 checks anteriores já haviam passado, mas o arquivo completo atualizado ainda não foi reexecutado em bloco.
+
+- Snapshot/rollback atualizado para capturar e remover/restaurar policies de `realtime.messages`; helper `private.can_read_attachment(text)` foi incluído explicitamente na lista de remoção do rollback. O snapshot completo corrigido ainda não foi reexecutado em seções separadas.
