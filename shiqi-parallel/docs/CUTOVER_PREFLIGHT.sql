@@ -155,6 +155,21 @@ SELECT 'legacy_index_rename_targets_free' AS check_name,
            AND tbl.relname IN ('profiles','communities','community_members','channels','messages')
        ), 'no indexes') AS observed;
 
+-- Impede colisões entre nomes de índices que seriam truncados ao receber prefixo legacy_.
+SELECT 'legacy_index_targets_unique' AS check_name,
+       NOT EXISTS (
+         SELECT left('legacy_' || idx.relname, 63)
+         FROM pg_index ix
+         JOIN pg_class tbl ON tbl.oid=ix.indrelid
+         JOIN pg_namespace ns ON ns.oid=tbl.relnamespace
+         JOIN pg_class idx ON idx.oid=ix.indexrelid
+         WHERE ns.nspname='public'
+           AND tbl.relname IN ('profiles','communities','community_members','channels','messages')
+         GROUP BY left('legacy_' || idx.relname, 63)
+         HAVING count(*) > 1
+       ) AS passed,
+       'prefix legacy_ + truncamento PostgreSQL de 63 caracteres' AS observed;
+
 -- 11) Confirma a presença das tabelas do Storage e dos papéis Supabase usados no ACL.
 SELECT 'supabase_roles_and_storage' AS check_name,
        to_regclass('storage.buckets') IS NOT NULL
