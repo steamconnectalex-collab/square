@@ -182,3 +182,45 @@ Esta seção registra a leitura dos handlers dos módulos de configurações, pe
 3. Inspecionar index.html, rotas legais e CSS de navegação para confirmar telas, pontos de entrada e comportamento desktop/mobile sem alterar a interface.
 4. Classificar a página inicial e os conteúdos promocionais como estáticos, demonstrativos ou dinâmicos com base nos handlers reais.
 5. Construir o roteiro/harness de regressão isolado da cópia paralela. O teste raiz não deve ser alterado nem usado como evidência da cópia paralela.
+## Complemento da inspeção do app principal (26/11/2026)
+
+### Inicialização, navegação e sessão
+- app.js mantém sessão/token e pequenos estados auxiliares no armazenamento do navegador; renova token pelo endpoint Supabase Auth refresh_token, carrega perfil por REST e encerra sessão com /auth/v1/logout?scope=local.
+- Rotas de hash observadas para home, cadastro, verificação, login, recuperação, redefinição e app. A rota QR aparece no código legado, mas permanece totalmente fora desta análise/escopo por decisão do usuário.
+- O estado principal do app é inicializado após autenticação; timers de polling, heartbeat, digitação/Realtime e voz são interrompidos no encerramento/troca de estado.
+
+### Carregamento de dados e presença
+- loadWorld() lê servidores, canais, membros, amizades, canais DM, participantes DM, bloqueios e perfis; usa profiles_full como complemento de perfil. A leitura pressupõe as tabelas/RPCs do schema original.
+- Presença atualiza profiles.last_seen por REST e status por set_my_presence(). Favoritos de servidores ficam em localStorage (sq.favsrv.<uid>), não no banco.
+- Eventos próximos são consultados em server_events e event_interest. A lista de eventos de cada servidor lê até 25 registros futuros e seus interesses.
+
+### Mensagens, anexos, reações e tópicos
+- Histórico principal lê messages com paginação de 50; novas mensagens/alterações são recebidas por polling de fallback e canal WebSocket Realtime. Mensagens antigas são carregadas por id; respostas usam thread_of e consulta separada.
+- Enviar mensagem grava em messages; editar/apagar usa PATCH/DELETE em messages; respostas em tópico criam linha em messages com thread_of. O modelo requer id bigint, thread_of bigint e campos de anexo compatíveis.
+- Reações carregam message_reactions e alternam via toggle_reaction(p_message bigint, p_emoji).
+- Busca consulta messages por conteúdo e canal (ou conjunto de DMs conforme preferência); painel de menções consulta mensagens que contêm @username. Abrir resultado navega para canal/DM.
+- Upload de imagem usa Storage REST; o adapter e a chamada de upload devem ser relacionados às policies do bucket attachments e aos campos attachment_path/attachment_alt na matriz de anexos. Exibir imagem/clicar para abrir é ação local.
+- Spoiler, mostrar imagem, copiar ID, escolher emoji/figurinha, abrir/fechar painel e mostrar mensagem filtrada são estados/ações locais; GIFs, presentes e apps continuam placeholders sem backend.
+
+### Servidores, canais, convites e moderação
+- Criar servidor chama create_server; marcar público chama set_server_public; explorar lê list_public_servers e entrar chama join_public_server. Entrar por código chama join_server.
+- Criar canal chama create_channel(p_server,p_name,p_kind); convites chamam create_invite. Favoritos de servidor permanecem locais.
+- Lista de membros usa server_members/perfis. Expulsar/banir chama kick_member/ban_member; lista de banidos usa list_bans; desbanir usa unban_member.
+- Ações de dono, limites e permissões são responsabilidade das RPCs/RLS do banco; não substituir por validação apenas no frontend.
+
+### Amigos, DMs e bloqueios
+- Solicitação/aceite/recusa/remoção de amizade usa send_friend_request, respond_friend_request e remove_friend. Abrir conversa chama open_dm; solicitação de DM usa respond_dm_request.
+- Bloquear/desbloquear usa block_user/unblock_user. Os painéis e cartões de perfil são apresentação local do estado obtido do backend.
+
+### Eventos e voz
+- Eventos: listar via REST server_events/event_interest; criar via create_event; marcar interesse via toggle_event_interest; excluir via delete_event.
+- Voz lê voice_members; entrada/saída/heartbeat/estado usam voice_join, voice_leave, voice_ping e voice_set_state. Áudio, sinalização WebRTC, câmera/compartilhamento de tela e efeitos são executados no navegador; o estado compartilhado de participantes depende do backend/Realtime.
+- A UI inclui controle de câmera e tela; não assumir funcionamento real no destino até validar permissões, sinalização e contratos. Não repetir o teste de 10 participantes já realizado pelo usuário.
+
+### Modais, navegação e estados locais
+- Ações de navegação entre home/amigos/servidores/loja/missões/Plus, menus, modais, tabs, expandir/recolher, busca rápida, scroll e foco são estados do cliente.
+- A matriz agora identifica o vínculo principal entre as operações e tabelas/RPCs. Ainda é necessário revisar o bloco de eventos de clique e as rotas do HTML para confirmar todos os botões, campos e caminhos de erro sem examinar QR nem reintroduzir música.
+
+### Nota de segurança da migração
+- O app principal faz chamadas REST diretas e RPCs com token do usuário; preservar RLS e permissões no banco é essencial. Não mover privilégios de escrita para cliente anônimo nem confiar apenas em esconder botões.
+- Nenhuma chamada foi executada contra o banco nesta inspeção; os vínculos acima foram lidos estaticamente do código. A compatibilidade do schema paralelo continua bloqueando integração e testes reais.
