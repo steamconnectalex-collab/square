@@ -19,7 +19,7 @@
 - [x] 2026-11-26 — Inventário de dependências do schema documentado em `docs/SCHEMA_DEPENDENCY_INVENTORY.md`.
 - [x] 2026-11-26 — Contratos iniciais de autenticação documentados em `docs/AUTH_CONTRACT_INVENTORY.md`.
 - [x] 2026-11-26 — Música excluída do escopo: migrations 0011 e 0012 removidas somente da pasta paralela; originals em `main` preservados.
-- [ ] Completar/revisar matriz de paridade funcional em `docs/FEATURE_PARITY_MATRIX.md`, detalhando campos, filtros, estados e critérios de regressão. Primeira versão e complemento de persistência/configurações/loja registrados em 2026-11-26; ainda falta cruzamento integral de app.js, telas/rotas e testes.
+- [ ] Completar/revisar matriz de paridade funcional em `docs/FEATURE_PARITY_MATRIX.md`, detalhando campos, filtros, estados e critérios de regressão. Complementos de persistência/configurações/loja e primeiro cruzamento dos handlers do app.js registrados em 2026-11-26; ainda falta revisão de todos os caminhos de erro, rotas e harness de testes.
 - [ ] Recuperar SQL ausente da base de servidores/canais e dos eventos por fonte Git autorizada ou material fornecido pelo proprietário. Histórico Git acessível já pesquisado sem localizar o SQL base.
 - [ ] Reconciliar o schema paralelo de cinco tabelas com o modelo alvo sem drops/renames destrutivos.
 - [ ] Reconstruir e testar contratos de autenticação; o arquivo versionado atual é apenas stub.
@@ -48,6 +48,12 @@
 3. Recuperar a migration base ausente de servidores e eventos; pedir ao usuário dump SQL somente de estrutura (sem dados) se não houver fonte Git autorizada.
 4. Corrigir e testar autenticação antes de conectar a UI.
 5. Expandir testes de JWT e middleware Rust; validar algoritmo e chaves antes da integração.
+### 2026-11-26 — Continuação da etapa 1 (inspeção do app principal)
+- Cruzadas as rotinas de loadWorld, mensagens/histórico, Realtime/polling, reações, tópicos, busca/menções, servidores/canais/convites, amizades/DMs/bloqueios, eventos e voz com as tabelas/RPCs correspondentes.
+- Confirmado que favoritos de servidores e várias preferências ficam em localStorage; modais, navegação e controles visuais são estado local. Ações de negócio continuam delegadas a REST/RPC/RLS.
+- Confirmado que a integração depende do schema original, inclusive messages bigint/thread_of, DMs e tabelas sociais ausentes no banco paralelo atual.
+- QR permaneceu fora da inspeção e música fora do escopo. Nenhuma interface, funcionalidade, banco remoto ou produção foi alterada.
+
 ### 2026-11-26 — Continuação da etapa 1 (inspeção de módulos)
 - Lidos os handlers de settings.js, settings-pages.js, settings-pages2.js, perfil.js, loja.js, home.js, baixar.js e mobile.js na cópia paralela.
 - Documentado que preferências usam localStorage e sincronização RPC get_my_settings/save_my_settings; nome de usuário, senha, troca de e-mail e MFA têm rotas/RPCs próprios.
