@@ -101,3 +101,13 @@
 - Encontrada diferença na função original voice_join: banco original usa 6; a branch paralela tem a exceção aprovada de 10 participantes. A migração manterá 10.
 - A extração de todas as definições de função original em uma única consulta foi truncada pelo limite de saída; será refeita em lotes menores antes de produzir SQL consolidado.
 - Nenhuma alteração remota em Supabase, produção, UI, domínio, main ou Vercel.
+
+### 2026-11-26 — Continuação da extração automática de funções
+- Relidos integralmente os arquivos de acompanhamento e o manual de trabalho antes da retomada.
+- Refeita em lotes pequenos a extração por `pg_get_functiondef` no banco original, somente SELECT: 13 funções privadas e 45 assinaturas públicas (incluindo as duas sobrecargas de `send_friend_request`), sem truncamento.
+- Recuperados corpos de servidores/canais/convites, exploração/destaques/fixados, amizades/DMs/bloqueios, moderação, eventos, perfil/configurações, reações, voz e rotinas internas de autenticação.
+- Confirmada novamente a diferença: `voice_join` original = 6; destino paralelo deve manter 10 conforme autorização anterior.
+- Registrados limites e pontos de segurança em `docs/REMOTE_SCHEMA_AUDIT.md`.
+- QR não foi investigado; música continua excluída.
+- Nenhum DDL, migration, grant, policy, bucket, trigger, Realtime, usuário, dado ou Edge Function foi alterado.
+- Próximo passo: completar a auditoria estrutural exata de policies/constraints/grants e fechar a estratégia reversível para preservar o protótipo antes de gerar migrations do destino.
