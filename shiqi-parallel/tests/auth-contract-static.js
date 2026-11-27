@@ -134,10 +134,27 @@ for (const [label, fn] of [['RPC canônica', voiceJoinSql], ['cutover draft', dr
     label + ': limite de 10 participantes deve permanecer ativo.');
 }
 
+const lockChecks = [
+  [privateSql, "shiqi:messages:rate:", 'Rate limit de mensagens deve ser serializado por autor.'],
+  [draftSql, "shiqi:messages:rate:", 'O draft deve serializar rate limit de mensagens.'],
+  [serverRpcSql, "shiqi:server:create:", 'Criação de servidores deve serializar o limite por proprietário.'],
+  [serverRpcSql, "shiqi:channel:create:", 'Criação de canais deve serializar o limite por servidor.'],
+  [serverRpcSql, "shiqi:membership:limit:", 'Entradas em servidores devem serializar o limite por usuário.'],
+  [draftSql, "shiqi:membership:limit:", 'O draft deve serializar o limite de membros por usuário.'],
+  [socialRpcSql, "shiqi:block:limit:", 'Limite de bloqueios deve ser serializado por usuário.'],
+  [socialRpcSql, "shiqi:friend-request:limit:", 'Limite de solicitações de amizade deve ser serializado por usuário.'],
+  [moderationRpcSql, "shiqi:event:create:", 'Limite de eventos deve ser serializado por servidor.'],
+  [moderationRpcSql, "shiqi:pins:limit:", 'Limite de servidores fixados deve ser serializado por usuário.'],
+  [moderationRpcSql, "shiqi:reaction:message:", 'Limite de reações deve ser serializado por mensagem.'],
+  [authRpcSql, "shiqi:rate:", 'Rate check de Auth deve ser serializado por chave.'],
+  [draftSql, "shiqi:rate:", 'O draft deve serializar rate check de Auth.'],
+];
+for (const [source, lock, message] of lockChecks) assert.ok(source.includes(lock), message);
+
 assert.ok(auth.includes('factorError') && auth.includes('clearError'), 'Erros de operação MFA não estão sendo verificados.');
 assert.ok(auth.includes('s = await mintSession(email)'), 'Recuperação MFA deve emitir sessão nova após excluir o fator.');
 assert.ok(ui.includes('api().logout(); // o Supabase encerra as sessões'),
   'A interface deve encerrar a sessão local após desligar MFA.');
 
-console.log('SHIQI static contract: OK (13 rotas Auth, 18 tabelas/RLS, 17 policies, 59 ACL revokes, privacidade de perfil/anexos e concorrência de voz).');
+console.log('SHIQI static contract: OK (13 rotas Auth, 18 tabelas/RLS, 17 policies, 59 ACL revokes, privacidade de perfil/anexos, concorrência de voz e limites).');
 console.log('Atenção: teste estático; não valida Deno, JWT, Supabase Auth, PostgreSQL ou envio de e-mail.');
