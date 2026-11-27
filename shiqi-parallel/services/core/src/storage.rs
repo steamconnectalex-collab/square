@@ -26,12 +26,22 @@ pub struct StorageProxy {
 
 impl StorageProxy {
     pub fn new(supabase_url: &str, publishable_key: &str) -> Result<Self, StorageError> {
+        Self::build(supabase_url, publishable_key, true)
+    }
+
+    fn build(
+        supabase_url: &str,
+        publishable_key: &str,
+        https_only: bool,
+    ) -> Result<Self, StorageError> {
         let mut base_url =
             reqwest::Url::parse(supabase_url).map_err(|_| StorageError::InvalidConfig)?;
-        if base_url.scheme() != "https"
-            || base_url.host_str().is_none()
-            || publishable_key.trim().is_empty()
-        {
+        let valid_scheme = if https_only {
+            base_url.scheme() == "https"
+        } else {
+            matches!(base_url.scheme(), "http" | "https")
+        };
+        if !valid_scheme || base_url.host_str().is_none() || publishable_key.trim().is_empty() {
             return Err(StorageError::InvalidConfig);
         }
         base_url.set_path("/");
@@ -40,7 +50,7 @@ impl StorageProxy {
 
         let http = Client::builder()
             .timeout(Duration::from_secs(20))
-            .https_only(true)
+            .https_only(https_only)
             .build()?;
 
         Ok(Self {
@@ -48,6 +58,11 @@ impl StorageProxy {
             publishable_key: publishable_key.trim().to_owned(),
             http,
         })
+    }
+
+    #[cfg(test)]
+    fn new_test(supabase_url: &str, publishable_key: &str) -> Result<Self, StorageError> {
+        Self::build(supabase_url, publishable_key, false)
     }
 
     /// Faz upload no bucket privado usando a identidade JWT do próprio usuário.
@@ -138,5 +153,74 @@ mod tests {
     fn rejects_insecure_or_incomplete_storage_configuration() {
         assert!(StorageProxy::new("http://example.supabase.co", "sb_publishable_test").is_err());
         assert!(StorageProxy::new("https://example.supabase.co", " ").is_err());
+    }
+
+    #[tokio::test]
+    async fn forwards_user_jwt_and_upload_to_private_storage_endpoint() {
+        use axum::{body::Bytes, http::HeaderMap, routing::post, Router};
+        use std::sync::{Arc, Mutex};
+        use tokio::net::TcpListener;
+
+        let received = Arc::new(Mutex::new(None));
+        let capture = received.clone();
+        let app = Router::new().route(
+            "/storage/v1/object/attachments/user-1/photo.jpg",
+            post(move |headers: HeaderMap, body: Bytes| {
+                let capture = capture.clone();
+                async move {
+                    *capture.lock().expect("capture lock") = Some((
+                        headers
+                            .get("authorization")
+                            .and_then(|v| v.to_str().ok())
+                            .unwrap_or_default()
+                            .to_owned(),
+                        headers
+                            .get("apikey")
+                            .and_then(|v| v.to_str().ok())
+                            .unwrap_or_default()
+                            .to_owned(),
+                        headers
+                            .get("content-type")
+                            .and_then(|v| v.to_str().ok())
+                            .unwrap_or_default()
+                            .to_owned(),
+                        headers
+                            .get("x-upsert")
+                            .and_then(|v| v.to_str().ok())
+                            .unwrap_or_default()
+                            .to_owned(),
+                        body.to_vec(),
+                    ));
+                    StatusCode::CREATED
+                }
+            }),
+        );
+        let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind mock Storage");
+        let address = listener.local_addr().expect("mock Storage address");
+        let server = tokio::spawn(async move {
+            axum::serve(listener, app).await.expect("mock Storage server");
+        });
+
+        let proxy = StorageProxy::new_test(&format!("http://{address}"), "sb_publishable_test")
+            .expect("test proxy");
+        let payload = b"\xFF\xD8\xFFmock-jpeg";
+        let result = proxy
+            .upload(
+                "user-1",
+                "user-1/photo.jpg",
+                "user-access-jwt",
+                ImageFormat::Jpeg,
+                payload,
+            )
+            .await;
+
+        server.abort();
+        assert!(result.is_ok(), "Storage response should be forwarded");
+        let captured = received.lock().expect("capture lock").clone().expect("request received");
+        assert_eq!(captured.0, "Bearer user-access-jwt");
+        assert_eq!(captured.1, "sb_publishable_test");
+        assert_eq!(captured.2, "image/jpeg");
+        assert_eq!(captured.3, "false");
+        assert_eq!(captured.4, payload);
     }
 }
