@@ -70,3 +70,12 @@ A RPC `block_user` impedia novos envios por meio de `private.dm_allowed`, mas as
 Os dois helpers agora exigem `private.dm_allowed` entre os participantes. Isso respeita bloqueios e mantém a regra existente de elegibilidade (amizade aceita ou servidor em comum). Solicitações de DM ainda pendentes continuam visíveis enquanto não houver bloqueio, permitindo que o destinatário avalie a solicitação. O helper de anexos também foi alinhado: o remetente ativo pode acessar seu próprio anexo pendente, mas somente se não houver bloqueio; o destinatário só acessa depois que o estado dele for `active`.
 
 Alterados `CANONICAL_PRIVATE_FUNCTIONS.sql` e `CUTOVER_DRAFT.sql`; teste estático ampliado para verificar os três helpers. Nenhuma mudança foi aplicada ao Supabase remoto.
+
+
+## Corrigido nesta rodada — policies de canal privado do Realtime
+
+A migration original `0008_voz.sql` foi recuperada do GitHub. Ela confirma que a sinalização WebRTC usa canal privado `voice:<channel-id>` e depende das policies `voice_topic_select` e `voice_topic_insert` em `realtime.messages`, ambas delegando a autorização a `private.can_voice_topic(realtime.topic())`. A função existia na referência canônica, mas as duas policies não tinham sido incluídas no pacote de cutover.
+
+As policies foram restauradas em `CANONICAL_REALTIME.sql` e `CUTOVER_DRAFT.sql`. O preflight agora bloqueia colisões dos dois nomes e também inclui `private.can_read_attachment` na verificação de colisões de funções. Corrigidos ainda os checks de bucket e policy Storage para refletir `attachments` privado e `attachments_select_message_member`.
+
+Consulta somente leitura ao projeto Supabase paralelo confirmou que não existem policies em `realtime.messages` nem a função antiga `private.can_voice_topic` no estado atual (esperado antes do cutover). A nova consulta de nomes de policy retornou zero linhas. O preflight completo atualizado ainda não foi executado em bloco; nenhum DDL/DML remoto foi realizado.
