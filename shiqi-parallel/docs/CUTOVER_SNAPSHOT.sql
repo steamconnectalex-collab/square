@@ -44,6 +44,16 @@ CROSS JOIN LATERAL aclexplode(c.relacl) a
 WHERE n.nspname='public' AND c.relkind='S'
 ORDER BY c.relname, grantee, a.privilege_type;
 
+-- ACLs dos schemas alterados pelo draft. O cutover redefine USAGE em private;
+-- capturar grants explícitos para restaurar o estado original no rollback.
+SELECT n.nspname AS schema_name, pg_get_userbyid(n.nspowner) AS owner,
+       CASE WHEN a.grantee=0 THEN 'PUBLIC' ELSE pg_get_userbyid(a.grantee) END AS grantee,
+       a.privilege_type, a.is_grantable
+FROM pg_namespace n
+CROSS JOIN LATERAL aclexplode(n.nspacl) a
+WHERE n.nspname IN ('private','public')
+ORDER BY n.nspname, grantee, a.privilege_type;
+
 -- 3) Policies RLS das tabelas antigas (permanecem anexadas aos OIDs após rename).
 SELECT schemaname, tablename, policyname, permissive, roles, cmd, qual, with_check
 FROM pg_policies
