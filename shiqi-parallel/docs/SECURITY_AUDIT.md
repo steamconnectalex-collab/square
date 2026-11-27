@@ -61,3 +61,12 @@ A revisão encontrou contadores com padrão "consultar quantidade e depois inser
 - `voice_join`: locks por usuário e sala mantêm o limite de 10 participantes e uma sala por usuário.
 
 As alterações foram aplicadas às referências SQL canônicas e às cópias correspondentes no `CUTOVER_DRAFT.sql`. O teste estático agora verifica a presença dos locks nos contratos canônicos e no draft. O teste passou em harness JavaScript em memória com os arquivos atuais da branch; a análise de sintaxe JS também passou. Ainda não foi executado teste de concorrência real em PostgreSQL, então a eficácia operacional deve ser confirmada antes do cutover.
+
+
+## Corrigido nesta rodada — bloqueio também restringe leitura de DMs
+
+A RPC `block_user` impedia novos envios por meio de `private.dm_allowed`, mas as funções usadas nas policies de SELECT (`private.is_channel_member` e `private.is_dm_member`) aceitavam qualquer linha de `dm_members` sem consultar bloqueios. Isso permitia continuar lendo o histórico de uma DM após bloquear ou ser bloqueado.
+
+Os dois helpers agora exigem `private.dm_allowed` entre os participantes. Isso respeita bloqueios e mantém a regra existente de elegibilidade (amizade aceita ou servidor em comum). Solicitações de DM ainda pendentes continuam visíveis enquanto não houver bloqueio, permitindo que o destinatário avalie a solicitação. O helper de anexos também foi alinhado: o remetente ativo pode acessar seu próprio anexo pendente, mas somente se não houver bloqueio; o destinatário só acessa depois que o estado dele for `active`.
+
+Alterados `CANONICAL_PRIVATE_FUNCTIONS.sql` e `CUTOVER_DRAFT.sql`; teste estático ampliado para verificar os três helpers. Nenhuma mudança foi aplicada ao Supabase remoto.
