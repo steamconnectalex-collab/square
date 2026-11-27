@@ -1,6 +1,6 @@
 # SHIQI — acompanhamento
 
-Última atualização: 2026-11-27 (cadastro real confirmado; integração Rust/frontend iniciada)
+Última atualização: 2026-11-27 (upload de imagem adiado; próxima fase: autenticação e smoke runtime)
 
 ## Trabalho em andamento — integração Rust com frontend (27/11/2026)
 
@@ -24,16 +24,17 @@
 - [x] 2026-11-27 — Uploads de avatar continuam no bucket avatars via Storage; leitura de anexos permanece por signed URLs de 60 segundos. Limite de 3 MiB é conferido antes do envio.
 - [x] 2026-11-27 — CI completo aprovado no run 46041802300: JWKS, sintaxe JavaScript, contrato frontend/Rust, cargo fmt, 21 testes Rust, Clippy e build Docker passaram.
 - [x] 2026-11-27 — Vercel criou deployment READY do frontend integrado no commit d9801be24637215835b9e8c78b174997e4a7bf94; alias do preview: https://shiqi-parallel-git-shiqi-parallel-dev-steamconnectalex-9536.vercel.app.
-- [ ] Próximo: testar login e GET /v1/me, depois realizar um upload real no preview com a conta de teste. O código integrado e CI estão aprovados; não declarar upload real validado até o usuário executar o teste. Não pedir nem compartilhar JWT no chat.
+- [ ] Próximo: validar login real e GET /v1/me com a sessão da conta de teste; em seguida, executar regressão de RLS/Realtime com duas contas. O teste de upload de imagem foi explicitamente adiado pelo usuário para uma fase posterior; não gastar mais tempo nesse bloqueio agora. Não pedir nem compartilhar JWT no chat.
+- [ ] Adicionado ao workflow um smoke test runtime do Railway para `/healthz`, `/readyz` e rejeição de `/v1/me` sem Bearer token; aguardar CI após o commit `f8a8e2f`.
 
 ## Bloqueios atuais (27/11/2026)
 - O limite de 10 participantes por voz agora tem locks transacionais por usuário e sala no SQL canônico e no draft; a proteção foi verificada estaticamente, mas ainda depende de teste concorrente em PostgreSQL. 
-- Anexos: bucket `attachments` privado, signed URLs de 60s e policy por acesso à mensagem. A interface agora encaminha uploads pelo Rust; falta validar `/v1/me` e upload real com sessão do usuário, incluindo autorização RLS.
+- Anexos: bucket `attachments` privado, signed URLs de 60s e policy por acesso à mensagem. O caminho Rust está integrado no branch, mas o teste de upload real foi adiado pelo usuário; manter como pendência não bloqueante.
 - A validação de runtime dos SQLs segue pendente após o cutover. O helper `private.shares_server_with` foi endurecido para considerar apenas amizades aceitas; a verificação estática cobre o helper, mas não substitui teste RLS com dois usuários.
 - Os fluxos MFA ainda não foram executados contra Supabase Auth; a correção foi estática. O comportamento de revogação de sessões ao excluir um fator verificado exige novo login no desligamento e sessão nova após recuperação.
 - Leitura e escrita do Supabase paralelo confirmadas via conexão `Primary`; projeto `ujdosskjycrdkcgsswfa` estava `ACTIVE_HEALTHY`. A falha anterior era a conexão incorreta (`shiqi` apontava para o projeto antigo). O preflight pré-cutover passou 18/18; a migration canônica foi aplicada e o pós-check estrutural passou.
 - A validação de parser/runtime em PostgreSQL isolado foi dispensada pelo usuário. A migration foi aplicada com sucesso em transação no projeto paralelo; os fluxos runtime de Auth/JWT/RLS/Storage/Realtime ainda precisam de testes de integração antes de conectar a UI.
-- A Vercel continua com a última implantação READY, mas ela aponta para o commit 1a6f6706, anterior às alterações recentes de frontend. A proteção SSO está habilitada. Não disparar novo deploy enquanto a restrição/janela de limite registrada no projeto não terminar.
+- O projeto Vercel `square-chat` é o projeto principal conforme esclarecimento do usuário. Não alterar nem publicar nele nesta etapa. O projeto paralelo segue isolado; os checks Vercel reportaram limite de builds, sem bloquear o avanço do backend.
 - O smoke test existente na raiz aponta para o site original e não valida a cópia paralela; não foi executado para evitar testar/altear o alvo errado.
 
 ## Concluído
@@ -520,3 +521,9 @@
 - A Edge Function `supabase/functions/auth/index.ts` depende de `SUPABASE_SERVICE_ROLE_KEY` (variável padrão do runtime), `RESEND_API_KEY` para e-mails e configuração de URL/origem. O código atual usa `SITE_URL` padrão de produção e allowlist sem o domínio do preview; antes de publicar no projeto paralelo, definir `SITE_URL=https://shiqi-parallel-git-shiqi-parallel-dev-steamconnectalex-9536.vercel.app` e `EXTRA_ORIGINS` incluindo exatamente essa origem, além de configurar `RESEND_API_KEY` válido. Não reutilizar secrets da produção sem autorização explícita.
 - Próximo passo: usuário configurar esses três secrets/variáveis no Supabase paralelo; depois publicar `auth` apenas no projeto `ujdosskjycrdkcgsswfa` com verificação JWT de gateway desativada somente porque signup/login são rotas públicas e a própria função aplica validações/rate limits. Em seguida verificar `/health`, testar cadastro/verificação por e-mail e obter uma sessão real para `GET /v1/me`.
 - Não criar usuário manualmente em `auth.users`; não expor nem solicitar token; produção e `main` permanecem intocadas.
+
+
+## Decisão de escopo — 2026-11-27
+- O usuário esclareceu que `square-chat` é o projeto principal e pediu para deixar o problema de envio de imagens para depois. Não investigar mais CORS/upload agora, não mexer no projeto Vercel principal e não ampliar permissões CORS.
+- Próxima frente: validar runtime do serviço Rust e autenticação (`/healthz`, `/readyz`, rejeição sem token, login real e `GET /v1/me`); depois avançar para testes de RLS/Realtime e RPCs com contas de teste.
+- Workflow `.github/workflows/shiqi-core.yml` ganhou job `railway-smoke` no commit `f8a8e2f213d0fc298de5960aa009c90213b9cd0c`. O job só roda em push/manual, depois de Rust e JWKS, e aguarda até 5 minutos pelos endpoints públicos. Não valida JWT real nem upload.
