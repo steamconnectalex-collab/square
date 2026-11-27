@@ -22,8 +22,13 @@ assert.ok(app.includes("authorization: 'Bearer ' + t"),
   'O upload deve encaminhar o JWT renovado da sessão do usuário.');
 assert.ok(app.includes('uploadAttachmentViaCore(path, blob'),
   'O fluxo de envio de imagens deve usar o serviço Rust.');
-assert.ok(app.includes("storageCall('POST', path, blob") === false,
-  'O fluxo de anexos não deve continuar enviando diretamente ao Storage.');
+const sendStart = app.indexOf('async function sendImage(file) {');
+const sendEnd = app.indexOf('async function doSend()', sendStart);
+const sendFlow = app.slice(sendStart, sendEnd);
+assert.ok(sendStart >= 0 && sendFlow.includes('uploadAttachmentViaCore(path, blob'),
+  'O envio de imagens deve passar pelo serviço Rust.');
+assert.ok(!sendFlow.includes("storageCall('POST', path, blob"),
+  'O envio de anexos não deve continuar enviando diretamente ao Storage.');
 const avatarStart = app.indexOf('uploadAvatar: async (blob) => {');
 const avatarEnd = app.indexOf('removeAvatar: async () => {', avatarStart);
 const avatarFlow = app.slice(avatarStart, avatarEnd);
