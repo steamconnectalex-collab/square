@@ -6,17 +6,17 @@
 
 O cutover preserva as cinco tabelas prototype renomeando-as para `legacy_*`, mas revoga os privilégios de `anon` e `authenticated` nessas tabelas e troca a publicação Realtime. Para reverter com exatidão, precisamos ter o snapshot anterior de:
 
-- privilégios de tabela (incluindo grants a `PUBLIC`), privilégios por coluna e privilégios de todas as sequences do schema `public` (o cutover revoga `anon`/`authenticated` em todas elas);
+- ACLs de tabela e coluna, incluindo `PUBLIC` e privilégios específicos do PostgreSQL 17, além das ACLs de todas as sequences do schema `public` (o snapshot foi corrigido para consultar os catálogos diretamente);
 - definição exata do trigger `on_auth_user_created_shiqi` e do handler `private.handle_new_user()`;
 - índices, constraints, policies e triggers prototype;
 - membros da publicação Realtime, estado prévio dos buckets e todas as policies de `storage.objects`;
 - histórico de migrations.
 
-O trigger antigo ainda não foi capturado em uma saída consultável nesta sessão, e o conector do Supabase está negando até operações de leitura. Não vamos inventar a definição do trigger nem presumir os grants.
+A leitura do Supabase foi restabelecida usando a conexão `Primary` (projeto `ujdosskjycrdkcgsswfa`, status `ACTIVE_HEALTHY`). A definição exata do trigger `on_auth_user_created_shiqi` foi capturada: `AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION private.handle_new_user()`. O corpo completo do handler também foi capturado. O preflight foi executado em modo somente leitura e todos os 17 checks retornaram `passed=true`. O snapshot real confirmou cinco tabelas vazias, zero usuários Auth, zero sequences no schema `public`, nenhum bucket/policy Storage e Realtime somente em `public.messages`. As ACLs brutas foram lidas pelos catálogos PostgreSQL; há grants amplos de tabela para `anon` e `authenticated` nas cinco tabelas prototype, além de grants por coluna de UPDATE para `authenticated`. Nenhum DDL/DML foi executado.
 
 ## Snapshot obrigatório antes de qualquer cutover
 
-Executar `docs/CUTOVER_PREFLIGHT.sql` e `docs/CUTOVER_SNAPSHOT.sql` no projeto paralelo, salvar os resultados com segurança e revisar todos os checks. Os snapshots são somente leitura. Não executar `CUTOVER_DRAFT.sql` ainda.
+Preflight e snapshot foram consultados no projeto paralelo em 2026-11-27, somente leitura. A primeira versão de `CUTOVER_SNAPSHOT.sql` usava `information_schema.sequence_privileges`, visão inexistente neste PostgreSQL; foi corrigida para consultar ACLs diretamente via `pg_class`/`aclexplode`. O snapshot corrigido ainda precisa ser executado integralmente, em consultas separadas quando necessário, para validar que todas as seções retornam sem erro. Não executar `CUTOVER_DRAFT.sql` ainda.
 
 ## Condições mínimas para um rollback futuro
 
