@@ -14,6 +14,17 @@ A cópia paralela não inclui rotas de QR, conforme o escopo aprovado. O prefixo
 
 A restauração foi verificada estaticamente: 13 rotas POST e GET `/health`; as três tabelas acessadas diretamente (`profiles`, `email_codes`, `mfa_recovery`) existem no SQL canônico, assim como as seis RPCs chamadas. **Isso não equivale a teste de runtime**: ainda faltam validar os contratos de cada rota, dependências, JWT e variáveis de ambiente antes de conectar a interface ou publicar a função.
 
+## Conferência estática com a interface paralela (2026-11-27)
+
+Os arquivos `apps/web/app.js` e `apps/web/settings-pages.js` foram cruzados com os handlers restaurados. As 13 rotas implementadas estão presentes na interface e os nomes dos campos enviados correspondem aos lidos pelo backend:
+
+- `app.js`: `/signup`, `/verify`, `/resend`, `/login`, `/login/totp`, `/forgot` e `/reset`.
+- `settings-pages.js`: `/email/change/request`, `/email/change/confirm`, `/mfa/recovery`, `/mfa/disable`, `/account/deactivate` e `/account/delete`.
+
+O gerenciamento inicial do fator TOTP (consultar fatores, cadastrar, desafiar e verificar) é feito diretamente pela interface via Supabase Auth REST autenticado; a Edge Function cuida dos códigos de recuperação, validação no login e desativação do fator. Isso é intencional no código atual e deve ser coberto nos testes de contrato.
+
+Esta é uma conferência estática de chamadas e campos, não um teste de execução, JWT, sessão, e-mail ou MFA real.
+
 ## Transporte comum observado
 
 O frontend usa um helper `api(path, body, token?)` e envia requisições POST para a Edge Function configurada em `C.FN`. As chamadas observadas abaixo usam JSON. O formato completo de erros e cabeçalhos deve ser extraído do helper e validado em testes antes da implementação.
