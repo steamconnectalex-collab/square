@@ -39,3 +39,10 @@ Não tornar o bucket privado isoladamente: isso quebraria as imagens no frontend
 ## Limites
 
 Esta auditoria é estática e não prova o comportamento do banco em runtime. O `CUTOVER_DRAFT.sql` continua sem autorização para execução. Nenhum dado, usuário, bucket, policy, função, trigger ou publicação remota foi alterado.
+
+
+## Corrigido nesta rodada — concorrência no limite de voz
+
+A RPC `voice_join` verificava a quantidade de participantes e inseria o usuário sem bloquear entradas concorrentes. Duas entradas simultâneas poderiam observar a mesma contagem e ultrapassar o limite de 10; chamadas simultâneas do mesmo usuário para salas diferentes também poderiam deixar registros duplicados em mais de uma sala.
+
+Foi adicionada uma trava transacional por usuário e outra por sala, sempre na mesma ordem (usuário → sala), antes da limpeza/contagem/inserção. Isso serializa as entradas conflitantes e protege o limite de 10, além da regra de uma sala por usuário. A mudança está tanto em `CANONICAL_MODERATION_EVENTS_VOICE_RPCS.sql` quanto no `CUTOVER_DRAFT.sql`; o teste estático verifica as duas travas e o limite. A confirmação de comportamento concorrente ainda depende de teste PostgreSQL de runtime.
