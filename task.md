@@ -14,9 +14,9 @@
 - Branch de trabalho: `shiqi-parallel-dev` no repositório `steamconnectalex-collab/square`.
 - Frontend: `site/config.js` atualizado para apontar para o Supabase paralelo e sua chave publishable. Commit: `6c24333d46bea1c5668ba228c886046a44007657`.
 - Banco: estrutura canônica presente; RLS ligado nas tabelas verificadas; nenhuma conta em `auth.users`.
-- Backend: código da Edge Function `auth` está em `supabase/functions/auth/index.ts` e `mail.ts`; as rotas incluem cadastro, verificação por e-mail, login, recuperação, MFA e gestão de conta. A função ainda não está publicada no projeto paralelo. A tentativa de publicação pela integração foi bloqueada pelas configurações de segurança; não houve alteração remota.
+- Backend: Edge Function `auth` publicada e ativa (versão 1) no projeto paralelo `ujdosskjycrdkcgsswfa`; arquivos `index.ts` e `mail.ts` enviados da branch `shiqi-parallel-dev`. `verify_jwt=false` porque signup/login são públicos e a função implementa suas próprias validações, rate limits e autenticação nas rotas privadas. Produção intocada.
 - As três RPCs usadas pelo backend (`rate_check`, `get_auth_user_by_email`, `verify_email_code`) existem e concedem execução somente a `service_role`, não a `anon` nem a `authenticated`.
-- Próxima ação: concluir a publicação controlada da Edge Function `auth` no projeto paralelo, verificar `/health` e a configuração do Resend antes de iniciar cadastros de teste. Não usar o projeto de produção nem inserir usuários diretamente em `auth.users`.
+- Próxima ação: validar `GET /health` e `email_configured`, depois realizar cadastro de teste com e-mail real, verificar recebimento no Resend e login. Não usar o projeto de produção nem inserir usuários diretamente em `auth.users`.
 
 ## O que estamos construindo
 
@@ -300,3 +300,11 @@ Combinado com a pessoa em 2026-11-23: o que precisa de conta em aplicativo exter
 - A Edge Function `supabase/functions/auth/index.ts` depende de `SUPABASE_SERVICE_ROLE_KEY` (variável padrão do runtime), `RESEND_API_KEY` para e-mails e configuração de URL/origem. O código atual usa `SITE_URL` padrão de produção e allowlist sem o domínio do preview; antes de publicar no projeto paralelo, definir `SITE_URL=https://shiqi-parallel-git-shiqi-parallel-dev-steamconnectalex-9536.vercel.app` e `EXTRA_ORIGINS` incluindo exatamente essa origem, além de configurar `RESEND_API_KEY` válido. Não reutilizar secrets da produção sem autorização explícita.
 - Próximo passo: usuário configurar esses três secrets/variáveis no Supabase paralelo; depois publicar `auth` apenas no projeto `ujdosskjycrdkcgsswfa` com verificação JWT de gateway desativada somente porque signup/login são rotas públicas e a própria função aplica validações/rate limits. Em seguida verificar `/health`, testar cadastro/verificação por e-mail e obter uma sessão real para `GET /v1/me`.
 - Não criar usuário manualmente em `auth.users`; não expor nem solicitar token; produção e `main` permanecem intocadas.
+
+
+### 2026-11-27 — Edge Function auth publicada no SHIQI Parallel
+- Secrets `RESEND_API_KEY`, `SITE_URL` e `EXTRA_ORIGINS` foram informados pelo usuário como cadastrados no painel do Supabase paralelo.
+- Publicada a Edge Function `auth` no projeto `ujdosskjycrdkcgsswfa`, versão 1, status `ACTIVE`, `verify_jwt=false`; deployment id `1c4b500f-0daa-4f82-a4ac-b974e0f04229`.
+- Arquivos implantados vieram de `supabase/functions/auth/index.ts` e `mail.ts` na branch `shiqi-parallel-dev`. Auditoria mínima confirmou runtime service role, validação própria de usuário nas rotas privadas, rate limit, allowlist CORS e leitura de `RESEND_API_KEY`.
+- Listagem posterior confirmou função `auth` ativa. A verificação HTTP de `/health` não pôde ser concluída pela ferramenta de navegação; portanto `email_configured` ainda não foi confirmado e nenhum cadastro real foi executado.
+- Próximo passo: validar `/health`, confirmar `email_configured=true` e realizar cadastro real de teste no preview. Produção e `main` permanecem intocadas.
