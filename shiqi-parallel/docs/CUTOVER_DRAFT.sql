@@ -958,7 +958,7 @@ begin
   if (select count(*) from public.blocks where blocker = me) >= 200 then raise exception 'too_many_requests'; end if;
   insert into public.blocks (blocker, blocked) values (me, p_other) on conflict do nothing;
   delete from public.friendships where user_a = least(me, p_other) and user_b = greatest(me, p_other);
-end $function$
+end $function$;
 
 
 -- ========================================
@@ -976,7 +976,7 @@ begin
   if exists (select 1 from public.profiles p where lower(p.username) = u and p.id <> uid) then raise exception 'username_taken'; end if;
   update public.profiles set username = u where id = uid;
   return u;
-end $function$
+end $function$;
 
 
 -- ========================================
@@ -988,7 +988,7 @@ CREATE OR REPLACE FUNCTION public.get_my_settings()
  SET search_path TO ''
 AS $function$
   select coalesce((select p.settings from public.profiles p where p.id = auth.uid()), '{}'::jsonb);
-$function$
+$function$;
 
 
 -- ========================================
@@ -1003,7 +1003,7 @@ AS $function$
                                when p.birth_date <= (current_date - interval '18 years')::date then 'adult'
                                else 'teen' end
                    from public.profiles p where p.id = auth.uid()), 'unknown');
-$function$
+$function$;
 
 
 -- ========================================
@@ -1041,7 +1041,7 @@ begin
     insert into public.dm_members (channel_id, user_id, state) values (ch, me, 'active'), (ch, p_other, st);
   end if;
   return ch;
-end $function$
+end $function$;
 
 
 -- ========================================
@@ -1076,7 +1076,7 @@ AS $function$
   ) q
   where p.id = any (p_ids[1:200])
     and (p.id = me.uid or (p.deactivated_at is null and private.shares_server_with(p.id)));
-$function$
+$function$;
 
 
 -- ========================================
@@ -1091,7 +1091,7 @@ declare me uuid := auth.uid();
 begin
   if me is null then raise exception 'not_authenticated'; end if;
   delete from public.friendships where user_a = least(me, p_other) and user_b = greatest(me, p_other);
-end $function$
+end $function$;
 
 
 -- ========================================
@@ -1112,7 +1112,7 @@ begin
   end if;
   get diagnostics n = row_count;
   if n = 0 then raise exception 'no_request'; end if;
-end $function$
+end $function$;
 
 
 -- ========================================
@@ -1145,7 +1145,7 @@ begin
     get diagnostics n = row_count;
   end if;
   if n = 0 then raise exception 'no_request'; end if;
-end $function$
+end $function$;
 
 
 -- ========================================
@@ -1160,7 +1160,7 @@ begin
   if auth.uid() is null then raise exception 'not_authenticated'; end if;
   if p is null or jsonb_typeof(p) <> 'object' or length(p::text) > 6000 then raise exception 'invalid_settings'; end if;
   update public.profiles set settings = p where id = auth.uid();
-end $function$
+end $function$;
 
 
 -- ========================================
@@ -1180,7 +1180,7 @@ begin
       where user_a = least(me, other) and user_b = greatest(me, other) and requester = me and status = 'pending';
   end if;
   return r;
-end $function$
+end $function$;
 
 
 -- ========================================
@@ -1224,7 +1224,7 @@ begin
   if (select count(*) from public.friendships where requester = me and status = 'pending') >= 30 then raise exception 'too_many_requests'; end if;
   insert into public.friendships (user_a, user_b, requester) values (a, b, me);
   return 'pending';
-end $function$
+end $function$;
 
 
 -- ========================================
@@ -1239,7 +1239,7 @@ begin
   if auth.uid() is null then raise exception 'not_authenticated'; end if;
   if p_status not in ('online','idle','dnd','invisible') then raise exception 'invalid_status'; end if;
   update public.profiles set presence = p_status where id = auth.uid();
-end $function$
+end $function$;
 
 
 -- ========================================
@@ -1254,7 +1254,7 @@ declare me uuid := auth.uid();
 begin
   if me is null then raise exception 'not_authenticated'; end if;
   delete from public.blocks where blocker = me and blocked = p_other;
-end $function$
+end $function$;
 
 
 -- ========================================
@@ -1268,7 +1268,7 @@ AS $function$
 begin
   if auth.uid() is null then raise exception 'not_authenticated'; end if;
   update public.profiles set marketing_opt_in = false where id = auth.uid();
-end $function$
+end $function$;
 
 
 
@@ -1282,7 +1282,7 @@ CREATE OR REPLACE FUNCTION public.ban_member(p_server uuid, p_user uuid)
  LANGUAGE sql
  SECURITY DEFINER
  SET search_path TO ''
-AS $function$ select private.remove_from_server(p_server, p_user, true) $function$
+AS $function$ select private.remove_from_server(p_server, p_user, true) $function$;
 
 
 -- ========================================
@@ -1304,7 +1304,7 @@ begin
   insert into public.server_events (server_id, creator_id, title, description, place, starts_at)
   values (p_server, me, t, left(btrim(coalesce(p_description, '')), 500), left(btrim(coalesce(p_place, '')), 80), p_starts) returning id into eid;
   return eid;
-end $function$
+end $function$;
 
 
 -- ========================================
@@ -1317,7 +1317,7 @@ CREATE OR REPLACE FUNCTION public.delete_event(p_event uuid)
 AS $function$
 begin
   delete from public.server_events e using public.servers s where e.id = p_event and s.id = e.server_id and s.owner_id = auth.uid();
-end $function$
+end $function$;
 
 
 -- ========================================
@@ -1353,7 +1353,7 @@ begin
     ) r
     where r.rn > pg * 4 and r.rn <= pg * 4 + 4
     order by r.rn;
-end $function$
+end $function$;
 
 
 -- ========================================
@@ -1363,7 +1363,7 @@ CREATE OR REPLACE FUNCTION public.kick_member(p_server uuid, p_user uuid)
  LANGUAGE sql
  SECURITY DEFINER
  SET search_path TO ''
-AS $function$ select private.remove_from_server(p_server, p_user, false) $function$
+AS $function$ select private.remove_from_server(p_server, p_user, false) $function$;
 
 
 -- ========================================
@@ -1380,7 +1380,7 @@ begin
     from public.server_bans b left join public.profiles p on p.id = b.user_id
     where b.server_id = p_server order by b.banned_at desc;
 end;
-$function$
+$function$;
 
 
 -- ========================================
@@ -1402,7 +1402,7 @@ begin
     where s.is_public and not exists (select 1 from public.server_bans b where b.server_id = s.id and b.user_id = uid)
     order by 3 desc, s.created_at asc
     limit 50;
-end $function$
+end $function$;
 
 
 -- ========================================
@@ -1414,7 +1414,7 @@ CREATE OR REPLACE FUNCTION public.my_plan()
  SET search_path TO ''
 AS $function$
   select coalesce((select p.plan from public.profiles p where p.id = auth.uid()), 'free');
-$function$
+$function$;
 
 
 -- ========================================
@@ -1439,7 +1439,7 @@ begin
     raise exception 'too_many_pins';
   end if;
   insert into public.server_pins (user_id, server_id) values (uid, p_server);
-end $function$
+end $function$;
 
 
 -- ========================================
@@ -1455,7 +1455,7 @@ begin
   if uid is null then raise exception 'not_authenticated'; end if;
   if not exists (select 1 from public.servers s where s.id = p_server and s.owner_id = uid) then raise exception 'not_owner'; end if;
   update public.servers set is_public = coalesce(p_public, false) where id = p_server;
-end $function$
+end $function$;
 
 
 -- ========================================
@@ -1476,7 +1476,7 @@ begin
   if n > 0 then return false; end if;
   insert into public.event_interest (event_id, user_id) values (p_event, me);
   return true;
-end $function$
+end $function$;
 
 
 -- ========================================
@@ -1500,7 +1500,7 @@ begin
   if (select count(distinct emoji) from public.message_reactions where message_id = p_message) >= 20 then raise exception 'too_many_reactions'; end if;
   insert into public.message_reactions (message_id, user_id, emoji) values (p_message, me, e);
   return true;
-end $function$
+end $function$;
 
 
 -- ========================================
@@ -1515,7 +1515,7 @@ begin
   if not exists (select 1 from public.servers s where s.id = p_server and s.owner_id = (select auth.uid())) then raise exception 'not_owner'; end if;
   delete from public.server_bans where server_id = p_server and user_id = p_user;
 end;
-$function$
+$function$;
 
 
 -- ========================================
@@ -1544,7 +1544,7 @@ begin
   insert into public.voice_members (channel_id, user_id) values (p_channel, uid)
   on conflict (channel_id, user_id) do update set seen_at = now(), muted = false, deafened = false, video = false, screen = false;
 end;
-$function$
+$function$;
 
 
 -- ========================================
@@ -1556,7 +1556,7 @@ CREATE OR REPLACE FUNCTION public.voice_leave()
  SET search_path TO ''
 AS $function$
   delete from public.voice_members where user_id = (select auth.uid());
-$function$
+$function$;
 
 
 -- ========================================
@@ -1568,7 +1568,7 @@ CREATE OR REPLACE FUNCTION public.voice_ping(p_channel uuid)
  SET search_path TO ''
 AS $function$
   update public.voice_members set seen_at = now() where channel_id = p_channel and user_id = (select auth.uid());
-$function$
+$function$;
 
 
 -- ========================================
@@ -1591,7 +1591,7 @@ begin
    where user_id = uid;
   get diagnostics n = row_count;
   if n = 0 then raise exception 'not_in_voice'; end if;
-end $function$
+end $function$;
 
 
 
@@ -1609,7 +1609,7 @@ AS $function$
   from auth.users u
   where lower(u.email) = lower(p_email)
   limit 1
-$function$
+$function$;
 
 
 -- ========================================
@@ -1625,7 +1625,7 @@ AS $function$
   join auth.users u on u.id = p.id
   where lower(p.username) = lower(p_username)
   limit 1
-$function$
+$function$;
 
 
 -- ========================================
@@ -1643,7 +1643,7 @@ begin
     if nxt is null then delete from public.servers where id = s.id;
     else update public.servers set owner_id = nxt where id = s.id; end if;
   end loop;
-end $function$
+end $function$;
 
 
 -- ========================================
@@ -1673,7 +1673,7 @@ begin
   insert into public.rate_hits (key) values (p_key);
   return true;
 end;
-$function$
+$function$;
 
 
 -- ========================================
@@ -1685,7 +1685,7 @@ CREATE OR REPLACE FUNCTION public.reactivate_account()
  SET search_path TO ''
 AS $function$
   update public.profiles set deactivated_at = null where id = (select auth.uid()) and deactivated_at is not null;
-$function$
+$function$;
 
 
 -- ========================================
@@ -1697,7 +1697,7 @@ CREATE OR REPLACE FUNCTION public.revoke_user_sessions(p_user uuid)
  SET search_path TO ''
 AS $function$
   delete from auth.sessions where user_id = p_user;
-$function$
+$function$;
 
 
 -- ========================================
@@ -1740,7 +1740,7 @@ begin
   update public.email_codes set attempts = attempts + 1 where id = r.id;
   return query select 'wrong'::text, greatest(p_max_attempts - r.attempts - 1, 0);
 end;
-$function$
+$function$;
 
 
 
@@ -2228,8 +2228,9 @@ CREATE POLICY voice_topic_insert ON realtime.messages
 
 NOTIFY pgrst, 'reload schema';
 
--- ATENÇÃO: este é um artefato de revisão, não uma autorização para executar.
--- Não aplicar no projeto remoto até que o rollback tenha sido completado e testado
--- em PostgreSQL isolado e o usuário aprove explicitamente a janela de cutover.
+-- Execução aprovada pelo usuário em 2026-11-27 exclusivamente no Supabase paralelo
+-- ujdosskjycrdkcgsswfa. Nunca aplicar no projeto original/produção.
+-- O rollback ainda não foi testado em PostgreSQL isolado; preservar as tabelas legacy
+-- e não executar reversão automática ou destrutiva sem nova verificação.
 
 COMMIT;
