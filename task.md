@@ -10,13 +10,17 @@
 
 ## Estado atual do ambiente paralelo — 2026-11-27
 
-- Projeto Supabase de desenvolvimento: `shiqi-parallel`, ref `ujdosskjycrdkcgsswfa`, ativo na região São Paulo. Produção permanece intocada.
+- Supabase paralelo: projeto `shiqi-parallel`, ref `ujdosskjycrdkcgsswfa`, ativo em São Paulo; produção permanece intocada.
 - Branch de trabalho: `shiqi-parallel-dev` no repositório `steamconnectalex-collab/square`.
-- Frontend: `site/config.js` atualizado para apontar para o Supabase paralelo e sua chave publishable. Commit: `6c24333d46bea1c5668ba228c886046a44007657`.
-- Banco: estrutura canônica presente; RLS ligado nas tabelas verificadas; nenhuma conta em `auth.users`.
-- Backend: Edge Function `auth` publicada e ativa (versão 1) no projeto paralelo `ujdosskjycrdkcgsswfa`; arquivos `index.ts` e `mail.ts` enviados da branch `shiqi-parallel-dev`. `verify_jwt=false` porque signup/login são públicos e a função implementa suas próprias validações, rate limits e autenticação nas rotas privadas. Produção intocada.
-- As três RPCs usadas pelo backend (`rate_check`, `get_auth_user_by_email`, `verify_email_code`) existem e concedem execução somente a `service_role`, não a `anon` nem a `authenticated`.
-- Próxima ação: validar `GET /health` e `email_configured`, depois realizar cadastro de teste com e-mail real, verificar recebimento no Resend e login. Não usar o projeto de produção nem inserir usuários diretamente em `auth.users`.
+- Frontend paralelo: `shiqi-parallel/apps/web/`, HTML/CSS/JS puros. Configuração usa somente o Supabase paralelo e `CORE_URL=https://shiqi-core-development.up.railway.app`.
+- Auth: Edge Function `auth` publicada e ativa no Supabase paralelo; secrets de Resend e URLs configurados. Usuário confirmou cadastro real com recebimento do e-mail e confirmou SITE_URL completo. Login, sessão e rotas autenticadas ainda precisam de validação.
+- Banco: schema canônico com 18 tabelas, RLS, Storage privado para `attachments`, bucket público `avatars` e Realtime configurado. Testes runtime com dois usuários, RPCs e Realtime ainda pendentes.
+- Rust: `shiqi-core` implantado no Railway paralelo; `/healthz` passou e usuário confirmou `/readyz` como `ready`. `GET /v1/me` e upload com JWT real ainda não foram testados.
+- Integração inicial: frontend da branch direciona upload de imagens para `POST /v1/attachments/upload`; JWT original é encaminhado pelo Rust ao Storage, que continua aplicando RLS. Avatares seguem no fluxo Storage atual e leitura de anexos usa signed URLs.
+- Vercel: deployment READY com o frontend integrado no commit `d9801be24637215835b9e8c78b174997e4a7bf94`; alias do preview: https://shiqi-parallel-git-shiqi-parallel-dev-steamconnectalex-9536.vercel.app.
+- CI atualizado para validar sintaxe e contrato frontend/Rust além de JWKS, fmt, testes, Clippy e build Docker. Execução completa do commit mais recente está pendente.
+- Próxima ação: concluir CI, confirmar deploy Railway, testar login e `GET /v1/me`, depois testar upload real com a conta do preview. Não pedir nem compartilhar JWT no chat. Não inserir usuários manualmente em `auth.users`.
+- Nenhuma alteração em `main`, produção ou segredos foi feita nesta integração.
 
 ## O que estamos construindo
 
