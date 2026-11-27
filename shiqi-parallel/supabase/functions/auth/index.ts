@@ -330,11 +330,14 @@ async function login(body: Record<string, unknown>, ip: string) {
     await limit(`mfa:${data.user.id}`, 8, 600, "Muitas tentativas de código. Aguarde alguns minutos.");
     if (rec) {
       const hash = await hmac(`mfa-rec|${data.user.id}|${rec}`);
-      const { data: used } = await admin.from("mfa_recovery").update({ used_at: new Date().toISOString() }).eq("user_id", data.user.id)
+      const { data: used, error: useError } = await admin.from("mfa_recovery").update({ used_at: new Date().toISOString() }).eq("user_id", data.user.id)
         .eq("code_hash", hash).is("used_at", null).select("code_hash").maybeSingle();
+      if (useError) throw new HttpError(503, "mfa_unavailable", "Não foi possível validar o código de recuperação. Tente novamente.");
       if (!used) throw new HttpError(400, "wrong_recovery", "Esse código de recuperação não vale (já foi usado ou está errado).");
-      await admin.auth.admin.mfa.deleteFactor({ id: factor.id, userId: data.user.id }); // usar o código de recuperação desliga a verificação
-      await admin.from("mfa_recovery").delete().eq("user_id", data.user.id);
+      const { error: clearError } = await admin.from("mfa_recovery").delete().eq("user_id", data.user.id);
+      if (clearError) throw new HttpError(503, "mfa_unavailable", "Não foi possível concluir a recuperação da verificação em duas etapas. Tente novamente.");
+      const { error: factorError } = await admin.auth.admin.mfa.deleteFactor({ id: factor.id, userId: data.user.id });
+      if (factorError) throw new HttpError(503, "mfa_unavailable", "Não foi possível desligar a verificação em duas etapas. Entre novamente com seu código do aplicativo ou tente mais tarde.");
       mfaOff = true;
     } else {
       const v = await mfaVerify(s, factor.id, totp);
@@ -478,10 +481,11 @@ async function mfaRecovery(req: Request) {
   if (!(await totpFactor(user.id))) throw new HttpError(400, "no_mfa", "Ligue a verificação em duas etapas primeiro.");
   await limit(`mfarec:${user.id}`, 5, 3600);
   const codes = Array.from({ length: 8 }, recoveryCode);
-  await admin.from("mfa_recovery").delete().eq("user_id", user.id);
+  const { error: clearError } = await admin.from("mfa_recovery").delete().eq("user_id", user.id);
+  if (clearError) throw new HttpError(503, "mfa_unavailable", "Não foi possível renovar os códigos de recuperação. Tente novamente.");
   const rows = await Promise.all(codes.map(async (c) => ({ user_id: user.id, code_hash: await hmac(`mfa-rec|${user.id}|${normCode(c)}`) })));
   const { error } = await admin.from("mfa_recovery").insert(rows);
-  if (error) throw error;
+  if (error) throw new HttpError(503, "mfa_unavailable", "Não foi possível salvar os novos códigos de recuperação. Tente novamente.");
   return { ok: true, codes };
 }
 // desligar: exige a senha e um código válido do aplicativo (ou de recuperação)
@@ -494,14 +498,17 @@ async function mfaDisable(req: Request, body: Record<string, unknown>) {
   if (!factor) return { ok: true };
   const rec = normCode(body.recovery_code);
   if (rec) {
-    const { data: used } = await admin.from("mfa_recovery").update({ used_at: new Date().toISOString() }).eq("user_id", user.id)
+    const { data: used, error: useError } = await admin.from("mfa_recovery").update({ used_at: new Date().toISOString() }).eq("user_id", user.id)
       .eq("code_hash", await hmac(`mfa-rec|${user.id}|${rec}`)).is("used_at", null).select("code_hash").maybeSingle();
+    if (useError) throw new HttpError(503, "mfa_unavailable", "Não foi possível validar o código de recuperação. Tente novamente.");
     if (!used) throw new HttpError(400, "wrong_recovery", "Esse código de recuperação não vale (já foi usado ou está errado).");
   } else {
     await mfaVerify(sg.session, factor.id, String(body.code ?? ""));
   }
-  await admin.auth.admin.mfa.deleteFactor({ id: factor.id, userId: user.id });
-  await admin.from("mfa_recovery").delete().eq("user_id", user.id);
+  const { error: clearError } = await admin.from("mfa_recovery").delete().eq("user_id", user.id);
+  if (clearError) throw new HttpError(503, "mfa_unavailable", "Não foi possível limpar os códigos de recuperação. Tente novamente.");
+  const { error: factorError } = await admin.auth.admin.mfa.deleteFactor({ id: factor.id, userId: user.id });
+  if (factorError) throw new HttpError(503, "mfa_unavailable", "Não foi possível desligar a verificação em duas etapas. Tente novamente.");
   return { ok: true };
 }
 
