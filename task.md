@@ -308,3 +308,11 @@ Combinado com a pessoa em 2026-11-23: o que precisa de conta em aplicativo exter
 - Arquivos implantados vieram de `supabase/functions/auth/index.ts` e `mail.ts` na branch `shiqi-parallel-dev`. Auditoria mínima confirmou runtime service role, validação própria de usuário nas rotas privadas, rate limit, allowlist CORS e leitura de `RESEND_API_KEY`.
 - Listagem posterior confirmou função `auth` ativa. Usuário abriu `https://ujdosskjycrdkcgsswfa.supabase.co/functions/v1/auth/health` e confirmou retorno `ok: true`, `email_configured: true` e `site` apontando para o preview Vercel. O valor `site` foi copiado pelo usuário com final `.vercel.ap` (aparentemente truncado); conferir no dashboard se `SITE_URL` está completo e exato antes do teste de cadastro. Nenhum cadastro real foi executado ainda.
 - Próximo passo: conferir `SITE_URL` completo no secret do projeto paralelo e realizar cadastro real de teste no preview; validar recebimento do código no e-mail e login. Produção e `main` permanecem intocadas.
+
+
+## Atualização de sessão — 2026-11-27 (SHIQI paralelo)
+
+- Usuário confirmou cadastro real no preview paralelo com recebimento do e-mail de verificação; confirmou também que `SITE_URL` está completo no Supabase paralelo.
+- Próxima fase iniciada: integração gradual do frontend ao serviço Rust do Railway paralelo. Primeiro escopo: uploads do bucket privado `attachments` via `POST /v1/attachments/upload`, mantendo JWT do usuário e RLS do Supabase como autoridade.
+- Uploads de avatar e leitura de anexos por signed URLs permanecem no fluxo atual. Sem alterações em Auth, design, `main`, produção ou secrets.
+- Acompanhamento detalhado atualizado em `shiqi-parallel/task.md`.
