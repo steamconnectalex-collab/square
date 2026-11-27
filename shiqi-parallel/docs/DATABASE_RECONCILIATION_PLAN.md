@@ -79,7 +79,23 @@ A auditoria e o catálogo consultados identificam como núcleo do app, sem músi
 - Recuperar/normalizar a definição integral da migration base de servidores/canais e eventos, cruzando os objetos vivos do banco original com os arquivos Git incompletos.
 - Revisar diferença entre migrations versionadas localmente e histórico remoto em ambos os projetos.
 
-## 6. Resultado desta sessão
+## 6. Recuperação de SQL versionado (26/11/2026)
+
+A inspeção do diretório de migrations na branch confirmou que os arquivos originais 0001–0024 existem na raiz do repositório; a cópia paralela contém 0001–0010 e 0013–0025, com música omitida. Portanto, várias definições podem ser recuperadas do Git sem pedir ao usuário para copiar SQL.
+
+Arquivos lidos diretamente:
+- `0001_acesso_a_conta.sql`: contém perfis, email_codes, rate_hits e cinco funções de autenticação/rate limit. Também contém `qr_sessions`, mas QR permanece fora do escopo e não será reconstruído.
+- `0002_chat_e_perfil.sql`: contém alterações de perfil, helpers privados, tabela messages, RLS/grants/triggers e Realtime. O próprio arquivo confirma que depende da migration-base `servidores_e_canais`, cuja definição completa não está nesse arquivo.
+- `0003_convites_canais_presenca.sql`: contém server_invites, presença e RPCs create_channel/create_invite/join_server.
+- `0005_amigos_e_mensagens_diretas.sql`: contém dm_members, friendships, helpers, policies e RPCs de amizade/DM.
+- `0021_eventos.sql`: é somente um resumo; não contém DDL executável das tabelas e funções de eventos.
+- `0024_seguranca_grants.sql`: contém revogações de acesso para tabelas sensíveis, mas não substitui o inventário completo de grants.
+
+Contagem corrigida do alvo: **18 tabelas**, excluindo explicitamente `qr_sessions` e as três tabelas de música. A lista de 18 está no item 3; evitar a contagem anterior de 19 como alvo.
+
+Lacunas confirmadas após leitura dos arquivos: SQL completo de `servidores_e_canais` e SQL executável de eventos. Outros arquivos versionados ainda precisam ser cruzados com o estado vivo e com as dependências para detectar diferenças entre o SQL do Git e o banco de referência.
+
+## 7. Resultado desta sessão
 
 - Etapa 1 fechada por inspeção estática em `FEATURE_PARITY_MATRIX.md`.
 - Etapa 2 iniciada em modo de auditoria e planejamento.
