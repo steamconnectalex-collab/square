@@ -17,6 +17,29 @@ begin
 end
 $function$;
 
+create or replace function private.dm_allowed(a uuid, b uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path to ''
+as $function$
+  select not exists (
+    select 1 from public.blocks
+    where (blocker = a and blocked = b) or (blocker = b and blocked = a)
+  ) and (
+    exists (
+      select 1 from public.friendships f
+      where f.status = 'accepted' and f.user_a = least(a, b) and f.user_b = greatest(a, b)
+    ) or exists (
+      select 1 from public.server_members x
+      join public.server_members y on y.server_id = x.server_id
+      where x.user_id = a and y.user_id = b
+    )
+  )
+$function$;
+
+
 create or replace function private.can_post(p_channel uuid)
 returns boolean
 language sql
@@ -69,27 +92,6 @@ begin
 end
 $function$;
 
-create or replace function private.dm_allowed(a uuid, b uuid)
-returns boolean
-language sql
-stable
-security definer
-set search_path to ''
-as $function$
-  select not exists (
-    select 1 from public.blocks
-    where (blocker = a and blocked = b) or (blocker = b and blocked = a)
-  ) and (
-    exists (
-      select 1 from public.friendships f
-      where f.status = 'accepted' and f.user_a = least(a, b) and f.user_b = greatest(a, b)
-    ) or exists (
-      select 1 from public.server_members x
-      join public.server_members y on y.server_id = x.server_id
-      where x.user_id = a and y.user_id = b
-    )
-  )
-$function$;
 
 create or replace function private.is_channel_member(p_channel uuid)
 returns boolean
