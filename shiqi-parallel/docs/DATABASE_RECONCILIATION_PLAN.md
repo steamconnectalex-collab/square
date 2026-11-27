@@ -323,3 +323,22 @@ Foi criado `docs/CANONICAL_FUNCTION_ACL.sql` com a política planejada de menor 
 Preflight somente leitura do destino: as cinco tabelas prototype continuam presentes; nomes legacy_profiles, legacy_communities, legacy_community_members, legacy_channels e legacy_messages estão livres; cinco migrations prototype registradas; Realtime apenas em public.messages; nenhum bucket; trigger on_auth_user_created_shiqi ainda ligado a auth.users. Nenhuma colisão legacy foi encontrada.
 
 **Bloqueio mantido:** nenhuma DDL foi executada. Antes da migration de corte, conferir novamente contagens/dados, dependências, triggers, policies, grants, publication membership e nomes livres; validar SQL e rollback em ambiente isolado. A existência de nomes livres agora não substitui o preflight transacional no momento da aplicação.
+
+## 21. Inventário integral de RPCs e ACL de tabelas/colunas (26/11/2026)
+
+Foi conferido por assinatura o conjunto completo fora de música/QR: 45 funções públicas (incluindo as duas sobrecargas de send_friend_request) e 13 privadas. Os corpos estão distribuídos em CANONICAL_SERVER_RPCS.sql, CANONICAL_SOCIAL_PROFILE_RPCS.sql, CANONICAL_MODERATION_EVENTS_VOICE_RPCS.sql, CANONICAL_AUTH_ACCOUNT_RPCS.sql e CANONICAL_PRIVATE_FUNCTIONS.sql. A lista de grants de função foi cruzada com essas assinaturas; helpers diretamente chamados por RLS recebem EXECUTE para authenticated, funções de backend ficam service_role e funções exclusivas de trigger não são expostas.
+
+Foi recuperada a matriz de permissões de tabela e coluna via information_schema.role_table_grants e information_schema.column_privileges. O novo arquivo CANONICAL_TABLE_ACL.sql registra a política de menor privilégio, incluindo os campos editáveis do perfil, os campos de mensagem, as tabelas com leitura direta sob RLS e a sequence identity de messages. A política revoga grants por coluna antes de reatribuir os campos específicos. É referência de revisão, não executar sem validação sintática e testes de regressão.
+
+O catálogo de policies foi consultado novamente: há 18 policies do produto fora de música, todas destinadas a authenticated; tabelas internas continuam sem policies públicas. Reconfirmado o contrato de messages.author_id DEFAULT auth.uid(), permitindo não conceder INSERT direto nessa coluna. Os buckets e Realtime permanecem como documentado anteriormente.
+
+Preflight somente leitura no destino em 26/11/2026: as cinco tabelas prototype foram contadas individualmente e continuam com zero linhas; continuam registradas cinco migrations prototype. Nenhuma DDL foi aplicada. A consulta composta de catálogo retornou apenas o último conjunto de resultados (histórico de migrations); contagens exatas foram obtidas em consulta separada. A tentativa de consultar ACL de coluna diretamente via aclexplode falhou por formato de array, e foi substituída com sucesso por information_schema.column_privileges.
+
+### Estado do pacote
+
+- Inventário de funcionalidades: concluído.
+- Estrutura, índices, policies, funções, triggers, Storage e Realtime: recuperados em referências; revisão de consistência cruzada ainda necessária.
+- ACL de funções e tabela/coluna: matriz inicial registrada; requer teste em papel e revisão de privilégios por coluna/sequence.
+- Migration atômica e rollback executáveis: ainda não aprovados/concluídos. Não aplicar DDL remota. A migration precisa ser montada e validada em ambiente isolado, incluindo comportamento de renomeação das tabelas legadas e dependências internas.
+- Edge Function auth: código ativo v9 continua sem versão integral recuperada no Git; etapa de backend bloqueada até recuperação e comparação.
+- Frontend paralelo: ainda não deve ser ligado ao banco até schema e auth estarem completos. Design original permanece fonte de verdade.
