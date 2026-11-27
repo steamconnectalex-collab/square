@@ -512,3 +512,11 @@
 - `/readyz` e rotas autenticadas ainda não foram chamadas externamente nesta sessão; validação HTTP direta ficou indisponível no ambiente de ferramentas. Não declarar readiness ou JWT de usuário testados.
 - Frontend ainda não foi integrado ao Rust. Próximo passo: validar `/readyz` e `GET /v1/me` com JWT real de sessão de teste do Supabase paralelo; depois avaliar integração do upload na UI paralela.
 - Nenhuma alteração em `main`, produção, projeto Supabase original ou chaves `service_role`.
+
+
+### 2026-11-27 — `/readyz` confirmado; autenticação real bloqueada por pré-requisito
+- Usuário abriu `https://shiqi-core-development.up.railway.app/readyz` e confirmou a resposta `{"service":"shiqi-core","status":"ready"}`. Isso confirma configuração carregada do verificador JWT e do proxy Storage, não autenticação de uma sessão de usuário.
+- Consulta somente leitura no Supabase paralelo confirmou `auth.users = 0`, `public.profiles = 0` e nenhuma Edge Function publicada (`functions: []`). Portanto, não há conta/sessão real para testar `GET /v1/me`.
+- A Edge Function `supabase/functions/auth/index.ts` depende de `SUPABASE_SERVICE_ROLE_KEY` (variável padrão do runtime), `RESEND_API_KEY` para e-mails e configuração de URL/origem. O código atual usa `SITE_URL` padrão de produção e allowlist sem o domínio do preview; antes de publicar no projeto paralelo, definir `SITE_URL=https://shiqi-parallel-git-shiqi-parallel-dev-steamconnectalex-9536.vercel.app` e `EXTRA_ORIGINS` incluindo exatamente essa origem, além de configurar `RESEND_API_KEY` válido. Não reutilizar secrets da produção sem autorização explícita.
+- Próximo passo: usuário configurar esses três secrets/variáveis no Supabase paralelo; depois publicar `auth` apenas no projeto `ujdosskjycrdkcgsswfa` com verificação JWT de gateway desativada somente porque signup/login são rotas públicas e a própria função aplica validações/rate limits. Em seguida verificar `/health`, testar cadastro/verificação por e-mail e obter uma sessão real para `GET /v1/me`.
+- Não criar usuário manualmente em `auth.users`; não expor nem solicitar token; produção e `main` permanecem intocadas.
