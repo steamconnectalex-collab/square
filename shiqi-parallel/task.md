@@ -145,3 +145,11 @@
 - Revalidado destino: ativo/consultável, cinco tabelas públicas, zero linhas e zero buckets; histórico remoto segue com cinco migrations prototype.
 - Corrigida a estratégia: inspecionar signup da Edge Function original antes de decidir o destino do trigger; não copiar nem remover o trigger às cegas.
 - Nenhuma alteração remota.
+
+### 2026-11-26 — Signup original e trigger prototype
+- Inspecionada a Edge Function `auth` ativa v9 diretamente no Supabase.
+- Confirmado que signup cria usuário via Admin API e insere o perfil explicitamente; o original não usa trigger Auth.
+- Identificado conflito: trigger prototype no destino cria perfil antes do INSERT explícito da Edge Function, gerando duplicate key.
+- Estratégia corrigida: remover o trigger prototype e função associada na migration de corte, sem criar trigger novo; manter criação explícita pela Edge Function.
+- Achado adicional: `supabase/functions/auth/index.ts` versionado na branch está incompleto (2.259 bytes), enquanto v9 ativa é completa. Não publicar/sobrescrever; recuperar e reconciliar na etapa do backend.
+- Nenhuma alteração remota.
