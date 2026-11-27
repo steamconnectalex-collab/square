@@ -613,6 +613,54 @@ as $function$
   )
 $function$;
 
+create or replace function private.can_read_attachment(p_path text)
+returns boolean
+language sql
+stable
+security definer
+set search_path to ''
+as $function$
+  select (select auth.uid()) is not null and exists (
+    select 1
+    from public.messages m
+    join public.channels c on c.id = m.channel_id
+    where m.attachment_path = p_path
+      and split_part(p_path, '/', 1) = m.author_id::text
+      and split_part(p_path, '/', 2) <> ''
+      and (
+        (
+          c.kind = 'text'
+          and exists (
+            select 1 from public.server_members sm
+            where sm.server_id = c.server_id
+              and sm.user_id = (select auth.uid())
+          )
+        )
+        or (
+          c.kind = 'dm'
+          and exists (
+            select 1
+            from public.dm_members mine
+            where mine.channel_id = c.id
+              and mine.user_id = (select auth.uid())
+              and mine.state = 'active'
+              and (
+                m.author_id = (select auth.uid())
+                or exists (
+                  select 1
+                  from public.dm_members other_member
+                  where other_member.channel_id = c.id
+                    and other_member.user_id <> (select auth.uid())
+                    and other_member.state = 'active'
+                    and private.dm_allowed((select auth.uid()), other_member.user_id)
+                )
+              )
+          )
+        )
+      )
+  )
+$function$;
+
 create or replace function private.messages_rate_limit()
 returns trigger
 language plpgsql
@@ -1929,6 +1977,7 @@ REVOKE EXECUTE ON FUNCTION private.can_voice_topic(text) FROM PUBLIC, anon, auth
 REVOKE EXECUTE ON FUNCTION private.is_channel_member(uuid) FROM PUBLIC, anon, authenticated, service_role;
 REVOKE EXECUTE ON FUNCTION private.is_channel_owner(uuid) FROM PUBLIC, anon, authenticated, service_role;
 REVOKE EXECUTE ON FUNCTION private.is_dm_member(uuid) FROM PUBLIC, anon, authenticated, service_role;
+REVOKE EXECUTE ON FUNCTION private.can_read_attachment(text) FROM PUBLIC, anon, authenticated, service_role;
 REVOKE EXECUTE ON FUNCTION private.shares_server_with(uuid) FROM PUBLIC, anon, authenticated, service_role;
 REVOKE EXECUTE ON FUNCTION private.accept_on_reply() FROM PUBLIC, anon, authenticated, service_role;
 REVOKE EXECUTE ON FUNCTION private.check_thread_parent() FROM PUBLIC, anon, authenticated, service_role;
@@ -1994,12 +2043,14 @@ GRANT EXECUTE ON FUNCTION private.can_voice_topic(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION private.is_channel_member(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION private.is_channel_owner(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION private.is_dm_member(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION private.can_read_attachment(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION private.shares_server_with(uuid) TO authenticated;
 
 -- Trigger-only functions remain executable by their owner/postgres, not API roles.
 -- Do not grant authenticated/anon on accept_on_reply, check_thread_parent,
 -- dm_allowed, messages_rate_limit, touch_edited_at or touch_profile.
 -- private.is_dm_member is required by channels_select_member and is granted above.
+-- private.can_read_attachment is required by the private attachments Storage SELECT policy.
 -- private.remove_from_server is callable only from its owning privileged routines.
 -- Apply REVOKE EXECUTE ... FROM PUBLIC, anon, authenticated, service_role first,
 -- then grants above. Confirm trigger execution and policy calls with role tests.
