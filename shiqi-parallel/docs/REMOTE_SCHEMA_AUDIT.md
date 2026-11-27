@@ -250,3 +250,46 @@ Grupos cujos corpos foram recuperados:
 A extração dos corpos está completa para o inventário listado. Ainda falta transformar os corpos e os metadados exatos em migrations revisadas e cruzá-los com policies, constraints, índices, grants e chamadas frontend. **Isso não significa que o schema esteja pronto.**
 
 Nenhuma tabela, função, policy, grant, trigger, bucket, publicação Realtime, usuário, dado ou Edge Function foi alterado. Nenhum DDL foi executado.
+
+
+## RLS, constraints e privilégios — extração complementar (26/11/2026)
+
+### Policies RLS recuperadas
+
+Policies públicas encontradas no original (todas permissive e direcionadas a `authenticated`):
+- `profiles`: SELECT do próprio perfil ou perfil ativo de pessoa com servidor compartilhado; UPDATE apenas do próprio perfil, com `USING` e `WITH CHECK`.
+- `servers` e `server_members`: SELECT apenas para membro do servidor.
+- `channels`: SELECT se membro do servidor ou membro da DM.
+- `messages`: SELECT para membro do canal; INSERT exige autor igual a `auth.uid()` e `private.can_post`; UPDATE somente autor, com verificação de canal no `WITH CHECK`; DELETE pelo autor ou proprietário do servidor.
+- `friendships`: SELECT apenas se usuário participa da relação.
+- `blocks`: SELECT apenas de bloqueios feitos pelo usuário.
+- `dm_members`: SELECT do próprio registro ou de participantes da mesma DM.
+- `voice_members`: SELECT por membro do canal.
+- `server_pins`: SELECT próprio.
+- `message_reactions`: SELECT se a mensagem pertence a canal visível.
+- `server_events` e `event_interest`: SELECT para membros do servidor correspondente.
+- Não foram encontradas policies públicas nas tabelas internas `email_codes`, `rate_hits`, `server_invites`, `server_bans` e `mfa_recovery`; seu acesso é mediado por rotinas privilegiadas.
+
+### Constraints recuperadas
+
+A consulta a `pg_constraint` recuperou as definições funcionais e PK/FK, sem os pseudo-checks internos de NOT NULL. Foram confirmados, entre outros:
+- `profiles`: username 3–20 e regex minúscula; display_name 1–40; bio até 190; status até 60; accent hexadecimal; presence em online/idle/dnd/invisible; settings JSON object com limite de tamanho; avatar_path até 200.
+- `channels`: kind text/voice/dm, nome 1–30, formato DM exige `server_id IS NULL`; FK para servers com cascade.
+- `messages`: conteúdo 1–2000 após trim; attachment_path até 200; attachment_alt até 300; thread_of referencia messages; ID bigint identity ALWAYS.
+- `friendships`: user_a < user_b; requester precisa ser uma das pessoas; status pending/accepted; note até 120.
+- `dm_members`: state active/request.
+- `blocks`: blocker diferente de blocked.
+- `servers`: nome 2–40 e level 1–10.
+- `server_invites`: validade padrão 7 dias, max_uses 50 e uses 0.
+- `message_reactions`: emoji de 1–16 caracteres.
+- `server_events`: título 2–80, descrição até 500, place até 80.
+- PK/FKs das 18 tabelas-alvo foram recuperadas, incluindo cascades para Auth, canais, servidores, mensagens e eventos. Os tipos/defaults/nulabilidade das colunas também foram consultados em três lotes; `messages.id` é `bigint GENERATED ALWAYS AS IDENTITY`.
+
+### Grants de tabelas observados no original
+
+- Nenhum grant direto de tabela para `anon` apareceu na consulta de `information_schema.role_table_grants`.
+- `authenticated` tem SELECT nas tabelas de leitura direta protegidas por RLS e DELETE em `messages`; INSERT/UPDATE de negócio são mediados por policies/RPCs conforme cada tabela.
+- `service_role` e `postgres` têm privilégios administrativos nas tabelas.
+- A futura migration deve começar por revogar defaults amplos e conceder apenas o necessário; não copiar grants amplos do protótipo paralelo.
+
+A extração de policies, constraints, colunas e grants foi feita somente por SELECT. Não houve alteração no banco original ou paralelo.
