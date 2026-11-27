@@ -14,7 +14,10 @@ use serde::Serialize;
 use serde_json::json;
 use std::{env, net::SocketAddr, sync::Arc};
 use tokio::net::TcpListener;
-use tower_http::{cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer}, trace::TraceLayer};
+use tower_http::{
+    cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer},
+    trace::TraceLayer,
+};
 use tracing_subscriber::EnvFilter;
 
 use crate::{
@@ -98,7 +101,7 @@ fn browser_cors_layer() -> Option<CorsLayer> {
     {
         return None;
     }
-    let origin = HeaderValue::from_str(&origin).ok()?;
+    let origin = HeaderValue::try_from(origin.as_str()).ok()?;
     Some(
         CorsLayer::new()
             .allow_origin(AllowOrigin::exact(origin))
@@ -345,7 +348,9 @@ async fn main() {
     let app = if let Some(cors) = browser_cors_layer() {
         app.layer(cors)
     } else {
-        tracing::warn!("SHIQI_ALLOWED_ORIGIN missing or invalid; browser cross-origin requests are disabled");
+        tracing::warn!(
+            "SHIQI_ALLOWED_ORIGIN missing or invalid; browser cross-origin requests are disabled"
+        );
         app
     };
 
