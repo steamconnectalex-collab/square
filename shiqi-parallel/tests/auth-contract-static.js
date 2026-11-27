@@ -22,6 +22,9 @@ const moderationRpcSql = read('docs/CANONICAL_MODERATION_EVENTS_VOICE_RPCS.sql')
 const privateSql = read('docs/CANONICAL_PRIVATE_FUNCTIONS.sql');
 const aclSql = read('docs/CANONICAL_FUNCTION_ACL.sql');
 const draftSql = read('docs/CUTOVER_DRAFT.sql');
+const storageBucketSql = read('docs/CANONICAL_STORAGE_BUCKETS.sql');
+const storagePolicySql = read('docs/CANONICAL_STORAGE_POLICIES.sql');
+const appSql = read('apps/web/app.js');
 const rlsSql = read('docs/CANONICAL_RLS_POLICIES.sql');
 
 const routes = [
@@ -60,7 +63,30 @@ assert.ok(memberHelper.includes('security definer') && memberHelper.includes("se
 assert.equal(count(tablesSql, 'create table public.'), 18, 'Contagem inesperada de tabelas.');
 assert.equal(count(rlsSql, 'enable row level security'), 18, 'Todas as tabelas devem ter RLS.');
 assert.equal(count(rlsSql, 'create policy '), 17, 'Contagem inesperada de policies.');
-assert.equal(count(aclSql.toLowerCase(), 'revoke execute on function '), 58, 'A ACL deve revogar as 58 assinaturas.');
+assert.equal(count(aclSql.toLowerCase(), 'revoke execute on function '), 59, 'A ACL deve revogar as 59 assinaturas.');
+const attachmentHelper = privateSql.slice(
+  privateSql.indexOf('function private.can_read_attachment('),
+  privateSql.indexOf('create or replace function private.messages_rate_limit')
+);
+assert.ok(attachmentHelper.includes('m.attachment_path = p_path'),
+  'A leitura de anexos deve corresponder a um caminho realmente associado a uma mensagem.');
+assert.ok(attachmentHelper.includes("mine.state = 'active'") && attachmentHelper.includes('private.dm_allowed'),
+  'A leitura de anexos em DM deve exigir membro ativo e respeitar bloqueios/regras de DM.');
+assert.ok(attachmentHelper.includes('sm.user_id = (select auth.uid())'),
+  'A leitura de anexos de servidor deve exigir associação atual.');
+assert.ok(storageBucketSql.includes("'attachments', 'attachments', false") &&
+  storageBucketSql.includes("'avatars', 'avatars', true"),
+  'Attachments deve ser privado e avatars deve continuar público.');
+assert.ok(draftSql.includes("'attachments', 'attachments', false") &&
+  draftSql.includes("'avatars', 'avatars', true"),
+  'O draft deve preservar os modelos de privacidade dos buckets.');
+assert.ok(storagePolicySql.includes('private.can_read_attachment(name)') &&
+  !storagePolicySql.includes('CREATE POLICY attachments_select_own'),
+  'A policy de leitura deve autorizar pelo acesso à mensagem, não pelo dono da pasta.');
+assert.ok(appSql.includes('/storage/v1/object/sign/attachments/') &&
+  appSql.includes('expiresIn: 60') &&
+  !appSql.includes('/storage/v1/object/public/attachments/'),
+  'O frontend deve usar signed URLs curtas, sem URL pública.');
 const sharesHelper = privateSql.slice(
   privateSql.indexOf('function private.shares_server_with('),
   privateSql.indexOf('create or replace function private.touch_edited_at')
@@ -93,5 +119,5 @@ assert.ok(auth.includes('s = await mintSession(email)'), 'Recuperação MFA deve
 assert.ok(ui.includes('api().logout(); // o Supabase encerra as sessões'),
   'A interface deve encerrar a sessão local após desligar MFA.');
 
-console.log('SHIQI static contract: OK (13 rotas Auth, 18 tabelas/RLS, 17 policies, 58 ACL revokes, privacidade de perfil e concorrência de voz).');
+console.log('SHIQI static contract: OK (13 rotas Auth, 18 tabelas/RLS, 17 policies, 59 ACL revokes, privacidade de perfil/anexos e concorrência de voz).');
 console.log('Atenção: teste estático; não valida Deno, JWT, Supabase Auth, PostgreSQL ou envio de e-mail.');
