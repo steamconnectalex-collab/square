@@ -700,7 +700,7 @@ async function doReset() {
 
 /* =====================================================================
    TELA PRINCIPAL — dados reais do Supabase (servidores, canais, mensagens e perfis).
-   Ainda de demonstração: jogos, música, notícias, amigos/DM, voz.
+   Ainda de demonstração: jogos, notícias, amigos/DM, voz.
    ===================================================================== */
 const G = {
   lilac: 'linear-gradient(135deg,#D9CDF2,#9D8CCF)', rose: 'linear-gradient(135deg,#FAD3DC,#E897AB)',
