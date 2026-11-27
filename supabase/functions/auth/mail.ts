@@ -8,7 +8,7 @@ export class MailError extends Error {
 }
 
 const apiKey = () => (Deno.env.get("RESEND_API_KEY") ?? "").trim();
-const fromAddr = () => (Deno.env.get("RESEND_FROM") ?? "").trim() || "Shiqi <onboarding@resend.dev>";
+const fromAddr = () => (Deno.env.get("RESEND_FROM") ?? "").trim() || "Shiqi <nao-responda@shiqi.com.br>";
 const brand = () => (Deno.env.get("BRAND_NAME") ?? "").trim() || "Shiqi";
 
 export const mailConfigured = () => apiKey() !== "";
@@ -76,7 +76,7 @@ export async function sendCodeMail(o: { to: string; purpose: "signup" | "reset" 
     html = layout({
       preheader: `Seu código de verificação: ${o.code}`,
       title: "Confirme seu e-mail",
-      intro: `Use o código abaixo para concluir seu cadastro na ${name} O código vale por 15 minutos.`.replace(`${name} O`, `${name}. O`),
+      intro: `Use o código abaixo para concluir seu cadastro na ${name}. O código vale por 15 minutos.`,
       codeLabel: "Código de verificação",
       code: o.code,
       outro: "Se você não criou uma conta, é só ignorar este e-mail. Nunca compartilhe este código com ninguém.",
