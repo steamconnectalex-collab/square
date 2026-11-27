@@ -124,3 +124,36 @@ O banco original foi consultado apenas com SELECT de metadados/definições. Nen
 - Etapa 2 iniciada em modo de auditoria e planejamento.
 - Consultas feitas somente para leitura nos metadados do banco paralelo e no catálogo já autorizado do original.
 - Nenhum DDL, migration, grant, bucket, policy, função, trigger, publicação Realtime, Edge Function ou dado foi criado, alterado ou removido.
+
+## 9. Auditoria adicional das dependências do protótipo (26/11/2026)
+
+Foi revalidado o estado do destino por SELECT: `profiles`, `communities`, `community_members`, `channels` e `messages` continuam com zero linhas cada. Isso confirma ausência de registros nessas tabelas neste instante, mas não autoriza apagar objetos nem substitui a análise de dependências.
+
+Dependências atuais confirmadas:
+- `communities` tem o trigger `communities_add_owner` → `private.add_community_owner()`, que insere em `community_members`.
+- `profiles` tem o trigger `profiles_set_updated_at` → `private.set_updated_at()`.
+- `auth.users` possui handler `private.handle_new_user()`, que insere em `public.profiles(id, username, display_name)`. A implementação atual permite username nulo e foi escrita para o protótipo; não pode permanecer como está sem adaptação ao contrato canônico.
+- Policies de `channels`, `communities`, `community_members` e `messages` chamam `private.is_community_admin()` e/ou `private.is_community_member()`. Essas policies pertencem ao modelo communities, não podem ser reutilizadas como autorização do produto final.
+- Os helpers `private.add_community_owner`, `private.is_community_admin`, `private.is_community_member` e `private.set_updated_at` continuam vinculados ao protótipo.
+
+### Estratégia de preservação preferida (proposta, ainda sem DDL)
+
+A estratégia mais segura em princípio é preservar o protótipo por renomeação controlada, em vez de converter colunas/tipos incompatíveis:
+1. Fazer snapshot lógico de metadados e revalidar contagens imediatamente antes da mudança.
+2. Renomear as cinco tabelas públicas incompatíveis para nomes de arquivo/legado, preservando seus OIDs, constraints, índices, policies e triggers ligados às próprias tabelas. As FKs existentes continuam apontando para os objetos originais por identidade interna.
+3. Manter os helpers e triggers exclusivos do protótipo isolados e documentados; confirmar que nenhum nome de função colide com o conjunto canônico.
+4. Substituir cuidadosamente o handler `private.handle_new_user()` para inserir o perfil no novo contrato canônico, com valores padrão e fallback de username compatíveis com as constraints reais. Preservar o gatilho de `auth.users`, sem criar usuário ou enviar e-mail de teste.
+5. Criar as tabelas canônicas públicas e reconstruir funções, RLS, grants, Storage e Realtime a partir das definições verificadas.
+6. Testar os catálogos e os contratos antes de integrar a interface.
+
+A renomeação acima ainda exige uma última verificação: corpos PL/pgSQL podem resolver referências a nomes de tabela em tempo de execução, enquanto policies e FKs mantêm dependências internas. Portanto, as rotinas antigas do protótipo não podem ser consideradas funcionais após a troca sem teste. A preservação é para arquivo/rollback, não para manter o protótipo operando em paralelo.
+
+### Diferença identificada no limite de voz
+
+A função viva no banco original `voice_join` impõe atualmente o limite de 6 participantes. A branch paralela contém a alteração aprovada `0025_voz_10_participantes.sql`, que eleva o limite para 10. O alvo da migração continuará usando 10, conforme decisão explícita anterior do usuário; não será copiado cegamente o limite 6 da referência original.
+
+### Limites desta auditoria
+
+- Foram consultadas definições completas das funções do catálogo original, mas a resposta do conector excedeu o limite de saída e foi truncada. Ela não serve como exportação integral e verificável de todas as rotinas.
+- O próximo passo técnico é extrair definições em lotes menores, filtrando as funções de música por nome e dependências, e registrar cada lote sem truncamento.
+- Nenhum DDL, migration, grant, trigger, policy, função, bucket ou publicação foi alterado em qualquer banco.
