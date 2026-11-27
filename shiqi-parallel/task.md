@@ -10,6 +10,7 @@
 - [x] 2026-11-27 — Ampliado o snapshot para incluir grants de tabela concedidos a PUBLIC e privilégios de todas as sequences; o plano de rollback agora inclui remoção das sete policies Storage do cutover e restauração dos grants de sequence. Removidos grants duplicados do draft.
 
 ## Bloqueios atuais (27/11/2026)
+- O limite de 10 participantes por voz agora tem locks transacionais por usuário e sala no SQL canônico e no draft; a proteção foi verificada estaticamente, mas ainda depende de teste concorrente em PostgreSQL. 
 - O bucket canônico `attachments` está configurado como público e o frontend monta URLs `/object/public/attachments/`; URLs de anexos de DMs/canais privados podem ser acessadas por qualquer pessoa que as possua. Antes do lançamento, migrar para bucket privado, signed URLs e policy de leitura por participação no canal; não tornar o bucket privado isoladamente porque quebraria o frontend atual.
 - A validação de runtime dos SQLs segue pendente. O helper `private.shares_server_with` foi endurecido para considerar apenas amizades aceitas; a verificação estática cobre o helper e o cutover draft, mas não substitui teste RLS com dois usuários.
 - Os fluxos MFA ainda não foram executados contra Supabase Auth; a correção foi estática. O comportamento de revogação de sessões ao excluir um fator verificado exige novo login no desligamento e sessão nova após recuperação.
@@ -19,6 +20,7 @@
 - O smoke test existente na raiz aponta para o site original e não valida a cópia paralela; não foi executado para evitar testar/altear o alvo errado.
 
 ## Concluído
+- [x] 2026-11-27 — Endurecida a concorrência de `voice_join`: locks transacionais por usuário e sala evitam que entradas simultâneas ultrapassem 10 participantes ou mantenham o mesmo usuário em duas salas. Atualizados SQL canônico, draft e teste estático.
 - [x] 2026-11-27 — Corrigida exposição de perfis por amizade pendente: `private.shares_server_with()` agora só reconhece amizades com `status = 'accepted'`, tanto no helper canônico quanto no `CUTOVER_DRAFT.sql`. O helper alimenta `profiles_select_visible` e `profiles_full`; a correção impede que uma solicitação pendente seja tratada como amizade para liberar perfil. Adicionada verificação ao teste estático de contrato.
 - [x] 2026-11-27 — Corrigida a consulta de ACLs do snapshot: removida a referência à visão inexistente `information_schema.sequence_privileges`; agora usa `pg_class`/`aclexplode` para capturar grants de tabelas, colunas e sequences, inclusive PUBLIC e privilégios PG17. Incluída também a ACL dos schemas `private`/`public`.
 - [x] 2026-11-27 — Leitura real do projeto paralelo restabelecida via `Primary`; projeto confirmado ACTIVE_HEALTHY. Os 17 checks do preflight retornaram true: cinco tabelas prototype vazias, zero usuários Auth, nomes livres, pgcrypto disponível, Realtime somente em `public.messages`, sem buckets/policies Storage conflitantes e sem colisões de funções/índices.
@@ -377,3 +379,8 @@
 - Commits: `de1b194` (helper), `f388097` (draft), `aa3e415` (teste), `f718add` (task).
 - Nenhuma alteração em banco remoto, migration aplicada, usuário Auth, secret, deploy, produção ou branch `main`.
 - Próximo passo: implementar em conjunto bucket privado de anexos, signed URLs e policy de leitura por participação; continuar revisão de concorrência das RPCs; depois revisar rollback e snapshot.
+### 2026-11-27 — Proteção concorrente da sala de voz
+- Durante a revisão de RPCs, identificado que a contagem de vagas em `voice_join` não era serializada; chamadas simultâneas poderiam ultrapassar o limite de 10 mesmo com a verificação `n >= 10`.
+- Adicionados advisory transaction locks por usuário e por canal, sempre na ordem usuário → canal, antes da limpeza e contagem. Isso também serializa duas chamadas simultâneas do mesmo usuário para canais diferentes.
+- Alterados `CANONICAL_MODERATION_EVENTS_VOICE_RPCS.sql`, `CUTOVER_DRAFT.sql` e `tests/auth-contract-static.js`; `SECURITY_AUDIT.md` documenta o risco e a correção.
+- Verificação pós-commit estática pendente após salvar; teste de concorrência real em PostgreSQL continua não executado por decisão de evitar setup local.
