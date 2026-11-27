@@ -67,6 +67,7 @@
 - Supabase Advisors: zero alertas de segurança e saúde; cinco INFO de índices não utilizados em tabelas prototype vazias.
 - Limite: nenhuma validação PostgreSQL runtime, Auth/JWT, Storage, Realtime ou concorrência real. Nenhum DDL/DML remoto foi executado.
 - Removido um GRANT redundante de USAGE do schema `private` no ACL canônico e no draft; reexecutado o harness estático após a correção, com resultado OK. Ambos mantêm uma única concessão de USAGE, 59 REVOKEs e 52 GRANTs de função válidos.
+- Cruzamento adicional: 30 RPCs distintas usadas pelo frontend têm definição canônica; 13 tabelas REST referenciadas existem; draft e referências coincidem em 18/18 RLS, 17 policies, sete policies Storage e duas policies Realtime.
 - Próximo: continuar revisão final dos contratos de banco e preparar a versão final revisável da migration/rollback, mantendo execução remota bloqueada.
 
 ## Alinhamento de trabalho conjunto (2026-11-26)
