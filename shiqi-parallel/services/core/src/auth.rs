@@ -160,7 +160,6 @@ impl SupabaseJwtVerifier {
     }
 }
 
-
 fn decode_verified_claims(
     token: &str,
     decoding_key: &DecodingKey,
@@ -196,7 +195,6 @@ fn is_supported_algorithm(algorithm: Algorithm) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-
 
     // Chave RSA exclusiva dos testes. Nunca usar em ambientes ou dados reais.
     const TEST_PRIVATE_KEY: &str = "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQC0yq5gAks7AMq0\neZ9KR09ie64XC280K6wmdD6FuNIZlBQT2kAkuKRfijFKv2K2IVaa42sNz4UkoDlk\nC4dCl1Bid1donWeH1AyaX70XHGkuslQfmmGOv/6pWlyEq32z8jo8XLnIhFWeiPnC\nhisESyJYEA03JNgC++w1b3vviNZ/toPq2RWzscZQbs1I9cmeGivWNgzsBo9KcW6F\nNvari37jxbdBoXx84eZ/fU4eiB8qdaDIjPQEXkYw5r72Lrxmq5DOLlE1tRhajrg1\nf9fte0fGTIHLXnj81tgxnqDTlhzO8jQvCCx0nKRb1XEQgIhJpS8rKyWDvgqCOkB9\nNkR7L/wHAgMBAAECggEAJ9qSLAn1aZFYHga9jZNAtbYL/3p+ziJeda+kZLgEYK0a\n6/FtuGqXmZQOH6sm6H1a6RP+8nFvqU5EuIAuFgjjKIGkXCRuwSuGh7VZKrIRocCf\n+MOAhAZg7hZEVN60/CkGm23ZapF5ilQpsq7+5phlfsIzF5fgom/Ed1cXHAuvNUG4\nv4IgWlFycYPYUPTF9itPPxJAkFWIT7vYzFDgNdXRb0FL7BaNd0klHlHF9fb7ccs0\nUMgtBzmG0vk5do25TV8fhba0v982kejokfZSq7BI2Aj2iMfie9jDKJ3giU6DZ9j+\nFee5YduSNre9/YoaCrh4wJTZwJDXQxWzQtxohhCo6QKBgQDjIY+n/KCTh1/+J+m1\nVBeFD4k5dSGgBWWoucnqVwyQ6Asu9ocpG2AfTNK3mSnQ204sQaz0IZiPWnVNe0xc\nC90H6n1iKHYVV6vxGiRS+NBMs01fI4DQQObccRBsa7mm7JqWWfXxyup77EHPYp8Q\nX+1Jm69nrgO8naiOyfXhZuXu4wKBgQDLxVHdoFqQK47SKahRQ7J/LteAitzp7mkP\nBzyOnLjHy6jBkzt4S10pW7CgITvne/3mZTvc8+XN3V7rD3r7qxaahg4PxS4HOff6\n4wcXIJivMRaoSU4Ix+3yDXoknS36MUuV+/O+6gmxdYN+beRz6VHEsGV2L46uSmgC\nvcPqU8JDjQKBgB4QnDZtT0gX/FHlMJ9rAS4Az3ZGlevbqwg5h4u4eBZaUNink16S\nnBeokJ/y60EVNnTPQLiUFeCr5aka8BGjFF/u3yf2GSNcFot0nWhKPTBZ75zvUya9\n4JE/eiAP5mQ9H31VbSPTa1R6AoAUGuANApjivcYol6AI8n3sJ9rtRvRnAoGAAxJq\ndYjhVKMTeB+gpfj7S+eM4Cc3xV8OvmdBhnTeZESxuplZoCqisOjs9L0LhiXcYgjM\nqjwTDtNzht+o3vppUNMMizhRxVIeZu3dQYAATUPUL51LS96Xu7pwSPUFqGvt08kE\nl7A3jTFUVieZ9hViYjC2lt2IrR/6CXCK75FrsFECgYBadvra1qlkb1WwsUWhDciC\nR36A4V9w+kYErdIFe6mT7PICSbT5TB6A2uImnErFU21GpC/fQ3vpLj4Rj5updWJu\nPEaFlq69lckba24EwvcoiKE+hjf9EqYMal+agACX6S2xNFuom7khofsDEGjIIW5P\nkj074FMkZFAtEOwB3G2vwQ==\n-----END PRIVATE KEY-----";
@@ -262,7 +260,6 @@ mod tests {
     fn rejects_empty_audience() {
         assert!(SupabaseJwtVerifier::new("https://example-project.supabase.co", " ").is_err());
     }
-
 
     #[test]
     fn verifies_a_valid_signed_supabase_claim_set() {
