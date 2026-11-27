@@ -366,3 +366,13 @@
 - O teste estático foi ajustado para buscar a função em `CANONICAL_TRIGGERS.sql`; documentação corrigida para registrar a origem correta.
 - Não há mais bloqueio por ausência de `is_server_member`; a migration-base `servidores_e_canais` continua sem arquivo versionado, mas a função auxiliar está presente nos arquivos canônicos/draft.
 - Commits: `4413d82` (remoção da duplicata), `eb907d1` (teste), `f810b5c` (documentação).
+
+### 2026-11-27 — Auditoria de autorização e privacidade de perfis
+- Revisados os contratos SQL de servidores/canais/convites, amizades/DMs/bloqueios/perfis, moderação/eventos/voz, helpers privados, triggers e policies RLS.
+- Confirmado que kick/ban delegam a `private.remove_from_server`, que exige usuário autenticado e propriedade do servidor; operações de eventos e bans também verificam o proprietário, e operações sociais mutam apenas linhas vinculadas ao usuário autenticado ou à solicitação correspondente.
+- Encontrada uma falha de privacidade: `private.shares_server_with` tratava amizade pendente como vínculo válido. Isso podia liberar a função `profiles_full` e a policy de leitura de perfis antes do aceite da amizade.
+- Corrigidos `CANONICAL_PRIVATE_FUNCTIONS.sql` e `CUTOVER_DRAFT.sql` para exigir `friendships.status = 'accepted'` no ramo de amizade. O vínculo por servidor compartilhado permanece permitido.
+- Ampliado `tests/auth-contract-static.js` para verificar tanto o helper quanto a cópia dentro do cutover draft. Verificação pós-commit por leitura dos arquivos confirmou as duas condições; o script Node completo e os testes RLS em runtime ainda não foram executados.
+- Commits: `de1b194` (helper), `f388097` (draft), `aa3e415` (teste), `f718add` (task).
+- Nenhuma alteração em banco remoto, migration aplicada, usuário Auth, secret, deploy, produção ou branch `main`.
+- Próximo passo: continuar auditoria dos contratos de mensagens, anexos, Realtime/Storage e concorrência das RPCs; depois revisar rollback e snapshot.
