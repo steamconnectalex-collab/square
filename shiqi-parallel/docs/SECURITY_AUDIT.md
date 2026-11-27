@@ -96,3 +96,6 @@ Consulta somente leitura ao projeto Supabase paralelo confirmou que não existem
 
 - Correção durante a revisão final: removido o GRANT redundante de `USAGE` do schema `private` para `authenticated`, que já estava coberto pelo grant conjunto a `authenticated, service_role`. ACL canônica e draft agora têm exatamente uma concessão de USAGE do schema.
 - Reexecutado o teste estático após a correção: passou; as 59 revogações continuam alinhadas e a análise de sintaxe de `app.js` passou.
+
+- Cruzamento de contratos do frontend: 30 RPCs distintas chamadas pelos módulos web foram encontradas nas definições canônicas; nenhuma chamada aponta para função ausente. As 13 tabelas referenciadas diretamente por REST também existem no schema canônico; as cinco tabelas internas permanecem mediadas pelo backend/RPC.
+- Comparação do draft com as referências: 18/18 tabelas com RLS, 17/17 policies públicas presentes sem duplicatas, sete policies Storage e as duas policies privadas de voz Realtime presentes.
