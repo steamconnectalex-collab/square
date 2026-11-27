@@ -2148,9 +2148,9 @@ CREATE POLICY attachments_insert_own ON storage.objects
   FOR INSERT TO authenticated
   WITH CHECK (bucket_id = 'attachments' AND (storage.foldername(name))[1] = (SELECT auth.uid())::text);
 
-CREATE POLICY attachments_select_own ON storage.objects
+CREATE POLICY attachments_select_message_member ON storage.objects
   FOR SELECT TO authenticated
-  USING (bucket_id = 'attachments' AND (storage.foldername(name))[1] = (SELECT auth.uid())::text);
+  USING (bucket_id = 'attachments' AND private.can_read_attachment(name));
 
 CREATE POLICY avatars_delete_own ON storage.objects
   FOR DELETE TO authenticated
