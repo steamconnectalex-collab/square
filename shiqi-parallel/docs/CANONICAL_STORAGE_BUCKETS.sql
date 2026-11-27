@@ -28,7 +28,7 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'attachments') THEN
     INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
     VALUES (
-      'attachments', 'attachments', true, 3145728,
+      'attachments', 'attachments', false, 3145728,
       ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif']::text[]
     );
   END IF;
