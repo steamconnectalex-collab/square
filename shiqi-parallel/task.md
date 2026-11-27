@@ -69,6 +69,7 @@
 - [x] 2026-11-27 — Edge Function Auth completa restaurada em `shiqi-parallel/supabase/functions/auth/index.ts` a partir da fonte versionada na raiz; origens antigas de produção removidas, URL padrão ajustada para o projeto paralelo e chave anon exigida por variável de ambiente. Sem deploy.
 - [ ] Validar contratos da Edge Function Auth restaurada, dependências, JWT e variáveis de ambiente antes de conectar a UI. Revisão estática MFA concluída em 2026-11-27; testes de runtime continuam pendentes.
 - [ ] Completar testes JWT assinados/negativos e validar algoritmo/chaves do projeto destino antes de integrar middleware.
+- [ ] Em andamento (27/11): fechar a compatibilidade do validador Rust de anexos com o contrato já existente: GIF também é aceito pela UI e pelo bucket `attachments`; preservar os limites e não alterar o frontend.
 - [ ] Testar em runtime os contratos de Auth/JWT, RLS, RPCs, Storage, Realtime e concorrência antes de conectar a UI; qualquer migration incremental futura exige revisão própria.
 - [ ] Regressão de todos os fluxos que permanecem no produto.
 - [ ] Preview Vercel depois que a janela de limite terminar; não contornar limite.
