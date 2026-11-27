@@ -19,7 +19,7 @@
 - [x] 2026-11-26 — Inventário de dependências do schema documentado em `docs/SCHEMA_DEPENDENCY_INVENTORY.md`.
 - [x] 2026-11-26 — Contratos iniciais de autenticação documentados em `docs/AUTH_CONTRACT_INVENTORY.md`.
 - [x] 2026-11-26 — Música excluída do escopo: migrations 0011 e 0012 removidas somente da pasta paralela; originals em `main` preservados.
-- [ ] Completar/revisar matriz de paridade funcional em `docs/FEATURE_PARITY_MATRIX.md`, detalhando campos, filtros, estados e critérios de regressão. Primeira versão criada em 2026-11-26; ainda precisa de cruzamento integral com handlers e testes.
+- [ ] Completar/revisar matriz de paridade funcional em `docs/FEATURE_PARITY_MATRIX.md`, detalhando campos, filtros, estados e critérios de regressão. Primeira versão e complemento de persistência/configurações/loja registrados em 2026-11-26; ainda falta cruzamento integral de app.js, telas/rotas e testes.
 - [ ] Recuperar SQL ausente da base de servidores/canais e dos eventos por fonte Git autorizada ou material fornecido pelo proprietário. Histórico Git acessível já pesquisado sem localizar o SQL base.
 - [ ] Reconciliar o schema paralelo de cinco tabelas com o modelo alvo sem drops/renames destrutivos.
 - [ ] Reconstruir e testar contratos de autenticação; o arquivo versionado atual é apenas stub.
@@ -48,6 +48,12 @@
 3. Recuperar a migration base ausente de servidores e eventos; pedir ao usuário dump SQL somente de estrutura (sem dados) se não houver fonte Git autorizada.
 4. Corrigir e testar autenticação antes de conectar a UI.
 5. Expandir testes de JWT e middleware Rust; validar algoritmo e chaves antes da integração.
+### 2026-11-26 — Continuação da etapa 1 (inspeção de módulos)
+- Lidos os handlers de settings.js, settings-pages.js, settings-pages2.js, perfil.js, loja.js, home.js, baixar.js e mobile.js na cópia paralela.
+- Documentado que preferências usam localStorage e sincronização RPC get_my_settings/save_my_settings; nome de usuário, senha, troca de e-mail e MFA têm rotas/RPCs próprios.
+- Documentado que perfil salva dados/avatar pelo adapter SQ_API; avatares recentes, widgets e lista de desejos são locais; catálogo, missões, compras, Plus e pagamentos são placeholders/demonstrações sem persistência comercial.
+- Documentados os comportamentos do download desktop e da dica mobile. Nenhum código de produto, interface, banco remoto ou produção foi alterado.
+
 ### 2026-11-26 — Início da execução da sequência aprovada
 - **Escopo confirmado pelo usuário:** não criar novas funcionalidades; executar as etapas na ordem aprovada; preservar design e recursos existentes, com música excluída e QR fora do escopo.
 - **Etapa 1 iniciada:** leitura integral de `task.md` e `agents.md` da raiz e do acompanhamento paralelo; inspeção estática dos scripts principais da cópia paralela.
