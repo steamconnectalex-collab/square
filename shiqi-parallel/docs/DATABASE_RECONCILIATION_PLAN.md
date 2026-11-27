@@ -221,3 +221,18 @@ O rollback não será executado automaticamente nem será incluído como `DROP .
 ### Critério para liberar a migration
 
 Só gerar a migration final depois de confirmar: inventário de dependências do destino, nomes de legado sem colisão, grants exatos, trigger Auth, Realtime, policies de legado e teste estático da reversão. Mesmo depois de pronta, nenhuma migration será aplicada ao Supabase sem aprovação específica do usuário.
+
+
+## 13. Trigger de criação de perfil do destino — definição conferida
+
+A função atual `private.handle_new_user()` no projeto paralelo foi lida integralmente. Ela:
+- lê `username` e `display_name` de `new.raw_user_meta_data`;
+- valida username com regex e tamanho diferentes do contrato canônico;
+- tenta inserir `public.profiles(id, username, display_name)`;
+- em caso de colisão, tenta inserir novamente com `username = NULL`.
+
+Isso é incompatível com a tabela canônica original, que exige username NOT NULL e regex `^[a-z0-9._]{3,20}$`. Se apenas renomearmos a tabela antiga e criarmos a canônica, o gatilho atual continuará apontando para o novo nome `public.profiles` e poderá falhar na criação de novas contas, especialmente no fallback NULL. Portanto, a troca da função precisa ocorrer na mesma migration de corte e ser validada estaticamente com os contratos de cadastro; não criaremos usuários para testar nesta fase.
+
+As outras funções privadas do protótipo (`add_community_owner`, `is_community_admin`, `is_community_member`, `set_updated_at`) são específicas das tabelas legadas. Devem permanecer preservadas com o legado, sem serem usadas como autorização das tabelas canônicas.
+
+Nenhuma função ou trigger foi alterada remotamente.
