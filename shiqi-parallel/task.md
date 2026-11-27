@@ -277,3 +277,9 @@
 - Removido o campo de última música do editor de perfil e os handlers associados; removidas as opções Spotify/Amazon Music do catálogo de conexões.
 - Ajustadas as referências promocionais/status que apresentavam reprodução musical como recurso da SHIQI. A alteração ficou restrita a shiqi-parallel/apps/web; site/, desktop/ e main não foram alterados.
 - Verificação estática confirmou ausência das chamadas/telas musicais nos arquivos editados. Não houve execução de smoke test nem deploy, pelas restrições documentadas acima.
+
+### 2026-11-27 — Cruzamento estático das referências canônicas
+- Conferidos 18 objetos de tabela, RLS em todos, 17 policies, 45 RPCs públicas e 13 funções privadas; corrigida a expectativa incorreta de 18 policies no checklist.
+- A cobertura nominal de funções na ACL corresponde às definições; as 46 referências de colunas na ACL existem nas tabelas canônicas; as policies e chamadas a helpers privados apontam para objetos documentados.
+- A definição duplicada de unban_member foi removida do arquivo Auth. Referências SQL de Storage e Realtime foram adicionadas e documentadas.
+- Limitação: nenhuma validação PostgreSQL em runtime nem teste de rollback. O conector Supabase negou leitura do projeto paralelo nesta sessão; nenhum DDL remoto foi executado.
