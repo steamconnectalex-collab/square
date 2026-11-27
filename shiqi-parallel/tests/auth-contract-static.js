@@ -68,6 +68,17 @@ const attachmentHelper = privateSql.slice(
   privateSql.indexOf('function private.can_read_attachment('),
   privateSql.indexOf('create or replace function private.messages_rate_limit')
 );
+const draftAttachmentHelper = draftSql.slice(
+  draftSql.indexOf('function private.can_read_attachment('),
+  draftSql.indexOf('create or replace function private.messages_rate_limit')
+);
+assert.ok(draftAttachmentHelper.includes('m.attachment_path = p_path') &&
+  draftAttachmentHelper.includes("split_part(p_path, '/', 1) = m.author_id::text"),
+  'O cutover draft deve incluir o helper e validar o autor do anexo.');
+assert.equal(count(draftSql.toLowerCase(), 'revoke execute on function '), 59,
+  'O cutover draft deve revogar as 59 assinaturas.');
+assert.ok(draftSql.includes('GRANT EXECUTE ON FUNCTION private.can_read_attachment(text) TO authenticated;'),
+  'O cutover draft deve conceder o helper somente ao papel autenticado.');
 assert.ok(attachmentHelper.includes('m.attachment_path = p_path') &&
   attachmentHelper.includes("split_part(p_path, '/', 1) = m.author_id::text"),
   'A leitura de anexos deve corresponder a um caminho realmente associado a uma mensagem.');
