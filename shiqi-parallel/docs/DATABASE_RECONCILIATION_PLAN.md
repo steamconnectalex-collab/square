@@ -282,3 +282,20 @@ As definições completas de `pg_policies` foram extraídas em lotes e salvas em
 As tabelas internas `email_codes`, `rate_hits`, `server_invites`, `server_bans` e `mfa_recovery` não têm policies públicas no original. Não adicionar policies genéricas para elas. Mutations nessas áreas devem continuar mediadas pelas RPCs/Edge Function privilegiadas.
 
 O SQL de referência depende de helpers privados e RPC `public.is_server_member`; ele não é executável isoladamente. Antes de formar a migration final, as funções devem ser criadas antes das policies, e os grants devem ser aplicados com least privilege. A política de canal DM e mensagens deve ser validada com testes de usuário participante/não participante, incluindo DM em estado request.
+
+
+## 18. Helpers privados, RPC de membership e triggers recuperados
+
+Foram recuperados e salvos em arquivos SQL de referência:
+- `docs/CANONICAL_PRIVATE_FUNCTIONS.sql`: 13 funções privadas completas, com corpos reais, assinatura, SECURITY DEFINER/STABLE, search_path e lógica.
+- `docs/CANONICAL_TRIGGERS.sql`: `public.is_server_member(uuid)` e cinco triggers reais: validação de tópico, rate limit de mensagem, timestamp de edição, aceitação automática de solicitação DM ao responder e atualização de perfil.
+
+### Dependências e ordem
+1. Tabelas canônicas.
+2. Helpers privados e `public.is_server_member`.
+3. Triggers.
+4. Policies RLS que chamam os helpers.
+5. Grants/ACLs por assinatura.
+Os triggers dependem de `messages`, `dm_members` e `profiles`; não criar antes das tabelas.
+
+Os arquivos são referências reconstruídas do catálogo original, não migrations executáveis isoladamente. A auditoria agora tem os corpos de helpers privados e os triggers reais; faltam os corpos públicos das RPCs e a ACL/grants finais para produzir o pacote transacional completo.
