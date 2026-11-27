@@ -179,3 +179,45 @@ A auditoria recuperou todos os índices públicos das 18 tabelas-alvo e consulto
 Diretriz para o destino: não reproduzir ACLs históricas amplas em helpers privados; revogar EXECUTE de PUBLIC/anon e conceder o mínimo necessário, garantindo execução de triggers, policies e RPCs chamadoras. Rotinas de backend devem ficar inacessíveis ao cliente autenticado. Os índices únicos funcionais e índices de consulta por canal/data, autor/data, threads, membership, convites, eventos, reações e rate limit precisam ser preservados.
 
 O inventário estrutural do original está suficientemente recuperado para iniciar a montagem local do schema canônico. Isso não autoriza aplicação no projeto remoto. Antes, será documentado o plano reversível de isolamento das cinco tabelas do protótipo e será feita revisão estática das migrations geradas.
+
+
+## 12. Plano reversível para isolar o protótipo paralelo (proposta técnica)
+
+A estratégia de trabalho passa a ser preparar uma migration de preservação por renomeação, não conversão de tipos nem reaproveitamento de colunas incompatíveis. Isso continua sendo uma proposta local para revisão; **não foi executada**.
+
+### Objetos a preservar
+
+As cinco tabelas atuais serão mantidas com todos os dados, OIDs, FKs, índices, policies e triggers, mas retiradas dos nomes públicos usados pelo app:
+- `profiles` → `legacy_profiles`
+- `communities` → `legacy_communities`
+- `community_members` → `legacy_community_members`
+- `channels` → `legacy_channels`
+- `messages` → `legacy_messages`
+
+Antes da renomeação, a migration deverá:
+1. Confirmar que os cinco objetos ainda existem, que não há colisão com nomes `legacy_*` e que as contagens continuam em zero.
+2. Capturar em log os nomes/IDs das migrations remotas e os metadados dos objetos.
+3. Interromper com erro se qualquer precondição divergir; não usar `DROP`, `TRUNCATE`, `CASCADE` nem conversão de coluna.
+4. Renomear dentro de uma transação, sem remover constraints ou dados.
+
+### Dependências que precisam ser tratadas na mesma janela
+
+- O trigger de `auth.users` continua ativo, mas sua função `private.handle_new_user()` precisa ser substituída para inserir na nova `public.profiles` canônica com username válido e defaults corretos. Não criar usuários nem disparar e-mails de teste.
+- Triggers e policies antigas permanecem ligados às tabelas renomeadas por dependência de objeto; os helpers do protótipo devem permanecer disponíveis para não quebrar essas estruturas enquanto o legado estiver arquivado.
+- A publicação Realtime atual inclui o OID de `messages`; após renomear, esse OID passa a representar `legacy_messages`. A migration precisa remover o legado da publicação e adicionar a nova `public.messages`; também adicionar `friendships` e `voice_members`.
+- Grants de `anon` e `authenticated` nas tabelas legadas devem ser revogados explicitamente após a renomeação. Manter RLS ligado; acesso administrativo fica restrito a `service_role`/owner.
+- A API Data/PostgREST e os nomes de tabelas só serão considerados prontos após consulta de catálogo e teste de descoberta dos recursos.
+
+### Reversão
+
+A migration de corte deve ter um script de rollback separado e revisado:
+1. Parar a integração de frontend e retornar o apontamento do app para o estado anterior, se já houver sido conectado.
+2. Remover as novas tabelas canônicas apenas se estiverem comprovadamente sem dados e com autorização explícita; caso contrário, renomeá-las para um prefixo de quarentena.
+3. Restaurar os nomes das cinco tabelas legadas e as permissões/publicação originais, restaurando também a função de trigger anterior do protótipo.
+4. Validar policies, triggers, FKs, índices, grants e Realtime depois da reversão.
+
+O rollback não será executado automaticamente nem será incluído como `DROP ... CASCADE`. O script final deverá ser revisado junto com o SQL de aplicação.
+
+### Critério para liberar a migration
+
+Só gerar a migration final depois de confirmar: inventário de dependências do destino, nomes de legado sem colisão, grants exatos, trigger Auth, Realtime, policies de legado e teste estático da reversão. Mesmo depois de pronta, nenhuma migration será aplicada ao Supabase sem aprovação específica do usuário.
