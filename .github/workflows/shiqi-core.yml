@@ -18,6 +18,10 @@ on:
       - "shiqi-parallel/services/core/**"
       - "shiqi-parallel/apps/web/**"
       - "shiqi-parallel/tests/**"
+      - "shiqi-parallel/supabase/**"
+      - "shiqi-parallel/docs/**"
+      - "shiqi-parallel/task.md"
+      - "task.md"
       - ".github/workflows/shiqi-core.yml"
   workflow_dispatch:
 
