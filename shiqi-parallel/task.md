@@ -623,3 +623,9 @@
 - Consulta read-only de ACLs confirmou que as tabelas públicas de produto usam grants por coluna e/ou leitura direta, com escrita concentrada em RPCs SECURITY DEFINER. Ex.: `profiles` expõe SELECT em 8 colunas e UPDATE em 6, sem grant de tabela inteiro; `messages` tem SELECT em 9 colunas, INSERT em 5, UPDATE em 1 e DELETE concedido; tabelas como `servers`, `channels`, `friendships`, `voice_members`, `server_events`, `server_pins`, `blocks`, `event_interest` e `message_reactions` são leitura direta, com mutações via RPC.
 - Cinco tabelas internas (`email_codes`, `mfa_recovery`, `rate_hits`, `server_bans`, `server_invites`) não têm grants diretos a authenticated/anon; tabelas `legacy_*` também não têm grants.
 - O probe A/B simulado foi aprovado após respeitar ACL por coluna (UPDATE literal em bio, sem SELECT de bio). Nenhuma permissão foi ampliada.
+
+
+### 2026-11-28 — Auth v3: falha segura e higiene de sessão
+- Edge Function `auth` publicada no Supabase paralelo como versão 3 (ACTIVE, `verify_jwt=false`). Código publicado conferido: consulta de fatores MFA falha fechada quando a API retorna erro; falha ao consultar cooldown de códigos também falha fechada; reativação de conta e revogação de sessões agora verificam erros; verificação de senha encerra a sessão temporária com `signOut({scope:"local"})` antes de concluir a ação.
+- `auth-contract-static.js` ampliado para proteger esses comportamentos. Deno type-check e smoke HTTP da Auth v3 estão no workflow; resultado do CI novo ainda não foi obtido pelo conector.
+- A lacuna MFA/AAL2 em RLS/RPC continua aberta e documentada. A alteração acima melhora o fluxo Edge Function, mas não substitui enforcement AAL2 no banco para chamadas diretas.
