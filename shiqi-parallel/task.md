@@ -629,3 +629,8 @@
 - Edge Function `auth` publicada no Supabase paralelo como versão 3 (ACTIVE, `verify_jwt=false`). Código publicado conferido: consulta de fatores MFA falha fechada quando a API retorna erro; falha ao consultar cooldown de códigos também falha fechada; reativação de conta e revogação de sessões agora verificam erros; verificação de senha encerra a sessão temporária com `signOut({scope:"local"})` antes de concluir a ação.
 - `auth-contract-static.js` ampliado para proteger esses comportamentos e garantir que os scripts SQL de regressão terminem com `ROLLBACK` e nunca insiram diretamente em `auth.users`. Regexes dos testes foram revisadas. Deno type-check e smoke HTTP da Auth v3 estão no workflow; resultado do CI novo ainda não foi obtido pelo conector.
 - A lacuna MFA/AAL2 em RLS/RPC continua aberta e documentada. A alteração acima melhora o fluxo Edge Function, mas não substitui enforcement AAL2 no banco para chamadas diretas.
+
+
+### 2026-11-28 — Verificação estática final dos novos testes
+- Revisão estática manual dos novos artefatos passou: fail-closed MFA/cooldown/revogação, limpeza Storage paginada, ausência de INSERT em auth.users, ROLLBACK dos dois probes, smoke apontando apenas ao paralelo e exclusão de QR das verificações.
+- Essa revisão não substitui a execução Node/Deno/Playwright do GitHub Actions; resultado da nova execução ainda não foi confirmado.
