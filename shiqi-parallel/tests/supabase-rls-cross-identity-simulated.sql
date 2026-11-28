@@ -22,6 +22,7 @@ DECLARE
   owner_update integer;
   other_read integer;
   other_update integer;
+  other_full_profile_rows integer;
 BEGIN
   IF owner_id IS NULL THEN
     RAISE EXCEPTION 'RLS probe requires one existing Auth user';
@@ -53,16 +54,20 @@ BEGIN
   WHERE id = owner_id;
   GET DIAGNOSTICS other_update = ROW_COUNT;
 
+  SELECT count(*)::int INTO other_full_profile_rows
+  FROM public.profiles_full(ARRAY[owner_id]);
+
   PERFORM set_config('shiqi.probe.owner_read', owner_read::text, true);
   PERFORM set_config('shiqi.probe.owner_update', owner_update::text, true);
   PERFORM set_config('shiqi.probe.other_read', other_read::text, true);
   PERFORM set_config('shiqi.probe.other_update', other_update::text, true);
+  PERFORM set_config('shiqi.probe.other_full_profile_rows', other_full_profile_rows::text, true);
 
   IF owner_read <> 1 OR owner_update <> 1 THEN
     RAISE EXCEPTION 'RLS owner check failed: read %, update %', owner_read, owner_update;
   END IF;
-  IF other_read <> 0 OR other_update <> 0 THEN
-    RAISE EXCEPTION 'RLS isolation check failed: other read %, update %', other_read, other_update;
+  IF other_read <> 0 OR other_update <> 0 OR other_full_profile_rows <> 0 THEN
+    RAISE EXCEPTION 'RLS isolation check failed: other read %, update %, profiles_full %', other_read, other_update, other_full_profile_rows;
   END IF;
 END $$;
 
@@ -72,7 +77,8 @@ SELECT json_build_object(
   'owner_can_read_own_profile', current_setting('shiqi.probe.owner_read')::int = 1,
   'owner_can_update_own_profile', current_setting('shiqi.probe.owner_update')::int = 1,
   'synthetic_other_cannot_read_profile', current_setting('shiqi.probe.other_read')::int = 0,
-  'synthetic_other_cannot_update_profile', current_setting('shiqi.probe.other_update')::int = 0
+  'synthetic_other_cannot_update_profile', current_setting('shiqi.probe.other_update')::int = 0,
+  'synthetic_other_cannot_read_profiles_full', current_setting('shiqi.probe.other_full_profile_rows')::int = 0
 ) AS simulated_rls_result;
 
 ROLLBACK;
