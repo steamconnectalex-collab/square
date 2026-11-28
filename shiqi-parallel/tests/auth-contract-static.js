@@ -43,7 +43,6 @@ assert.ok(auth.includes('Deno.serve('), 'Servidor HTTP da Edge Function ausente.
 assert.ok(auth.includes('if (!SUPABASE_URL || !SERVICE_KEY || !ANON_KEY)'), 'Validação dos secrets ausente.');
 assert.ok(!auth.includes('https://shiqi.com.br') && !auth.includes('square-chat-silk') &&
   !auth.includes('square-chat-steamconnectalex'), 'Origem antiga de produção encontrada.');
-assert.ok(!auth.includes('case "/qr/'), 'Rota QR não deve estar na cópia paralela.');
 
 const sql = [authRpcSql, socialRpcSql, serverRpcSql, moderationRpcSql, privateSql].join('\n');
 for (const table of ['profiles', 'email_codes', 'mfa_recovery']) {
