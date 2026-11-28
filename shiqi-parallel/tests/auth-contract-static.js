@@ -221,5 +221,22 @@ assert.ok(deleteAccount.indexOf('removeUserStorageObjects(') < deleteAccount.ind
   deleteAccount.indexOf('purge_user_data') < deleteAccount.indexOf('deleteUser('),
   'A conta só deve ser purgada e removida depois da limpeza de Storage.');
 
+assert.ok(auth.includes('const { data, error } = await admin.auth.admin.mfa.listFactors({ userId });') &&
+  auth.includes('if (error) throw new HttpError(503, "mfa_unavailable"'),
+  'Falha ao consultar fatores MFA deve bloquear o login (fail closed).');
+assert.ok(auth.includes('const { error: lastError }') &&
+  auth.includes('if (lastError) throw new HttpError(503, "code_unavailable"'),
+  'Falha ao consultar cooldown não pode liberar envio de códigos.');
+assert.ok(auth.includes('async function revokeUserSessions(userId: string)') &&
+  auth.includes('if (error) throw new HttpError(503, "session_revocation_failed"') &&
+  (auth.match(/await revokeUserSessions\\(user.id\\)/g) || []).length === 2,
+  'Revogação de sessões deve ser verificada no reset e na desativação.');
+assert.ok(auth.includes('async function reactivate(userId: string)') &&
+  auth.includes('account_unavailable'),
+  'Falha ao reativar perfil deve bloquear a emissão de sessão.');
+assert.ok(auth.includes('client.auth.signOut({ scope: "local" })') &&
+  auth.includes('session_cleanup_failed'),
+  'A sessão temporária de verificação de senha deve ser encerrada.');
+
 console.log('SHIQI static contract: OK (13 rotas Auth, 18 tabelas/RLS, 17 policies, 59 ACL revokes, privacidade de perfil/anexos, concorrência de voz e limites).');
 console.log('Atenção: teste estático; não valida Deno, JWT, Supabase Auth, PostgreSQL ou envio de e-mail.');
