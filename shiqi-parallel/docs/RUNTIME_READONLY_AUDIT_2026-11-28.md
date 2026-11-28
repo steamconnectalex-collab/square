@@ -57,3 +57,10 @@ O roteiro reproduzível está em `shiqi-parallel/tests/supabase-auth-negative.sq
 - Identidade A: usuário Auth real existente. Identidade B: UUID sintético sem registro em `auth.users`.
 - Resultado: A lê e atualiza seu perfil; B não lê nem atualiza o perfil de A; `profiles_full([A])` não retorna dados para B sem servidor compartilhado.
 - Nenhuma linha foi persistida. Este é um teste de RLS com claims simulados, não um teste com dois JWTs reais ou duas contas Auth.
+
+
+## ACL por coluna — confirmação adicional
+
+- Consulta a `pg_class.relacl` e `pg_attribute.attacl` confirmou grants mínimos por coluna: `profiles` permite leitura/atualização somente nos campos previstos; `messages` recebe grants específicos para SELECT/INSERT/UPDATE/DELETE; tabelas sociais/servidores/voz/eventos são predominantemente SELECT direto e mutações via RPC.
+- `email_codes`, `mfa_recovery`, `rate_hits`, `server_bans`, `server_invites` e tabelas `legacy_*` não têm grants diretos para `authenticated`/ `anon`.
+- Não foi necessário ampliar grants. O probe RLS A/B simulado passou e terminou com ROLLBACK.
