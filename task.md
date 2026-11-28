@@ -375,3 +375,11 @@ Combinado com a pessoa em 2026-11-23: o que precisa de conta em aplicativo exter
 - [x] 2026-11-28 — Verificação complementar confirmou zero grants anon nas 23 tabelas públicas (RLS habilitado em 23/23). O projeto tem uma conta Auth/perfil; regressão cruzada com duas contas fica pendente até existir uma segunda identidade real, sem criar usuários manualmente.
 
 - CI run 46101145360 (commit f0a6f96b0d5c16f92a8b1838695a1e7caaed8bff): job web-contract passou; supabase-jwks passou; fmt, testes Rust e Clippy passaram. Build Docker estava em execução na última consulta; railway-smoke aguardava dependências. Acompanhar antes de marcar CI completo.
+
+
+### 2026-11-28 — Continuação autônoma e status do CI
+- O usuário solicitou condução autônoma até a conclusão do projeto, sem aprovações passo a passo. Diretriz: quando uma verificação falhar, diagnosticar/corrigir dentro do escopo e continuar; registrar dependências externas e testes que exigem pessoa real em lista final, sem paralisar o restante.
+- Limites mantidos: somente branch shiqi-parallel-dev; não tocar main, site/ original, projeto Vercel square-chat, produção ou secrets. Não aplicar mudanças destrutivas/cutover remoto sem validação e autorização; não criar usuários manualmente em auth.users; não pedir JWT/senhas; upload real segue adiado; /v1/me segue fora da prioridade imediata; QR e música fora do escopo.
+- CI run 46101145360 (commit f0a6f96b0d5c16f92a8b1838695a1e7caaed8bff) concluído com SUCCESS em todos os jobs: web-contract, rust (fmt, testes, Clippy e Docker build), supabase-jwks e railway-smoke. O teste SQL de autorização negativa permanece um roteiro reproduzível, não executado automaticamente pelo CI.
+- Auditoria PostgreSQL remota 2026-11-28 e teste negativo com ROLLBACK permanecem válidos conforme docs/RUNTIME_READONLY_AUDIT_2026-11-28.md. Ainda não existe segunda conta Auth real; regressão A-versus-B, DMs entre duas identidades e autorização cruzada completa não podem ser declaradas concluídas.
+- Próxima etapa autônoma: revisar os contratos efetivos dos módulos e rotas do frontend paralelo, cruzar todas as RPCs/tabelas com SQL canônico e adicionar verificações automatizadas seguras onde possível; depois executar smoke/regressão isolada e corrigir inconsistências. Não alterar o banco remoto apenas para remover pendências de teste.
