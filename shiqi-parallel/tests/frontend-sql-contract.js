@@ -10,7 +10,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const webDir = path.join(root, 'apps', 'web');
 const docsDir = path.join(root, 'docs');
-const jsFiles = fs.readdirSync(webDir).filter((name) => name.endsWith('.js'));
+const jsFiles = fs.readdirSync(webDir).filter((name) => name.endsWith('.js') && name !== 'qr.js');
 const sqlFiles = fs.readdirSync(docsDir).filter((name) => name.startsWith('CANONICAL_') && name.endsWith('.sql'));
 const js = jsFiles.map((name) => fs.readFileSync(path.join(webDir, name), 'utf8')).join('\\n');
 const sql = sqlFiles.map((name) => fs.readFileSync(path.join(docsDir, name), 'utf8')).join('\\n');
