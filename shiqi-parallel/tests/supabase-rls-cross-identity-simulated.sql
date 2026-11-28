@@ -10,7 +10,7 @@ SELECT set_config(
   (SELECT id::text FROM auth.users ORDER BY created_at LIMIT 1),
   true
 );
-SELECT set_config('shiqi.probe.other', '11111111-1111-4111-8111-111111111111', true);
+SELECT set_config('shiqi.probe.other', gen_random_uuid()::text, true);
 
 SET LOCAL ROLE authenticated;
 
