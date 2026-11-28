@@ -613,7 +613,8 @@
 
 
 ### 2026-11-28 — Regressão simulada de isolamento RLS
-- Criado e executado `tests/supabase-rls-cross-identity-simulated.sql` no Supabase paralelo, dentro de transação com `ROLLBACK`. Usa a conta Auth já existente como identidade A e um UUID sintético (sem criar Auth user) como B.
+- Criado e executado `tests/supabase-rls-cross-identity-simulated.sql` no Supabase paralelo, dentro de transação com `ROLLBACK`.
+- Criado e atualizado `docs/FINAL_HANDOFF_2026-11-28.md` com entregas, bloqueios, evidências e testes manuais pendentes; documento deixa explícito que o produto ainda não deve ser declarado 100% pronto enquanto MFA/AAL2, CI estendido, preview e testes reais não forem fechados. Usa a conta Auth já existente como identidade A e um UUID sintético (sem criar Auth user) como B.
 - Resultado: A consegue ler/atualizar o próprio perfil; B não consegue ler nem atualizar o perfil de A; a RPC `profiles_full` não revela o perfil de A para B sem servidor compartilhado. Todas as verificações passaram.
 - Um primeiro rascunho do teste tentou ler `bio` no UPDATE e foi barrado pela ACL por coluna; o teste foi corrigido para atribuir literal e passou. Nenhuma alteração persistente ficou no banco.
 - Limite: isso valida isolamento RLS do perfil e o helper `profiles_full` com claims simulados; não substitui JWT real, segunda conta Auth, teste completo de DMs/servidores nem validação de Realtime entre contas.
