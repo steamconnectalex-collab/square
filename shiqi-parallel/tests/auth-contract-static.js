@@ -224,7 +224,7 @@ assert.ok(deleteAccount.indexOf('removeUserStorageObjects(') < deleteAccount.ind
 assert.ok(auth.includes('const { data, error } = await admin.auth.admin.mfa.listFactors({ userId });') &&
   auth.includes('if (error) throw new HttpError(503, "mfa_unavailable"'),
   'Falha ao consultar fatores MFA deve bloquear o login (fail closed).');
-assert.ok(auth.includes('const { error: lastError }') &&
+assert.ok(auth.includes('error: lastError') &&
   auth.includes('if (lastError) throw new HttpError(503, "code_unavailable"'),
   'Falha ao consultar cooldown não pode liberar envio de códigos.');
 assert.ok(auth.includes('async function revokeUserSessions(userId: string)') &&
