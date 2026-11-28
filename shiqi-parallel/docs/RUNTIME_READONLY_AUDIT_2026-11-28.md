@@ -36,3 +36,8 @@ Limites: esta consulta ao catálogo confirma a configuração atual, mas não pr
 Foi executado no PostgreSQL remoto, dentro de uma transação finalizada com `ROLLBACK`, um teste usando o role `authenticated` sem identidade JWT (`auth.uid() = NULL`). Dez RPCs de escrita foram rejeitadas com `not_authenticated`: `block_user`, `create_server`, `create_invite`, `open_dm`, `send_friend_request`, `toggle_reaction`, `voice_join`, `save_my_settings`, `ban_member` e `kick_member`. Também foram confirmados os resultados sem identidade: `is_server_member` retorna false, `get_my_settings` retorna objeto vazio e `profiles_full` não retorna linhas para um UUID arbitrário.
 
 O roteiro reproduzível está em `shiqi-parallel/tests/supabase-auth-negative.sql`. Esse teste verifica caminhos sem identidade; não prova isolamento entre dois usuários reais nem substitui testes com JWT assinado. A transação foi revertida; nenhum dado persistente foi criado.
+
+## Acesso anônimo e disponibilidade de identidades de teste
+
+- Consulta adicional ao catálogo confirmou zero tabelas públicas com SELECT/INSERT/UPDATE/DELETE concedido a `anon`; as 23 tabelas públicas continuam com RLS habilitado.
+- O projeto contém atualmente uma conta em `auth.users` e um perfil em `public.profiles`. Portanto, ainda não há duas identidades reais para executar a regressão cruzada A-versus-B. Não foi criado usuário manualmente nem enviado e-mail de cadastro nesta etapa.
