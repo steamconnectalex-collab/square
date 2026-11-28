@@ -617,3 +617,9 @@
 - Resultado: A consegue ler/atualizar o próprio perfil; B não consegue ler nem atualizar o perfil de A; a RPC `profiles_full` não revela o perfil de A para B sem servidor compartilhado. Todas as verificações passaram.
 - Um primeiro rascunho do teste tentou ler `bio` no UPDATE e foi barrado pela ACL por coluna; o teste foi corrigido para atribuir literal e passou. Nenhuma alteração persistente ficou no banco.
 - Limite: isso valida isolamento RLS do perfil e o helper `profiles_full` com claims simulados; não substitui JWT real, segunda conta Auth, teste completo de DMs/servidores nem validação de Realtime entre contas.
+
+
+### 2026-11-28 — Auditoria de privilégios por coluna
+- Consulta read-only de ACLs confirmou que as tabelas públicas de produto usam grants por coluna e/ou leitura direta, com escrita concentrada em RPCs SECURITY DEFINER. Ex.: `profiles` expõe SELECT em 8 colunas e UPDATE em 6, sem grant de tabela inteiro; `messages` tem SELECT em 9 colunas, INSERT em 5, UPDATE em 1 e DELETE concedido; tabelas como `servers`, `channels`, `friendships`, `voice_members`, `server_events`, `server_pins`, `blocks`, `event_interest` e `message_reactions` são leitura direta, com mutações via RPC.
+- Cinco tabelas internas (`email_codes`, `mfa_recovery`, `rate_hits`, `server_bans`, `server_invites`) não têm grants diretos a authenticated/anon; tabelas `legacy_*` também não têm grants.
+- O probe A/B simulado foi aprovado após respeitar ACL por coluna (UPDATE literal em bio, sem SELECT de bio). Nenhuma permissão foi ampliada.
