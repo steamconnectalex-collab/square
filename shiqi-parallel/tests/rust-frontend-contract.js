@@ -40,6 +40,8 @@ const avatarEnd = app.indexOf('removeAvatar: async () => {', avatarStart);
 const avatarFlow = app.slice(avatarStart, avatarEnd);
 assert.ok(avatarStart >= 0 && avatarFlow.includes("storageCall('POST', path, blob, 'image/jpeg')"),
   'O fluxo de avatar deve continuar usando o bucket avatars diretamente.');
+assert.ok(core.includes('.allow_methods(AllowMethods::list([Method::GET, Method::POST, Method::OPTIONS]))'),
+  'CORS deve permitir GET autenticado para /v1/me sem ampliar origens.');
 assert.ok(core.includes('.route("/v1/attachments/upload", post(upload_attachment))'),
   'A rota Rust de upload deve existir.');
 assert.ok(core.includes('.upload(&claims.sub, object_path, token, format, &body)'),
