@@ -41,3 +41,11 @@ O roteiro reproduzível está em `shiqi-parallel/tests/supabase-auth-negative.sq
 
 - Consulta adicional ao catálogo confirmou zero tabelas públicas com SELECT/INSERT/UPDATE/DELETE concedido a `anon`; as 23 tabelas públicas continuam com RLS habilitado.
 - O projeto contém atualmente uma conta em `auth.users` e um perfil em `public.profiles`. Portanto, ainda não há duas identidades reais para executar a regressão cruzada A-versus-B. Não foi criado usuário manualmente nem enviado e-mail de cadastro nesta etapa.
+
+
+## Atualização posterior — 2026-11-28
+
+- Edge Function `auth` do projeto paralelo: versão publicada 2, status ACTIVE, `verify_jwt=false`. Código publicado conferido contra a branch: contém `removeUserStorageObjects`, pagina por `offset`, remove lotes de até 1.000, exige `SUPABASE_ANON_KEY` do ambiente e não lista origens de produção. Não houve invocação HTTP de health após o deploy nesta sessão; os logs disponíveis ainda mostram apenas chamadas da versão 1.
+- Supabase docs MFA revisados: para usuários que optaram por MFA, a proteção precisa exigir `aal2` nas políticas/servidores, não apenas mostrar desafio TOTP na UI. Os SQLs canônicos atuais não têm cláusulas AAL2; consulta a `auth.mfa_factors` retornou zero fatores verificados. Não foi aplicado DDL.
+- A função de exclusão de conta foi corrigida na branch e publicada na versão 2; o teste estático exige paginação, recursão, lotes limitados e interrupção por erro.
+- O workflow de CI agora inclui checagem Deno, verificação de sintaxe de todos os JS, contrato frontend/SQL e Playwright. A nova execução ainda não foi confirmada; a execução anterior 46101145360 terminou SUCCESS.
