@@ -635,3 +635,5 @@
 ### 2026-11-28 — Verificação estática final dos novos testes
 - Revisão estática manual dos novos artefatos passou: fail-closed MFA/cooldown/revogação, limpeza Storage paginada, ausência de INSERT em auth.users, ROLLBACK dos dois probes, smoke apontando apenas ao paralelo e exclusão de QR das verificações.
 - Essa revisão não substitui a execução Node/Deno/Playwright do GitHub Actions; resultado da nova execução ainda não foi confirmado.
+
+- Plano técnico detalhado da lacuna MFA/AAL2 registrado em `docs/MFA_AAL2_ENFORCEMENT_PLAN.md`; cobre RLS, RPCs SECURITY DEFINER, Storage, Realtime e matriz AAL1/AAL2. Nenhum DDL foi aplicado.
