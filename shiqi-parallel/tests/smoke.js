@@ -1030,8 +1030,11 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   ok('mobile: sem rolagem horizontal no login', overflow <= 0, 'overflow=' + overflow);
   await mp.screenshot({ path: OUT + '/7-login-mobile.png' });
 
+  const failures = results.filter((r) => r[0] === 'FAIL');
   console.log(results.map((r) => r.join('  ')).join('\n'));
   console.log('erros de página:', errors.length ? errors.join(' | ') : 'nenhum');
+  console.log(`resultado: ${results.length - failures.length}/${results.length} verificações aprovadas`);
   await browser.close();
   server.close();
+  if (failures.length || errors.length) process.exitCode = 1;
 })().catch((e) => { console.error('ERRO NO TESTE', e); process.exit(1); });
