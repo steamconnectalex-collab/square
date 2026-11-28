@@ -342,3 +342,11 @@ Combinado com a pessoa em 2026-11-23: o que precisa de conta em aplicativo exter
 - Adicionado ao job `web-contract` o teste `node tests/auth-contract-static.js`, que verifica rotas Auth, contratos SQL, RLS, policies, ACLs, Storage e proteções de concorrência.
 - Commit: `a2ba5f3b9ccb93e018b159691b28fa6c9fa0f29a` na branch paralela.
 - Run `46049406473`: teste Auth/segurança, contrato frontend/Rust e JWKS passaram; fmt, testes Rust e Clippy também passaram. Build Docker ainda estava em andamento na última consulta; aguardar conclusão antes de marcar CI integral como verde.
+
+### 2026-11-27 — Login real confirmado; validação Rust integrada
+- O usuário confirmou que conseguiu entrar no preview com a conta criada anteriormente. Cadastro e login real estão confirmados; isso, isoladamente, ainda não comprova que o Rust aceitou o JWT.
+- Em andamento: o frontend do ambiente paralelo passa a chamar GET /v1/me após restaurar uma sessão já existente no carregamento. A chamada envia o Bearer token apenas diretamente ao serviço Rust; o token não é exibido, registrado nem enviado ao chat.
+- A interface compara o UUID retornado pelo Rust com o ID da sessão Supabase e exige o papel authenticated; mostra uma mensagem de sucesso ou falha sem encerrar o login.
+- O contrato estático do frontend/Rust foi ampliado para proteger essa integração. Aguardando CI e publicação do preview para validar o resultado real.
+- Upload de imagens permanece adiado. Nenhuma alteração em main, produção, Supabase remoto ou projeto Vercel square-chat.
+- Próximo passo: após o preview atualizar, recarregar a página já autenticada e confirmar a mensagem de autenticação Rust; depois iniciar a regressão de RLS/RPC/Realtime com duas contas.
