@@ -2,25 +2,9 @@
 
 > **Para a IA:** este arquivo é a fonte da verdade sobre o projeto. Leia tudo antes de começar e atualize **na hora** em que algo acontecer (regras completas em `agents.md`). Não duplique tarefas: procure aqui antes de adicionar.
 >
-> Última atualização: 2026-11-27 (ambiente paralelo SHIQI)
+> Última atualização: 2026-11-26 (domínio shiqi.com.br)
 
 ---
-
-
-
-## Estado atual do ambiente paralelo — 2026-11-27
-
-- Supabase paralelo: projeto `shiqi-parallel`, ref `ujdosskjycrdkcgsswfa`, ativo em São Paulo; produção permanece intocada.
-- Branch de trabalho: `shiqi-parallel-dev` no repositório `steamconnectalex-collab/square`.
-- Frontend paralelo: `shiqi-parallel/apps/web/`, HTML/CSS/JS puros. Configuração usa somente o Supabase paralelo e `CORE_URL=https://shiqi-core-development.up.railway.app`.
-- Auth: Edge Function `auth` publicada e ativa no Supabase paralelo; secrets de Resend e URLs configurados. Usuário confirmou cadastro real com recebimento do e-mail e confirmou SITE_URL completo. Login, sessão e rotas autenticadas ainda precisam de validação.
-- Banco: schema canônico com 18 tabelas, RLS, Storage privado para `attachments`, bucket público `avatars` e Realtime configurado. Testes runtime com dois usuários, RPCs e Realtime ainda pendentes.
-- Rust: `shiqi-core` implantado no Railway paralelo; `/healthz` passou e usuário confirmou `/readyz` como `ready`. `GET /v1/me` e upload com JWT real ainda não foram testados.
-- Integração inicial: frontend da branch direciona upload de imagens para `POST /v1/attachments/upload`; JWT original é encaminhado pelo Rust ao Storage, que continua aplicando RLS. Avatares seguem no fluxo Storage atual e leitura de anexos usa signed URLs.
-- Vercel: deployment READY com o frontend integrado no commit `d9801be24637215835b9e8c78b174997e4a7bf94`; alias do preview: https://shiqi-parallel-git-shiqi-parallel-dev-steamconnectalex-9536.vercel.app.
-- CI completo aprovado no run `46041802300`: JWKS, sintaxe JavaScript, contrato frontend/Rust, `cargo fmt`, 21 testes Rust, Clippy e build Docker passaram.
-- Próxima ação: testar login e `GET /v1/me`, depois testar upload real com a conta do preview. O código integrado e CI estão aprovados; upload real ainda não foi validado. Não pedir nem compartilhar JWT no chat. Não inserir usuários manualmente em `auth.users`.
-- Nenhuma alteração em `main`, produção ou segredos foi feita nesta integração.
 
 ## O que estamos construindo
 
@@ -130,6 +114,31 @@ Fluxo de acesso: Home → "Entrar" → login (com painel de QR Code) → "Regist
 
 - **Login novo (2026-11-25):** a tela de login perdeu o QR Code (agora só e-mail/usuário + senha). Nova opção discreta "Entrar com o código do autenticador": a pessoa digita e-mail/usuário + código de 6 números do Google Authenticator e entra sem senha, **só se a conta já ligou a verificação em duas etapas** (qualquer falha dá a mesma mensagem, para ninguém descobrir se há conta). Backend: rota `/login/totp` na função `auth` (versão 7 publicada; limites de tentativas). A ativação da 2FA (QR uma vez + 8 códigos de recuperação) já existia e agora aparece em Configurações > **Privacidade e segurança** > Segurança da conta (também continua em Conta). O login/aprovação por QR no backend e em `app.js` (`qr*`) ficaram sem uso na tela (podem ser apagados depois). Testes 201 OK. **Não testado ao vivo** (precisa de uma conta com 2FA ligada).
 
+- **2026-11-26 (tarde) — Domínio shiqi.com.br no ar + correções:** (1) DNS liberado: Vercel enxerga o registro A (`misconfigured: false`) e o Resend marcou o domínio como **verified** (DKIM, rsend, send). Função `auth` **v9** publicada com remetente padrão `Shiqi <nao-responda@shiqi.com.br>`, `SITE_URL` padrão `https://shiqi.com.br` e origens `shiqi.com.br`/`www` liberadas (CORS); e-mails agora saem com o nome Shiqi. (2) **Arquivo `supabase/functions/auth/index.ts` estava CORTADO no GitHub** (50 linhas, desde o commit 656d18c; o Supabase tinha a versão completa): restaurado a partir da versão publicada (v8) e conferido. (3) **Celular:** a lista de membros agora começa FECHADA (só abre no ícone de membros; no computador continua aberta); o site já lembrava a última tela/servidor/canal. (4) `desktop/main.js` e `offline.html` apontam para `https://shiqi.com.br/`; versão do app 1.0.2. Testes 201 OK. **Falta:** conferir o site em https://shiqi.com.br e testar cadastro com e-mail de amigo.
+
+- **2026-11-26 (noite) — Conferência para o teste com amigos:** `https://shiqi.com.br` carrega (título "Shiqi"); `GET /functions/v1/auth/health` responde `ok`, `site: https://shiqi.com.br`, `email_configured: true` (então não há segredo `SITE_URL` antigo sobrescrevendo). **Login da branch do ChatGPT:** analisado — na `shiqi-parallel-dev` o `auth/index.ts` é o arquivo cortado (stub) e o verificador de JWT em Rust (`services/core/src/auth.rs`) ainda não está ligado a nenhuma tela/rota; **nada de login para trazer à `main` por enquanto**. O login que vale é o da função `auth` v9 (já no ar). Comparação visual (51 telas, computador/tablet/celular) branch × `main`: idêntico; 201 testes OK nos dois.
+
+- **2026-11-26 (23h40) — Erro "Algo deu errado" no cadastro (amigo):** causa: o Supabase Auth exige senha com minúscula, maiúscula, número **e símbolo**, mas o site/função só pediam 8 caracteres; a senha do amigo (sem símbolo/maiúscula) era recusada pelo Supabase e a função devolvia erro 500 genérico. Correção: função `auth` **v10** valida a mesma regra e responde erro claro (`weak_password`: "A senha precisa ter letra maiúscula, minúscula, número e símbolo (ex.: !@#)."); `site/app.js` valida no formulário (`passStrongOk`) e a dica do campo senha agora diz a regra (só texto, sem mudar layout). Testes 201 OK. **Ainda pedir à pessoa:** conferir a tela "Mudar senha" em Configurações (usa o Supabase direto; vale a mesma regra).
+
+## Grande atualização da branch `shiqi-parallel-dev` (ChatGPT) — preparação (2026-11-26)
+
+**O que a branch tem hoje** (62 arquivos, 10.261 linhas, 36 commits, tudo de `alexssnw`; só mexe em `shiqi-parallel/` + 1 workflow): cópia do site em `shiqi-parallel/apps/web/` (apontando para o Supabase paralelo `ujdosskjycrdkcgsswfa`, CSP própria), serviço novo em **Rust** (`services/core`: verificador de JWT do Supabase, validação de anexos, Dockerfile), cópia das migrações 0001–0025 (sem as de música 0011/0012; **0025 é nova: salas de voz de 6 → 10 pessoas** com trava contra entradas simultâneas), e 6 documentos de auditoria (`docs/`). O `.github/workflows/shiqi-core.yml` só roda na própria branch (não dispara na `main`). Requisito dela: **mudar a tecnologia sem mudar design nem funções**; música saiu do escopo só da cópia.
+
+**Pontos de atenção antes de juntar com a `main`:**
+- [ ] A cópia do site é um **retrato antigo**: `app.js` e `shell.css` já diferem da `main` (a `main` ganhou a lista de membros fechada no celular, domínio shiqi.com.br, etc.). Nada dela deve sobrescrever `site/`.
+- [ ] O `index.ts` da função `auth` na branch é o **arquivo cortado (50 linhas)**; o correto é o da `main` (restaurado em 2026-11-26, função v9).
+- [ ] A migração **0025 (voz com 10)** não existe na `main`/Supabase original; a `main` e o app dizem 6. Decidir com a pessoa se sobe para 10 (e testar).
+- [ ] O banco paralelo tem schema experimental de 5 tabelas, incompatível; a base de servidores/canais/eventos (migração inicial) nunca esteve no Git — a pessoa pode precisar exportar só a **estrutura** do Supabase original (sem dados).
+- [ ] Nenhuma migração/função deve ser aplicada no Supabase original pela outra IA; Claude revisa e aplica.
+- [ ] **Teste de design idêntico:** capturas de tela (celular e computador) do preview da branch × site original, lado a lado; qualquer diferença visual bloqueia o merge.
+- [ ] Ao receber: `git diff --stat main...origin/shiqi-parallel-dev`, rodar `node tests/smoke.js`, abrir preview da Vercel e comparar telas; só depois decidir o merge com a pessoa.
+
+**Decisão da pessoa (2026-11-26) — regra máxima:** é **inegociável** mudar o design, o layout ou qualquer coisa visível. O Rust entra para a plataforma ficar mais fluida, leve e rápida; o ChatGPT trabalha no projeto paralelo para **agregar** ao projeto principal, sem alterar visual nem funções. O `agents.md` e o `task.md` da raiz mandam; o ChatGPT segue.
+
+**Divisão combinada:** Claude = produção (`main`, Supabase/Vercel originais, domínio, e-mails, app de PC, testes); ChatGPT = migração paralela (`shiqi-parallel/`, Rust, auditorias). Regras completas em `agents.md` ("Trabalho em dupla").
+
+- **Leitura da branch `shiqi-parallel-dev` (2026-11-27 noite, só leitura, nada mesclado):** 348 commits novos (92fa3cf), todos do ChatGPT. **O que tem de novo:** (1) serviço Rust `services/core` com verificador de login (`auth.rs`), proxy de upload de anexos que repassa o JWT do usuário ao Storage (mantém as regras de segurança), CORS restrito, Dockerfile, CI e guia de deploy; já publicado num serviço Railway paralelo; (2) banco paralelo: cutover canônico aplicado no Supabase `ujdosskjycrdkcgsswfa` (tabelas antigas viraram `legacy_*`), com SQLs canônicos, relatório de segurança, plano de rollback e matriz de paridade de funções em `shiqi-parallel/docs/`; (3) frontend paralelo (`shiqi-parallel/apps/web`): anexos agora privados com link assinado de 60 s, envio de imagem pelo Rust, mensagens de erro novas (só textos de erro; sem mudança de layout). Upload real de imagem e testes com duas contas (RLS/Realtime) **ficaram adiados/pendentes**. **ATENÇÃO antes de qualquer merge:** (a) a branch também alterou arquivos FORA da pista dela: `site/config.js` aponta para o Supabase PARALELO (mesclar derrubaria o site de produção), `site/app.js` é versão antiga (sem a regra de senha forte e sem lista de membros fechada no celular), `agents.md`, `task.md`, `.github/workflows/shiqi-core.yml`; nada disso pode entrar. (b) a `main` tem 5 commits que a branch não tem. (c) Para trazer só o que vale: copiar seletivamente `services/core` e, se a pessoa autorizar, as mudanças de anexos do `apps/web/app.js` reaplicadas em cima do `site/app.js` atual; anexo privado exige mudar o bucket e a política no Supabase ORIGINAL (migração a revisar por mim). Rust ainda não está ligado ao login em produção.
+
 ## Como publicar o site
 
 **Desde 2026-11-19 a Vercel está ligada ao GitHub:** cada `git push` na `main` publica sozinho. Configuração do projeto `square-chat` (Vercel): Root Directory = `site`, sem Build Command e sem Output Directory. O `vercel.json` usado é o de `site/vercel.json`.
@@ -209,177 +218,3 @@ Combinado com a pessoa em 2026-11-23: o que precisa de conta em aplicativo exter
 
 ### 2026-11-23
 - **Feito:** decoração de avatar corrigida; skeleton UI; permissões de amizade (migração 0018), filtro de spam e Apertar para Falar. Testes 164 OK. **Próximo passo:** a pessoa conferir no ar; decidir sobre tema escuro, trocar e-mail, 2 etapas e excluir conta (precisam de backend novo).
-
-
-## CI e backend Rust — 2026-11-27
-
-- GitHub Actions `shiqi-core` está ativo na branch `shiqi-parallel-dev`; execução automática por push/PR nos arquivos do core.
-- Workflow atualizado: inclui execução manual (`workflow_dispatch`), permissões mínimas (`contents: read`), cancelamento de execuções antigas concorrentes, cache Cargo, `cargo fmt --all -- --check`, `cargo test --all-targets --all-features` e `cargo clippy --all-targets --all-features -- -D warnings`.
-- Primeira execução do commit `d5d7920` falhou exclusivamente no `cargo fmt --check`; log identificou diferenças de formatação em `src/main.rs`. Não chegou a executar testes nem Clippy.
-- Formatação corrigida em `src/main.rs`, commit `6257ca742a4791f0f5db677dee9db42c7c292afa`.
-- Workflow atualizado no commit `d366d0b6c80b5f5fd5f411ea39f45e181dcd5619`.
-- CI remoto concluído com sucesso em 27/11: run `45997615635` (commit `6257ca7`) passou em `cargo fmt`, `cargo test` e `cargo clippy`; run `45997628383` (commit `d366d0b`, com `--all-features`) também passou nas três etapas. A compilação/testes do núcleo Rust estão aprovados para esses commits.
-- Compatibilidade GIF concluída no commit `b03021f`; run `45998130147` passou em formatação, testes e Clippy. Testes JWT RS256 com claims válidas e negativas (issuer, audience, exp, nbf, role, sub e HS256) adicionados nos commits `a6fd39f`/`e94f5ab`; run `45998473927` passou em `cargo fmt`, `cargo test --all-targets --all-features` e `cargo clippy --all-targets --all-features -- -D warnings`. Chaves RSA usadas são somente fixtures de teste; falta confirmar o algoritmo/JWKS real do projeto Supabase paralelo antes de ligar o middleware ao tráfego.
-- Produção e branch `main` não foram alteradas. Compatibilidade adicional identificada: o frontend e o bucket privado de anexos aceitam GIF, mas o validador Rust inicialmente aceitava apenas JPEG/PNG/WebP. A implementação Rust agora reconhece GIF87a/GIF89a e `image/gif`; run `45998130147` está validando essa correção. Próximo passo: confirmar CI e então avançar com testes de contrato/autorização do serviço sem conectar a UI.
-
-## Auditoria pós-teste — 2026-11-27
-
-- O teste estático/preflight continua aprovado (18/18 verificações); isso não equivale a teste real de login, Auth ou Edge Function.
-- Supabase paralelo rechecado: 23/23 tabelas públicas com RLS habilitado (inclui tabelas legacy preservadas).
-- Storage: bucket `attachments` privado e `avatars` público; 7 políticas no bucket `objects`, todas atribuídas a `authenticated`.
-- Realtime: publicação `supabase_realtime` contém `friendships`, `messages` e `voice_members`.
-- Advisors atuais: 5 tabelas com RLS sem policies (incluem tabelas internas como `email_codes`, `mfa_recovery`, `rate_hits`; também `server_bans` e `server_invites`, que precisam de revisão funcional); 39 funções SECURITY DEFINER executáveis por authenticated; 6 FKs sem índice de cobertura; 1 tabela sem PK (`rate_hits`). Não aplicar revogações em lote: revisar corpo e chamadas autorizadas de cada função antes.
-- Edge Functions publicadas: nenhuma. Auth real e testes com duas contas continuam pendentes.
-- Próxima sequência: (1) auditoria individual das 39 funções SECURITY DEFINER e policies associadas; (2) corrigir apenas permissões comprovadamente excessivas; (3) publicar função `auth` no projeto paralelo com configuração segura de e-mail; (4) testar signup/login com duas contas, RLS, mensagens, anexos e voz.
-
-
-## SHIQI — atualização 2026-11-27 (verificação JWKS)
-- Projeto Supabase paralelo `ujdosskjycrdkcgsswfa` confirmado `ACTIVE_HEALTHY` via conexão Primary.
-- Endpoint JWKS público não ficou acessível diretamente pelo ambiente de ferramentas; algoritmo real ainda não confirmado.
-- Job `supabase-jwks` adicionado ao workflow Rust na branch `shiqi-parallel-dev` (commit `7bcf0f90e4df3f5f2241c611e099a491a7bf198e`). O job consulta o JWKS público e verifica compatibilidade com ES256/RS256 sem imprimir material das chaves nem usar secrets.
-- Aguardar o GitHub Actions. Não conectar o verificador ao tráfego até o job confirmar o algoritmo/chaves reais.
-- Produção e branch `main` permanecem intocadas.
-
-
-## SHIQI — atualização 2026-11-27 (JWKS/ES256 concluído)
-- O GitHub Actions consultou o JWKS público real do Supabase paralelo e confirmou chave EC P-256 / ES256.
-- Adicionado teste unitário ES256 com JWK de fixture; run `45999868193` passou em fmt, testes e Clippy.
-- README do serviço e auditoria Rust atualizados. O serviço ainda não foi implantado e não recebe tráfego; Storage/RLS continuam como autoridade e não foi adicionada service_role.
-- Próxima etapa: implementar/testar proxy de anexos preservando o JWT do usuário e policies do Storage antes de integrar a UI.
-- Produção e branch `main` intocadas.
-
-
-## SHIQI — atualização 2026-11-27 (proxy de anexos em andamento)
-- Implementado no serviço Rust um proxy de upload para o bucket privado `attachments`, com autenticação JWT, validação de assinatura/MIME/tamanho/caminho e encaminhamento do Bearer original + chave publicável ao Supabase Storage.
-- A autorização final continua nas policies Storage/RLS; não foi adicionada service_role.
-- Rota nova `POST /v1/attachments/upload`; frontend ainda não foi conectado e serviço não implantado.
-- GitHub Actions está pendente após pushes consecutivos; aguardar CI verde antes de integrar a UI.
-- Produção e branch `main` permanecem intocadas.
-
-
-## SHIQI — atualização 2026-11-27 (upload Rust/CORS)
-- Run `46004181670` aprovou fmt, 21 testes e Clippy; novo teste HTTP simulado confirmou que o proxy encaminha JWT do usuário, publishable key, MIME e bytes ao endpoint privado do Storage.
-- O contrato canônico foi revisado: bucket `attachments` privado; policy de INSERT exige a pasta do usuário e SELECT depende de `private.can_read_attachment(name)`.
-- Caminho de objeto limitado a 200 bytes, filename a 128 bytes.
-- CORS foi adicionado com allowlist de origem exata por `SHIQI_ALLOWED_ORIGIN`; CI `46004512804` ainda em andamento.
-- Sem deploy, sem alteração do frontend, do banco remoto, da produção ou da branch `main`.
-
-
-## Atualização SHIQI — 2026-11-27
-- Trabalho segue isolado em `shiqi-parallel-dev`; `main` e produção não devem receber commits sem autorização expressa.
-- CI Rust `46004512804` aprovado (JWKS, formatação, 21 testes e Clippy). Foi adicionado build Docker ao workflow; run `46006067078` está validando a imagem.
-- Guia de implantação do container: `shiqi-parallel/services/core/DEPLOYMENT.md`. O projeto Vercel `shiqi-parallel` hospeda o frontend, não o serviço Rust. Railway é opção de host Docker; a conexão ainda depende do usuário.
-
-
-## SHIQI — Railway isolado (2026-11-27)
-- CI `46006067078` aprovado incluindo build Docker (JWKS, fmt, 21 testes e Clippy).
-- Projeto Railway dedicado `SHIQI Core Parallel` criado no ambiente `development`; serviço `shiqi-core` configurado com Dockerfile, health check `/healthz` e variáveis do Supabase paralelo (sem service-role).
-- Source ainda não conectado: Railway App não tem acesso ao repositório privado `steamconnectalex-collab/square`. Solicitar ao usuário habilitar o repositório na instalação do GitHub App Railway; depois conectar a branch `shiqi-parallel-dev`.
-- Não há deployment, tráfego nem domínio público; produção/main preservadas. Detalhes e IDs em `shiqi-parallel/services/core/DEPLOYMENT.md`.
-
-
-### 2026-11-27 — Railway conectado e primeiro deploy iniciado
-- O usuário confirmou que concedeu ao GitHub App Railway acesso ao repositório.
-- O serviço existente `shiqi-core` no projeto isolado `SHIQI Core Parallel` foi conectado ao repositório `steamconnectalex-collab/square`, branch `shiqi-parallel-dev`.
-- Primeiro deployment Railway: `566fe457-7c58-448b-8b85-9cbc18172004`; estado observado durante a compilação: `BUILDING`.
-- A origem e o Dockerfile foram reconhecidos em `shiqi-parallel/services/core`; nenhum domínio foi criado ainda.
-- Próximo passo: acompanhar build/deploy, corrigir eventual falha, gerar domínio no serviço após sucesso e validar `/healthz` e `/readyz`. A origem CORS só será configurada depois de confirmar o domínio do frontend paralelo.
-- Produção e `main` permanecem intocadas.
-
-
-### 2026-11-27 — Primeiro deploy do shiqi-core concluído
-- A instalação GitHub App do Railway recebeu acesso ao repositório e a fonte foi conectada à branch `shiqi-parallel-dev`.
-- Serviço Railway `shiqi-core` implantado no projeto `SHIQI Core Parallel`, ambiente `development`; deployment final confirmado `SUCCESS` (`4cb2e28b-5120-43fc-88e6-3b891a6ccbf5`).
-- Domínio Railway criado: `https://shiqi-core-development.up.railway.app`, roteado à porta 8080.
-- O domínio de preview da branch Vercel foi confirmado como `https://shiqi-parallel-git-shiqi-parallel-dev-steamconnectalex-9536.vercel.app`; `SHIQI_ALLOWED_ORIGIN` configurada com essa origem exata.
-- Railway reportou `healthcheck succeeded` para `/healthz`; logs confirmaram inicialização do verificador JWT e do proxy Storage. A variável `SHIQI_ALLOWED_ORIGIN` está presente e o aviso de CORS desabilitado deixou de aparecer.
-- `/readyz` e rotas autenticadas ainda não foram chamadas externamente nesta sessão; validação HTTP direta ficou indisponível no ambiente de ferramentas. Não declarar readiness ou JWT de usuário testados.
-- Frontend ainda não foi integrado ao Rust. Próximo passo: validar `/readyz` e `GET /v1/me` com JWT real de sessão de teste do Supabase paralelo; depois avaliar integração do upload na UI paralela.
-- Nenhuma alteração em `main`, produção, projeto Supabase original ou chaves `service_role`.
-
-
-### 2026-11-27 — `/readyz` confirmado; autenticação real bloqueada por pré-requisito
-- Usuário abriu `https://shiqi-core-development.up.railway.app/readyz` e confirmou a resposta `{"service":"shiqi-core","status":"ready"}`. Isso confirma configuração carregada do verificador JWT e do proxy Storage, não autenticação de uma sessão de usuário.
-- Consulta somente leitura no Supabase paralelo confirmou `auth.users = 0`, `public.profiles = 0` e nenhuma Edge Function publicada (`functions: []`). Portanto, não há conta/sessão real para testar `GET /v1/me`.
-- A Edge Function `supabase/functions/auth/index.ts` depende de `SUPABASE_SERVICE_ROLE_KEY` (variável padrão do runtime), `RESEND_API_KEY` para e-mails e configuração de URL/origem. O código atual usa `SITE_URL` padrão de produção e allowlist sem o domínio do preview; antes de publicar no projeto paralelo, definir `SITE_URL=https://shiqi-parallel-git-shiqi-parallel-dev-steamconnectalex-9536.vercel.app` e `EXTRA_ORIGINS` incluindo exatamente essa origem, além de configurar `RESEND_API_KEY` válido. Não reutilizar secrets da produção sem autorização explícita.
-- Próximo passo: usuário configurar esses três secrets/variáveis no Supabase paralelo; depois publicar `auth` apenas no projeto `ujdosskjycrdkcgsswfa` com verificação JWT de gateway desativada somente porque signup/login são rotas públicas e a própria função aplica validações/rate limits. Em seguida verificar `/health`, testar cadastro/verificação por e-mail e obter uma sessão real para `GET /v1/me`.
-- Não criar usuário manualmente em `auth.users`; não expor nem solicitar token; produção e `main` permanecem intocadas.
-
-
-### 2026-11-27 — Edge Function auth publicada no SHIQI Parallel
-- Secrets `RESEND_API_KEY`, `SITE_URL` e `EXTRA_ORIGINS` foram informados pelo usuário como cadastrados no painel do Supabase paralelo.
-- Publicada a Edge Function `auth` no projeto `ujdosskjycrdkcgsswfa`, versão 1, status `ACTIVE`, `verify_jwt=false`; deployment id `1c4b500f-0daa-4f82-a4ac-b974e0f04229`.
-- Arquivos implantados vieram de `supabase/functions/auth/index.ts` e `mail.ts` na branch `shiqi-parallel-dev`. Auditoria mínima confirmou runtime service role, validação própria de usuário nas rotas privadas, rate limit, allowlist CORS e leitura de `RESEND_API_KEY`.
-- Listagem posterior confirmou função `auth` ativa. Usuário abriu `https://ujdosskjycrdkcgsswfa.supabase.co/functions/v1/auth/health` e confirmou retorno `ok: true`, `email_configured: true` e `site` apontando para o preview Vercel. O valor `site` foi copiado pelo usuário com final `.vercel.ap` (aparentemente truncado); conferir no dashboard se `SITE_URL` está completo e exato antes do teste de cadastro. Nenhum cadastro real foi executado ainda.
-- Próximo passo: conferir `SITE_URL` completo no secret do projeto paralelo e realizar cadastro real de teste no preview; validar recebimento do código no e-mail e login. Produção e `main` permanecem intocadas.
-
-
-## Atualização de sessão — 2026-11-27 (SHIQI paralelo)
-
-- Usuário confirmou cadastro real no preview paralelo com recebimento do e-mail de verificação; confirmou também que `SITE_URL` está completo no Supabase paralelo.
-- Próxima fase iniciada: integração gradual do frontend ao serviço Rust do Railway paralelo. Primeiro escopo: uploads do bucket privado `attachments` via `POST /v1/attachments/upload`, mantendo JWT do usuário e RLS do Supabase como autoridade.
-- Uploads de avatar e leitura de anexos por signed URLs permanecem no fluxo atual. Sem alterações em Auth, design, `main`, produção ou secrets.
-- Acompanhamento detalhado atualizado em `shiqi-parallel/task.md`.
-
-
-## SHIQI — atualização de escopo (2026-11-27)
-- Usuário esclareceu que `square-chat` é o projeto principal e pediu para adiar o problema de envio de imagens; não investigar CORS/upload nem alterar o projeto Vercel principal nesta fase.
-- Próxima etapa no ambiente isolado `shiqi-parallel-dev`: smoke runtime do Railway (`/healthz`, `/readyz`, `/v1/me` sem token deve rejeitar), depois login real e `/v1/me` com sessão válida; em seguida RLS/Realtime/RPCs com contas de teste.
-- Workflow `.github/workflows/shiqi-core.yml` recebeu job `railway-smoke` no commit `f8a8e2f213d0fc298de5960aa009c90213b9cd0c`. Não testa JWT real nem upload.
-- Nenhuma alteração em `main`, produção ou no projeto `square-chat`.
-
-
-## Registro de sessão — 2026-11-27 (smoke runtime SHIQI)
-- CI run `46047484964` concluído com sucesso na branch `shiqi-parallel-dev`; os quatro jobs passaram: `rust` (fmt, testes, Clippy e build Docker), `supabase-jwks`, `web-contract` e `railway-smoke`.
-- O smoke runtime confirmou `/healthz` e `/readyz` com resposta válida e `GET /v1/me` sem Bearer token rejeitado como não autorizado. Isso não valida JWT real nem login.
-- Auditoria estática confirmou que o frontend salva access/refresh tokens, renova a sessão pelo endpoint Supabase Auth; a Edge Function valida rotas privadas via `admin.auth.getUser(token)`; o Rust valida assinatura JWT por JWKS, issuer, audience, expiração, UUID e role antes de responder `/v1/me`.
-- A listagem de deployments Railway não pôde ser consultada nesta sessão por falta de permissão do conector; o smoke do GitHub Actions é a evidência disponível do runtime.
-- Próximo passo: validar login real e `/v1/me` com a sessão do usuário no preview, sem compartilhar senha ou JWT no chat; depois avançar para RLS/Realtime/RPCs com duas contas de teste. Upload de imagens segue adiado.
-- Nenhuma alteração em `main`, produção ou no projeto Vercel principal `square-chat`.
-
-
-## Atualização de CI — 2026-11-27
-- Adicionado ao job `web-contract` o teste `node tests/auth-contract-static.js`, que verifica rotas Auth, contratos SQL, RLS, policies, ACLs, Storage e proteções de concorrência.
-- Commit: `a2ba5f3b9ccb93e018b159691b28fa6c9fa0f29a` na branch paralela.
-- Run `46049406473`: teste Auth/segurança, contrato frontend/Rust e JWKS passaram; fmt, testes Rust e Clippy também passaram. Build Docker ainda estava em andamento na última consulta; aguardar conclusão antes de marcar CI integral como verde.
-
-### 2026-11-27 — Login real confirmado; validação Rust integrada
-- O usuário confirmou que conseguiu entrar no preview com a conta criada anteriormente. Cadastro e login real estão confirmados; isso, isoladamente, ainda não comprova que o Rust aceitou o JWT.
-- Em andamento: o frontend do ambiente paralelo passa a chamar GET /v1/me após restaurar uma sessão já existente no carregamento. A chamada envia o Bearer token apenas diretamente ao serviço Rust; o token não é exibido, registrado nem enviado ao chat.
-- A interface compara o UUID retornado pelo Rust com o ID da sessão Supabase e exige o papel authenticated; mostra uma mensagem de sucesso ou falha sem encerrar o login.
-- O contrato estático do frontend/Rust foi ampliado para proteger essa integração. Aguardando CI e publicação do preview para validar o resultado real.
-- Upload de imagens permanece adiado. Nenhuma alteração em main, produção, Supabase remoto ou projeto Vercel square-chat.
-- Próximo passo: após o preview atualizar, recarregar a página já autenticada e confirmar a mensagem de autenticação Rust; depois iniciar a regressão de RLS/RPC/Realtime com duas contas.
-
-### 2026-11-28 — Diagnóstico e correção da validação JWT no navegador
-- O usuário confirmou login normal, mas o aviso da validação Rust apareceu ao recarregar o preview.
-- Causa identificada no código: o CORS do serviço Rust autorizava somente POST e OPTIONS; a nova chamada autenticada GET /v1/me era bloqueada pelo navegador durante o preflight por incluir Authorization.
-- Correção aplicada apenas em shiqi-parallel/services/core/src/main.rs: adicionar GET aos métodos permitidos. A lista de origens continua explícita, sem wildcard; headers continuam limitados. Upload continua fora do escopo.
-- Teste de contrato frontend/Rust atualizado para impedir regressão da permissão GET.
-- Aguardando CI, deploy automático do Railway e nova confirmação do usuário no preview. Logs Railway não foram acessíveis pelo conector por falta de permissão; causa foi confirmada diretamente na configuração CORS versionada.
-- Nenhuma alteração em main, produção, Supabase remoto ou projeto Vercel square-chat.
-- Próximo passo: confirmar CI verde e deploy Railway atualizado; usuário recarrega preview para confirmar /v1/me. Depois iniciar testes de RLS/RPC/Realtime com duas contas.
-
-### 2026-11-28 — Auditoria remota somente leitura e próxima fase
-- Projeto Supabase paralelo confirmado ACTIVE_HEALTHY (PostgreSQL 17.12). Catálogo remoto consultado sem executar DDL/DML.
-- 23/23 tabelas públicas com RLS habilitado. Cinco tabelas internas sem policy não concedem acesso direto a anon/authenticated; não criar policies genéricas.
-- 45 funções SECURITY DEFINER públicas têm search_path vazio; 39 são executáveis por authenticated e nenhuma por anon. As seis funções administrativas permanecem restritas a service_role. O WARN do Advisor é genérico e não justifica revogação em lote.
-- Publicação Realtime inclui friendships, messages e voice_members; policies voice_topic_select e voice_topic_insert estão presentes e chamam private.can_voice_topic.
-- Advisor de performance apontou seis índices sem uso em ambiente com baixo tráfego; não removê-los com base apenas nesse sinal.
-- Relatório completo: shiqi-parallel/docs/RUNTIME_READONLY_AUDIT_2026-11-28.md.
-- Próxima etapa: regressão de autorização com duas identidades, incluindo testes negativos de acesso cruzado, DMs/bloqueios, servidores/canais, mensagens, reações, convites/banimentos, eventos e voz/Realtime. Não repetir teste de 10 participantes. GET /v1/me fica em segundo plano conforme decisão do usuário; upload continua adiado.
-- Nenhum dado ou schema remoto foi alterado. main, produção e projeto Vercel square-chat permanecem intocados.
-
-- [x] 2026-11-28 — Teste negativo de autorização executado no PostgreSQL paralelo em transação com ROLLBACK: dez RPCs de escrita rejeitaram chamadas sem identidade com not_authenticated; is_server_member=false, get_my_settings={} e profiles_full não expôs linhas para UUID arbitrário. Roteiro salvo em shiqi-parallel/tests/supabase-auth-negative.sql. Isso simula role authenticated sem sub JWT; não substitui testes com dois usuários reais.
-
-- [x] 2026-11-28 — Verificação complementar confirmou zero grants anon nas 23 tabelas públicas (RLS habilitado em 23/23). O projeto tem uma conta Auth/perfil; regressão cruzada com duas contas fica pendente até existir uma segunda identidade real, sem criar usuários manualmente.
-
-- CI run 46101145360 (commit f0a6f96b0d5c16f92a8b1838695a1e7caaed8bff): job web-contract passou; supabase-jwks passou; fmt, testes Rust e Clippy passaram. Build Docker estava em execução na última consulta; railway-smoke aguardava dependências. Acompanhar antes de marcar CI completo.
-
-
-### 2026-11-28 — Continuação autônoma e status do CI
-- O usuário solicitou condução autônoma até a conclusão do projeto, sem aprovações passo a passo. Diretriz: quando uma verificação falhar, diagnosticar/corrigir dentro do escopo e continuar; registrar dependências externas e testes que exigem pessoa real em lista final, sem paralisar o restante.
-- Limites mantidos: somente branch shiqi-parallel-dev; não tocar main, site/ original, projeto Vercel square-chat, produção ou secrets. Não aplicar mudanças destrutivas/cutover remoto sem validação e autorização; não criar usuários manualmente em auth.users; não pedir JWT/senhas; upload real segue adiado; /v1/me segue fora da prioridade imediata; QR e música fora do escopo.
-- CI run 46101145360 (commit f0a6f96b0d5c16f92a8b1838695a1e7caaed8bff) concluído com SUCCESS em todos os jobs: web-contract, rust (fmt, testes, Clippy e Docker build), supabase-jwks e railway-smoke. O teste SQL de autorização negativa permanece um roteiro reproduzível, não executado automaticamente pelo CI.
-- Auditoria PostgreSQL remota 2026-11-28 e teste negativo com ROLLBACK permanecem válidos conforme docs/RUNTIME_READONLY_AUDIT_2026-11-28.md. Ainda não existe segunda conta Auth real; regressão A-versus-B, DMs entre duas identidades e autorização cruzada completa não podem ser declaradas concluídas.
-- Próxima etapa autônoma: revisar os contratos efetivos dos módulos e rotas do frontend paralelo, cruzar todas as RPCs/tabelas com SQL canônico e adicionar verificações automatizadas seguras onde possível; depois executar smoke/regressão isolada e corrigir inconsistências. Não alterar o banco remoto apenas para remover pendências de teste.
