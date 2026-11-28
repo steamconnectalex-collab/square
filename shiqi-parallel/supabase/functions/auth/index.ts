@@ -149,7 +149,8 @@ async function sessionPayload(email: string, userId: string) {
 
 // ---------- verificação em duas etapas (TOTP do Supabase Auth) ----------
 async function totpFactor(userId: string) {
-  const { data } = await admin.auth.admin.mfa.listFactors({ userId });
+  const { data, error } = await admin.auth.admin.mfa.listFactors({ userId });
+  if (error) throw new HttpError(503, "mfa_unavailable", "Não foi possível verificar a autenticação em duas etapas. Tente novamente.");
   return (data?.factors ?? []).find((f) => f.factor_type === "totp" && f.status === "verified") ?? null;
 }
 // cliente que age "como o usuário" (precisa do access_token dele) para o desafio/validação do código de 6 dígitos
@@ -163,7 +164,14 @@ async function mfaVerify(session: { access_token: string; refresh_token: string 
   if (v.error || !v.data) throw new HttpError(400, "wrong_totp", "Esse código do aplicativo não confere. Confira o horário do celular e tente de novo.");
   return v.data;
 }
-const reactivate = (userId: string) => admin.from("profiles").update({ deactivated_at: null }).eq("id", userId).not("deactivated_at", "is", null);
+async function reactivate(userId: string) {
+  const { error } = await admin.from("profiles").update({ deactivated_at: null }).eq("id", userId).not("deactivated_at", "is", null);
+  if (error) throw new HttpError(503, "account_unavailable", "Não foi possível reativar sua conta. Tente novamente.");
+}
+async function revokeUserSessions(userId: string) {
+  const { error } = await admin.rpc("revoke_user_sessions", { p_user: userId });
+  if (error) throw new HttpError(503, "session_revocation_failed", "Não foi possível encerrar as sessões anteriores. Tente novamente.");
+}
 const RECOVERY_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 function recoveryCode() {
   const b = crypto.getRandomValues(new Uint8Array(10));
@@ -173,8 +181,9 @@ function recoveryCode() {
 
 // ---------- códigos por e-mail ----------
 async function issueCode(email: string, purpose: Purpose, o: { soft?: boolean } = {}): Promise<boolean> {
-  const { data: last } = await admin.from("email_codes").select("created_at").eq("email", email).eq("purpose", purpose)
+  const { data: last, error: lastError } = await admin.from("email_codes").select("created_at").eq("email", email).eq("purpose", purpose)
     .order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (lastError) throw new HttpError(503, "code_unavailable", "Não foi possível verificar o intervalo de envio. Tente novamente.");
   if (last) {
     const age = Date.now() - Date.parse(last.created_at);
     if (age < RESEND_COOLDOWN_MS) {
@@ -415,7 +424,7 @@ async function reset(body: Record<string, unknown>, ip: string) {
     if (/different|same/i.test(error.message)) throw new HttpError(400, "same_password", "Escolha uma senha diferente da anterior. Peça um novo link para tentar de novo.");
     throw error;
   }
-  await admin.rpc("revoke_user_sessions", { p_user: user.id }); // derruba sessões antigas
+  await revokeUserSessions(user.id); // derruba sessões antigas
   if (await totpFactor(user.id)) return { ok: true, mfa_required: true }; // com 2 etapas: entra pelo login normal (senha nova + código)
   await reactivate(user.id);
   return { ok: true, ...(await sessionPayload(email, user.id)) };
@@ -430,8 +439,11 @@ async function requireUser(req: Request) {
   return data.user;
 }
 async function checkPasswordOf(email: string, password: unknown) {
-  const { data, error } = await anonClient().auth.signInWithPassword({ email, password: String(password ?? "") });
+  const client = anonClient();
+  const { data, error } = await client.auth.signInWithPassword({ email, password: String(password ?? "") });
   if (error || !data.session) throw new HttpError(401, "invalid_credentials", "Senha incorreta.");
+  const { error: signOutError } = await client.auth.signOut({ scope: "local" });
+  if (signOutError) throw new HttpError(503, "session_cleanup_failed", "Não foi possível encerrar a sessão temporária de verificação. Tente novamente.");
 }
 async function emailChangeRequest(req: Request, body: Record<string, unknown>, _ip: string) {
   const user = await requireUser(req);
@@ -458,9 +470,9 @@ async function accountDeactivate(req: Request, body: Record<string, unknown>) {
   const user = await requireUser(req);
   await limit(`acct:${user.id}`, 8, 3600);
   await checkPasswordOf(user.email!, body.password);
+  await revokeUserSessions(user.id);
   const { error } = await admin.from("profiles").update({ deactivated_at: new Date().toISOString(), presence: "invisible" }).eq("id", user.id);
   if (error) throw error;
-  await admin.rpc("revoke_user_sessions", { p_user: user.id });
   return { ok: true };
 }
 async function removeUserStorageObjects(bucket: string, userId: string) {
