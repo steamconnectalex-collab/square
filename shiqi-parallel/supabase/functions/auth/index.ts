@@ -463,17 +463,50 @@ async function accountDeactivate(req: Request, body: Record<string, unknown>) {
   await admin.rpc("revoke_user_sessions", { p_user: user.id });
   return { ok: true };
 }
+async function removeUserStorageObjects(bucket: string, userId: string) {
+  const paths: string[] = [];
+  const visit = async (prefix: string): Promise<void> => {
+    let offset = 0;
+    for (;;) {
+      const { data, error } = await admin.storage.from(bucket).list(prefix, {
+        limit: 1000,
+        offset,
+        sortBy: { column: "name", order: "asc" },
+      });
+      if (error) {
+        throw new HttpError(503, "storage_cleanup_failed", "A exclusão foi interrompida porque não conseguimos listar todos os arquivos da conta. A conta ainda não foi excluída; tente novamente.");
+      }
+      const entries = data ?? [];
+      for (const entry of entries) {
+        if (entry.id === null) await visit(`${prefix}/${entry.name}`);
+        else paths.push(`${prefix}/${entry.name}`);
+      }
+      if (entries.length < 1000) break;
+      offset += entries.length;
+    }
+  };
+
+  await visit(userId);
+  for (let i = 0; i < paths.length; i += 1000) {
+    const { error } = await admin.storage.from(bucket).remove(paths.slice(i, i + 1000));
+    if (error) {
+      throw new HttpError(503, "storage_cleanup_failed", "A exclusão foi interrompida porque não conseguimos remover todos os arquivos da conta. A conta ainda não foi excluída; tente novamente.");
+    }
+  }
+}
+
 async function accountDelete(req: Request, body: Record<string, unknown>) {
   const user = await requireUser(req);
   await limit(`acct:${user.id}`, 8, 3600);
   await checkPasswordOf(user.email!, body.password);
   if (String(body.confirm ?? "").trim().toUpperCase() !== "EXCLUIR") throw new HttpError(400, "confirm_required", 'Digite EXCLUIR para confirmar.');
+  // A API Storage limita cada remoção a 1.000 objetos. Paginar e tratar erros
+  // evita excluir a conta deixando arquivos órfãos por falha silenciosa.
+  for (const bucket of ["avatars", "attachments"]) {
+    await removeUserStorageObjects(bucket, user.id);
+  }
   const { error: pe } = await admin.rpc("purge_user_data", { p_user: user.id });
   if (pe) throw pe;
-  for (const bucket of ["avatars", "attachments"]) {
-    const { data: files } = await admin.storage.from(bucket).list(user.id, { limit: 1000 });
-    if (files?.length) await admin.storage.from(bucket).remove(files.map((f) => `${user.id}/${f.name}`));
-  }
   const { error } = await admin.auth.admin.deleteUser(user.id);
   if (error) throw error;
   return { ok: true };
