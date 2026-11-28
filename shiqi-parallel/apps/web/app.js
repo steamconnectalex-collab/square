@@ -135,6 +135,28 @@ async function freshToken() {
     return j.access_token;
   } catch (e) { return s.access_token; }
 }
+async function verifyCoreIdentity() {
+  const token = await freshToken();
+  if (!token || !C.CORE_URL) return false;
+  const base = C.CORE_URL.endsWith('/') ? C.CORE_URL.slice(0, -1) : C.CORE_URL;
+  try {
+    const response = await fetch(base + '/v1/me', {
+      method: 'GET',
+      headers: { authorization: 'Bearer ' + token, accept: 'application/json' }
+    });
+    const data = await response.json().catch(() => ({}));
+    const expectedId = S.session && S.session.user && S.session.user.id;
+    if (!response.ok || !data.ok || !data.user || data.user.id !== expectedId || data.user.role !== 'authenticated') {
+      toast('A sessão entrou, mas o serviço Rust não confirmou sua identidade. Vamos revisar a autenticação.');
+      return false;
+    }
+    toast('Autenticação confirmada: o serviço Rust reconheceu sua sessão.');
+    return true;
+  } catch (e) {
+    toast('Não foi possível validar a sessão no serviço Rust agora. O login continua ativo.');
+    return false;
+  }
+}
 async function loadProfile() {
   const t = await freshToken();
   if (!t) return;
@@ -2676,6 +2698,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && S.
     if (t && !S.profile) await loadProfile();
   }
   route();
+  if (S.session) verifyCoreIdentity();
 })();
 try { window.matchMedia('(min-width:901px)').addEventListener('change', () => { if (S.view === 'app' && A && (A.vpage || A.voice)) render(); }); } catch (e) { /* navegador antigo */ }
 })();
