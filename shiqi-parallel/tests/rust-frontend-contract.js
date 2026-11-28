@@ -14,6 +14,12 @@ const core = fs.readFileSync(path.join(root, 'services/core/src/main.rs'), 'utf8
 
 assert.ok(config.includes("CORE_URL: 'https://shiqi-core-development.up.railway.app'"),
   'A interface deve apontar somente para o serviço Rust do ambiente paralelo.');
+assert.ok(app.includes('async function verifyCoreIdentity()'),
+  'A interface deve validar a sessão autenticada no serviço Rust.');
+assert.ok(app.includes("base + '/v1/me'"),
+  'A validação de identidade deve chamar /v1/me no serviço Rust.');
+assert.ok(app.includes('data.user.id !== expectedId'),
+  'A identidade retornada pelo Rust deve corresponder ao usuário da sessão.');
 assert.ok(app.includes("base + '/v1/attachments/upload'"),
   'O envio de anexos deve usar a rota Rust.');
 assert.ok(app.includes("'x-attachment-path': path"),
