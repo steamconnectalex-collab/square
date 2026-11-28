@@ -551,3 +551,12 @@
 - O contrato estático do frontend/Rust foi ampliado para proteger essa integração. Aguardando CI e publicação do preview para validar o resultado real.
 - Upload de imagens permanece adiado. Nenhuma alteração em main, produção, Supabase remoto ou projeto Vercel square-chat.
 - Próximo passo: após o preview atualizar, recarregar a página já autenticada e confirmar a mensagem de autenticação Rust; depois iniciar a regressão de RLS/RPC/Realtime com duas contas.
+
+### 2026-11-28 — Diagnóstico e correção da validação JWT no navegador
+- O usuário confirmou login normal, mas o aviso da validação Rust apareceu ao recarregar o preview.
+- Causa identificada no código: o CORS do serviço Rust autorizava somente POST e OPTIONS; a nova chamada autenticada GET /v1/me era bloqueada pelo navegador durante o preflight por incluir Authorization.
+- Correção aplicada apenas em shiqi-parallel/services/core/src/main.rs: adicionar GET aos métodos permitidos. A lista de origens continua explícita, sem wildcard; headers continuam limitados. Upload continua fora do escopo.
+- Teste de contrato frontend/Rust atualizado para impedir regressão da permissão GET.
+- Aguardando CI, deploy automático do Railway e nova confirmação do usuário no preview. Logs Railway não foram acessíveis pelo conector por falta de permissão; causa foi confirmada diretamente na configuração CORS versionada.
+- Nenhuma alteração em main, produção, Supabase remoto ou projeto Vercel square-chat.
+- Próximo passo: confirmar CI verde e deploy Railway atualizado; usuário recarrega preview para confirmar /v1/me. Depois iniciar testes de RLS/RPC/Realtime com duas contas.
