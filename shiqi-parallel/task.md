@@ -570,3 +570,5 @@
 - Relatório completo: shiqi-parallel/docs/RUNTIME_READONLY_AUDIT_2026-11-28.md.
 - Próxima etapa: regressão de autorização com duas identidades, incluindo testes negativos de acesso cruzado, DMs/bloqueios, servidores/canais, mensagens, reações, convites/banimentos, eventos e voz/Realtime. Não repetir teste de 10 participantes. GET /v1/me fica em segundo plano conforme decisão do usuário; upload continua adiado.
 - Nenhum dado ou schema remoto foi alterado. main, produção e projeto Vercel square-chat permanecem intocados.
+
+- [x] 2026-11-28 — Teste negativo de autorização executado no PostgreSQL paralelo em transação com ROLLBACK: dez RPCs de escrita rejeitaram chamadas sem identidade com not_authenticated; is_server_member=false, get_my_settings={} e profiles_full não expôs linhas para UUID arbitrário. Roteiro salvo em shiqi-parallel/tests/supabase-auth-negative.sql. Isso simula role authenticated sem sub JWT; não substitui testes com dois usuários reais.
