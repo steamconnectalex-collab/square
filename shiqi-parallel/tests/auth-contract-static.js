@@ -202,5 +202,25 @@ assert.ok(auth.includes('s = await mintSession(email)'), 'Recuperação MFA deve
 assert.ok(ui.includes('api().logout(); // o Supabase encerra as sessões'),
   'A interface deve encerrar a sessão local após desligar MFA.');
 
+const cleanupStart = auth.indexOf('async function removeUserStorageObjects(');
+const deleteStart = auth.indexOf('async function accountDelete(');
+const deleteEnd = auth.indexOf('// gera 8 códigos de recuperação', deleteStart);
+const cleanup = auth.slice(cleanupStart, deleteStart);
+const deleteAccount = auth.slice(deleteStart, deleteEnd);
+assert.ok(cleanupStart >= 0 && cleanup.includes('.list(prefix,') &&
+  cleanup.includes('limit: 1000') && cleanup.includes('offset,'),
+  'A limpeza de Storage deve paginar a listagem de arquivos.');
+assert.ok(cleanup.includes('if (entry.id === null) await visit('),
+  'A limpeza de Storage deve percorrer subpastas.');
+assert.ok(cleanup.includes('paths.slice(i, i + 1000)') &&
+  cleanup.includes('.remove('),
+  'A limpeza de Storage deve remover em lotes de no máximo 1.000 objetos.');
+assert.ok(cleanup.includes('if (error)') &&
+  cleanup.includes('storage_cleanup_failed'),
+  'Falhas de listagem/remoção de Storage devem interromper a exclusão da conta.');
+assert.ok(deleteAccount.indexOf('removeUserStorageObjects(') < deleteAccount.indexOf('purge_user_data') &&
+  deleteAccount.indexOf('purge_user_data') < deleteAccount.indexOf('deleteUser('),
+  'A conta só deve ser purgada e removida depois da limpeza de Storage.');
+
 console.log('SHIQI static contract: OK (13 rotas Auth, 18 tabelas/RLS, 17 policies, 59 ACL revokes, privacidade de perfil/anexos, concorrência de voz e limites).');
 console.log('Atenção: teste estático; não valida Deno, JWT, Supabase Auth, PostgreSQL ou envio de e-mail.');
