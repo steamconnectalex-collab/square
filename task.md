@@ -359,3 +359,13 @@ Combinado com a pessoa em 2026-11-23: o que precisa de conta em aplicativo exter
 - Aguardando CI, deploy automático do Railway e nova confirmação do usuário no preview. Logs Railway não foram acessíveis pelo conector por falta de permissão; causa foi confirmada diretamente na configuração CORS versionada.
 - Nenhuma alteração em main, produção, Supabase remoto ou projeto Vercel square-chat.
 - Próximo passo: confirmar CI verde e deploy Railway atualizado; usuário recarrega preview para confirmar /v1/me. Depois iniciar testes de RLS/RPC/Realtime com duas contas.
+
+### 2026-11-28 — Auditoria remota somente leitura e próxima fase
+- Projeto Supabase paralelo confirmado ACTIVE_HEALTHY (PostgreSQL 17.12). Catálogo remoto consultado sem executar DDL/DML.
+- 23/23 tabelas públicas com RLS habilitado. Cinco tabelas internas sem policy não concedem acesso direto a anon/authenticated; não criar policies genéricas.
+- 45 funções SECURITY DEFINER públicas têm search_path vazio; 39 são executáveis por authenticated e nenhuma por anon. As seis funções administrativas permanecem restritas a service_role. O WARN do Advisor é genérico e não justifica revogação em lote.
+- Publicação Realtime inclui friendships, messages e voice_members; policies voice_topic_select e voice_topic_insert estão presentes e chamam private.can_voice_topic.
+- Advisor de performance apontou seis índices sem uso em ambiente com baixo tráfego; não removê-los com base apenas nesse sinal.
+- Relatório completo: shiqi-parallel/docs/RUNTIME_READONLY_AUDIT_2026-11-28.md.
+- Próxima etapa: regressão de autorização com duas identidades, incluindo testes negativos de acesso cruzado, DMs/bloqueios, servidores/canais, mensagens, reações, convites/banimentos, eventos e voz/Realtime. Não repetir teste de 10 participantes. GET /v1/me fica em segundo plano conforme decisão do usuário; upload continua adiado.
+- Nenhum dado ou schema remoto foi alterado. main, produção e projeto Vercel square-chat permanecem intocados.
