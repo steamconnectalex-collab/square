@@ -82,6 +82,14 @@ jobs:
           deno-version: v2.x
       - name: Type-check Supabase Auth Edge Function
         run: deno check --no-lock supabase/functions/auth/index.ts
+      - name: Smoke-test parallel Auth Edge Function
+        shell: bash
+        run: |
+          set -euo pipefail
+          health="$(curl --fail --silent --show-error --max-time 20 https://ujdosskjycrdkcgsswfa.supabase.co/functions/v1/auth/health)"
+          node -e 'const d=JSON.parse(process.argv[1]); if(d.ok!==true || d.email_configured!==true) process.exit(1)' "$health"
+          status="$(curl --silent --show-error --max-time 20 -o /tmp/shiqi-auth-negative.json -w '%{http_code}' -X POST https://ujdosskjycrdkcgsswfa.supabase.co/functions/v1/auth/account/delete -H 'content-type: application/json' --data '{"confirm":"EXCLUIR"}')"
+          test "$status" = "401"
       - name: Check frontend/Rust upload contract
         run: node tests/rust-frontend-contract.js
       - name: Check Auth and database security contract
