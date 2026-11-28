@@ -108,3 +108,10 @@ Consulta somente leitura ao projeto Supabase paralelo confirmou que não existem
 - **Lacuna MFA identificada:** os SQLs canônicos não contêm checagem de `auth.jwt()->>'aal'` nem política RLS `AS RESTRICTIVE` que exija `aal2` quando o usuário possui fator verificado em `auth.mfa_factors`. Como 39 funções SECURITY DEFINER são executáveis por `authenticated`, políticas RLS isoladas não bastariam para proteger todas as RPCs que ignoram RLS. O fluxo de UI/TOTP não deve ser tratado como enforcement completo contra chamadas diretas ao Auth/PostgREST.
 - Consulta somente leitura confirmou zero fatores MFA verificados cadastrados no projeto paralelo no momento da auditoria. Isso reduz o impacto atual, mas não remove a lacuna para futuras contas que ativarem MFA.
 - Não foi aplicada alteração SQL para MFA: requer desenho abrangente para RLS, Storage, Realtime e RPCs SECURITY DEFINER, além de teste isolado com tokens AAL1/AAL2 antes de qualquer DDL remoto.
+
+
+### Auth v3 — falha segura
+- Consulta de fatores TOTP, cooldown de códigos, reativação de perfil e revogação de sessões agora tratam erros explicitamente e falham fechadas.
+- Verificação de senha para operações sensíveis encerra a sessão temporária com escopo local; se o logout temporário falhar, a operação não prossegue.
+- Código publicado no Supabase paralelo como versão 3 e conferido via Management API. A verificação HTTP de health/401 foi adicionada ao CI, ainda aguardando resultado.
+- Persistem duas limitações separadas: (1) enforcement AAL2 em RLS/RPCs SECURITY DEFINER não implementado; (2) sessões com access token revogado podem permanecer utilizáveis até expiração do JWT, conforme comportamento do Supabase Auth.
