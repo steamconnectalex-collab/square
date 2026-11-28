@@ -238,5 +238,12 @@ assert.ok(auth.includes('client.auth.signOut({ scope: "local" })') &&
   auth.includes('session_cleanup_failed'),
   'A sessão temporária de verificação de senha deve ser encerrada.');
 
+const negativeAuthSql = read('tests/supabase-auth-negative.sql');
+const rlsProbeSql = read('tests/supabase-rls-cross-identity-simulated.sql');
+assert.ok(negativeAuthSql.trim().endsWith('ROLLBACK;') && rlsProbeSql.trim().endsWith('ROLLBACK;'),
+  'Os testes SQL remotos devem terminar com ROLLBACK.');
+assert.ok(!/INSERT\\s+INTO\\s+auth\\.users/i.test(negativeAuthSql + '\\n' + rlsProbeSql),
+  'Os testes não podem criar usuários manualmente em auth.users.');
+
 console.log('SHIQI static contract: OK (13 rotas Auth, 18 tabelas/RLS, 17 policies, 59 ACL revokes, privacidade de perfil/anexos, concorrência de voz e limites).');
 console.log('Atenção: teste estático; não valida Deno, JWT, Supabase Auth, PostgreSQL ou envio de e-mail.');
