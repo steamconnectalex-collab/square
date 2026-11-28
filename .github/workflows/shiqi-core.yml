@@ -86,6 +86,12 @@ jobs:
         run: node tests/rust-frontend-contract.js
       - name: Check Auth and database security contract
         run: node tests/auth-contract-static.js
+      - name: Install Playwright for isolated browser regression
+        run: npm install --no-save --no-package-lock playwright@1.55.0
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run parallel frontend browser smoke tests
+        run: node tests/smoke.js
 
   rust:
     runs-on: ubuntu-latest
