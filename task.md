@@ -373,3 +373,5 @@ Combinado com a pessoa em 2026-11-23: o que precisa de conta em aplicativo exter
 - [x] 2026-11-28 — Teste negativo de autorização executado no PostgreSQL paralelo em transação com ROLLBACK: dez RPCs de escrita rejeitaram chamadas sem identidade com not_authenticated; is_server_member=false, get_my_settings={} e profiles_full não expôs linhas para UUID arbitrário. Roteiro salvo em shiqi-parallel/tests/supabase-auth-negative.sql. Isso simula role authenticated sem sub JWT; não substitui testes com dois usuários reais.
 
 - [x] 2026-11-28 — Verificação complementar confirmou zero grants anon nas 23 tabelas públicas (RLS habilitado em 23/23). O projeto tem uma conta Auth/perfil; regressão cruzada com duas contas fica pendente até existir uma segunda identidade real, sem criar usuários manualmente.
+
+- CI run 46101145360 (commit f0a6f96b0d5c16f92a8b1838695a1e7caaed8bff): job web-contract passou; supabase-jwks passou; fmt, testes Rust e Clippy passaram. Build Docker estava em execução na última consulta; railway-smoke aguardava dependências. Acompanhar antes de marcar CI completo.
