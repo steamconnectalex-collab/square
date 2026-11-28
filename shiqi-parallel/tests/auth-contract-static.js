@@ -240,7 +240,7 @@ assert.ok(auth.includes('client.auth.signOut({ scope: "local" })') &&
 
 const negativeAuthSql = read('tests/supabase-auth-negative.sql');
 const rlsProbeSql = read('tests/supabase-rls-cross-identity-simulated.sql');
-assert.ok(negativeAuthSql.trim().endsWith('ROLLBACK;') && rlsProbeSql.trim().endsWith('ROLLBACK;'),
+assert.ok(/ROLLBACK;\s*$/i.test(negativeAuthSql) && /ROLLBACK;\s*$/i.test(rlsProbeSql),
   'Os testes SQL remotos devem terminar com ROLLBACK.');
 assert.ok(!/INSERT\s+INTO\s+auth\.users/i.test(negativeAuthSql + '\\n' + rlsProbeSql),
   'Os testes não podem criar usuários manualmente em auth.users.');
