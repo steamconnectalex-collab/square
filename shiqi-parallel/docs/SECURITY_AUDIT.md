@@ -99,3 +99,12 @@ Consulta somente leitura ao projeto Supabase paralelo confirmou que não existem
 
 - Cruzamento de contratos do frontend: 30 RPCs distintas chamadas pelos módulos web foram encontradas nas definições canônicas; nenhuma chamada aponta para função ausente. As 13 tabelas referenciadas diretamente por REST também existem no schema canônico; as cinco tabelas internas permanecem mediadas pelo backend/RPC.
 - Comparação do draft com as referências: 18/18 tabelas com RLS, 17/17 policies públicas presentes sem duplicatas, sete policies Storage e as duas policies privadas de voz Realtime presentes.
+
+
+## Complemento de auditoria — 2026-11-28
+
+- A Edge Function `auth` do Supabase paralelo foi atualizada para versão 2. A fonte publicada foi conferida: usa a configuração própria do paralelo, não contém origens do site principal e inclui limpeza recursiva/paginada do Storage para exclusão de conta. `verify_jwt=false` permanece intencional, pois a função valida o JWT nas rotas protegidas por `admin.auth.getUser` e mantém rotas públicas de cadastro/login.
+- A exclusão de conta agora percorre subpastas, pagina listagens de até 1.000 itens, remove em lotes de até 1.000 e interrompe antes do purge/Auth delete se o Storage retornar erro. A operação distribuída Storage + Postgres + Auth não é transacional; falha posterior ao Storage ainda pode exigir repetição/recuperação operacional.
+- **Lacuna MFA identificada:** os SQLs canônicos não contêm checagem de `auth.jwt()->>'aal'` nem política RLS `AS RESTRICTIVE` que exija `aal2` quando o usuário possui fator verificado em `auth.mfa_factors`. Como 39 funções SECURITY DEFINER são executáveis por `authenticated`, políticas RLS isoladas não bastariam para proteger todas as RPCs que ignoram RLS. O fluxo de UI/TOTP não deve ser tratado como enforcement completo contra chamadas diretas ao Auth/PostgREST.
+- Consulta somente leitura confirmou zero fatores MFA verificados cadastrados no projeto paralelo no momento da auditoria. Isso reduz o impacto atual, mas não remove a lacuna para futuras contas que ativarem MFA.
+- Não foi aplicada alteração SQL para MFA: requer desenho abrangente para RLS, Storage, Realtime e RPCs SECURITY DEFINER, além de teste isolado com tokens AAL1/AAL2 antes de qualquer DDL remoto.
