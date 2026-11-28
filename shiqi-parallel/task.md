@@ -610,3 +610,10 @@
 - Próximo passo: continuar revisão global de segurança e contratos, confirmar CI atualizado (incluindo browser smoke), depois executar health/runtime smoke da Auth v2 quando houver meio de invocação. Manter MFA/AAL2 como bloqueio de segurança explícito até haver implementação e testes isolados. Não executar QR, música, upload real, teste de 10 participantes, /v1/me JWT real, ou cutover remoto.
 
 - CI ampliado: Deno check, sintaxe JS e contrato frontend/SQL sem QR, smoke HTTP da Auth (health e 401 sem JWT), Playwright e smoke Rust. A nova execução ainda precisa ser confirmada.
+
+
+### 2026-11-28 — Regressão simulada de isolamento RLS
+- Criado e executado `tests/supabase-rls-cross-identity-simulated.sql` no Supabase paralelo, dentro de transação com `ROLLBACK`. Usa a conta Auth já existente como identidade A e um UUID sintético (sem criar Auth user) como B.
+- Resultado: A consegue ler/atualizar o próprio perfil; B não consegue ler nem atualizar o perfil de A; a RPC `profiles_full` não revela o perfil de A para B sem servidor compartilhado. Todas as verificações passaram.
+- Um primeiro rascunho do teste tentou ler `bio` no UPDATE e foi barrado pela ACL por coluna; o teste foi corrigido para atribuir literal e passou. Nenhuma alteração persistente ficou no banco.
+- Limite: isso valida isolamento RLS do perfil e o helper `profiles_full` com claims simulados; não substitui JWT real, segunda conta Auth, teste completo de DMs/servidores nem validação de Realtime entre contas.
