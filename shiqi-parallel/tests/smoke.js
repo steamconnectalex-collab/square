@@ -32,7 +32,7 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
   const session = { access_token: 'tok-abc', refresh_token: 'ref-abc', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, token_type: 'bearer' };
   const storageCalls = [];
   // ---- banco simulado (servidores, canais, membros, mensagens, perfis) ----
-  const world = { events: [], interest: [], rx: [], rxCalls: [], settings: {}, saved: [], usernameCalls: [], servers: [], channels: [], members: [], messages: [], nextMsg: 1, nextId: 1, friendships: [], dms: [], blocks: [], voice: [], bans: [], favs: [], pins: [], plan: 'free', publicCalls: [], pls: [], ptracks: [], nextPl: 1, nextPt: 1, moves: [],
+  const world = { events: [], interest: [], rx: [], rxCalls: [], settings: {}, saved: [], usernameCalls: [], servers: [], channels: [], members: [], messages: [], nextMsg: 1, nextId: 1, friendships: [], dms: [], blocks: [], voice: [], bans: [],  [], pins: [], plan: 'free', publicCalls: [],  [],  [], : 1, : 1,  [],
     profiles: [
       { id: 'u1', username: 'tester', display_name: 'Tester Um', bio: '', status_text: '', accent: '#9D8CCF', last_seen: null, created_at: '2026-11-16T10:00:00Z' },
       { id: 'u3', username: 'pedro', display_name: 'Pedro Alves', bio: '', status_text: '', accent: '#6FB3A0', last_seen: null, created_at: '2026-11-12T10:00:00Z' },
@@ -109,30 +109,9 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
         if (!d) { d = { id: 'dm' + world.nextId++, user: body.p_other }; world.dms.push(d); }
         return send(200, d.id);
       }
-      if (fn === 'playlist_move') { world.moves.push([body.p_track, body.p_dir]); const a = world.ptracks.findIndex((x) => x.id === body.p_track), b = a + body.p_dir; if (a >= 0 && world.ptracks[b]) [world.ptracks[a], world.ptracks[b]] = [world.ptracks[b], world.ptracks[a]]; return send(204, null); }
       if (fn === 'create_invite') return send(200, 'abc123def0');
       if (fn === 'join_server') return send(400, { message: 'invalid_invite' });
       return send(404, {});
-    }
-    if (path === 'music_favorites') {
-      if (m === 'POST') { world.favs.unshift({ track_id: body.track_id, track: body.track }); return send(201, null); }
-      if (m === 'DELETE') { const id = (q.get('track_id') || '').replace('eq.', ''); world.favs = world.favs.filter((f) => f.track_id !== id); return send(204, null); }
-      return send(200, world.favs);
-    }
-    if (path === 'playlists') {
-      if (m === 'POST') { world.pls.unshift({ id: '00000000-0000-4000-8000-00000000000' + world.nextPl++, name: body.name, shared: false, owner_id: 'u1' }); return send(201, null); }
-      if (m === 'PATCH') { world.pls.forEach((x) => Object.assign(x, body)); return send(204, null); }
-      if (m === 'DELETE') { const id = (q.get('id') || '').replace('eq.', ''); world.pls = world.pls.filter((x) => x.id !== id); return send(204, null); }
-      if (q.get('id')) return send(200, world.pls.filter((x) => x.id === q.get('id').replace('eq.', '')));
-      return send(200, world.pls.map((x) => ({ id: x.id, name: x.name, shared: x.shared, playlist_tracks: [{ count: world.ptracks.filter((t) => t.playlist_id === x.id).length }] })));
-    }
-    if (path === 'playlist_tracks') {
-      if (m === 'POST') { world.ptracks.push({ id: world.nextPt++, playlist_id: body.playlist_id, track: body.track, position: body.position }); return send(201, null); }
-      if (m === 'DELETE') { const id = +(q.get('id') || '').replace('eq.', ''); world.ptracks = world.ptracks.filter((x) => x.id !== id); return send(204, null); }
-      const pid = (q.get('playlist_id') || '').replace('eq.', '');
-      const rows = world.ptracks.filter((x) => x.playlist_id === pid);
-      if ((q.get('select') || '').startsWith('position')) return send(200, rows.length ? [{ position: Math.max(...rows.map((r) => r.position)) }] : []);
-      return send(200, rows.map((r) => ({ id: r.id, track: r.track })));
     }
     if (path === 'server_pins') return send(200, world.pins.map((x) => ({ server_id: x })));
     if (path === 'servers') return send(200, world.servers);
@@ -168,12 +147,6 @@ const ok = (name, cond, extra = '') => { results.push([cond ? 'OK  ' : 'FAIL', n
     return send(404, {});
   };
 
-  const wav = (() => { const n = 8000, b = Buffer.alloc(44 + n * 2); b.write('RIFF', 0); b.writeUInt32LE(36 + n * 2, 4); b.write('WAVEfmt ', 8); b.writeUInt32LE(16, 16); b.writeUInt16LE(1, 20); b.writeUInt16LE(1, 22); b.writeUInt32LE(8000, 24); b.writeUInt32LE(16000, 28); b.writeUInt16LE(2, 32); b.writeUInt16LE(16, 34); b.write('data', 36); b.writeUInt32LE(n * 2, 40); return b; })();
-  const itCors = { 'access-control-allow-origin': '*' };
-  const itTracks = [101, 102].map((id) => ({ trackId: id, trackName: id === 101 ? 'Magnolia' : 'Sky', artistName: id === 101 ? 'Playboi Carti' : 'Banda Teste', artworkUrl100: 'https://is1-ssl.mzstatic.com/a/' + id + '/100x100bb.jpg', previewUrl: 'https://audio-ssl.itunes.apple.com/x/p' + id + '.wav' }));
-  await ctx.route('https://itunes.apple.com/**', (r) => r.fulfill({ status: 200, headers: itCors, contentType: 'application/json', body: JSON.stringify({ results: new URL(r.request().url()).pathname.includes('lookup') ? [itTracks[0]] : itTracks.concat([{ trackId: 103, trackName: 'Sem prévia' }]) }) }));
-  await ctx.route('https://audio-ssl.itunes.apple.com/**', (r) => r.fulfill({ status: 200, headers: itCors, contentType: 'audio/wav', body: wav }));
-  await ctx.route('https://is1-ssl.mzstatic.com/**', (r) => r.fulfill({ status: 200, headers: itCors, contentType: 'image/gif', body: Buffer.from('R0lGODlhAQABAAAAACw=', 'base64') }));
   await ctx.route('https://fonts.googleapis.com/**', (r) => r.fulfill({ status: 200, contentType: 'text/css', body: '' }));
   await ctx.route('https://fonts.gstatic.com/**', (r) => r.abort());
   await ctx.route('https://ujdosskjycrdkcgsswfa.supabase.co/**', async (route) => {
