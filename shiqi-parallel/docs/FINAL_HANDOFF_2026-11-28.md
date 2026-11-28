@@ -77,3 +77,5 @@ Só marcar como final quando: CI estendido verde; Auth v3 health/401 confirmado;
 - Vercel ainda aponta para o último preview READY no commit `813cf1e287fc82fcf0dea8000d6834117ff7b3d9`; a branch atual não recebeu novo preview por `build-rate-limit`.
 
 - Plano técnico detalhado da lacuna MFA/AAL2 registrado em `docs/MFA_AAL2_ENFORCEMENT_PLAN.md`; cobre RLS, RPCs SECURITY DEFINER, Storage, Realtime e matriz AAL1/AAL2. Nenhum DDL foi aplicado.
+
+- O smoke browser paralelo foi revisado para remover todos os mocks/rotas de música, playlists e iTunes; também não contém referências nem testes de QR.
