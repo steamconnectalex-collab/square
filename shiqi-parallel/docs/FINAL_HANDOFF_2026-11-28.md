@@ -65,3 +65,13 @@ O ambiente paralelo tem banco, autenticação e serviço Rust ativos. A Edge Fun
 ## Critério para declarar concluído
 
 Só marcar como final quando: CI estendido verde; Auth v3 health/401 confirmado; preview atualizado disponível; MFA/AAL2 implementado e testado; JWT real validado no Rust; e as pendências reais de duas contas/Realtime/upload tiverem evidência ou forem explicitamente aceitas como testes de lançamento pelo responsável.
+
+
+## Atualização final da revisão — 2026-11-28
+
+- Auth Edge Function está ACTIVE na versão 3; a fonte publicada foi conferida e contém as proteções de falha segura, encerramento da sessão temporária e limpeza paginada de Storage.
+- Railway `shiqi-core` concluiu SUCCESS no commit mais recente registrado durante esta revisão. Os endpoints `/healthz` e `/readyz` já tinham sido validados anteriormente.
+- O probe RLS A/B simulado foi executado novamente após trocar o UUID B por um valor aleatório. Resultado aprovado; consulta posterior confirmou zero linhas com o texto de teste no perfil, portanto nenhuma alteração do probe permaneceu.
+- Revisão estática manual dos novos testes passou, incluindo rollback, ausência de INSERT manual em `auth.users`, exclusão de QR e contratos de Auth/Storage.
+- A nova execução completa do GitHub Actions (Deno/Node/Playwright/HTTP Auth) ainda não foi confirmada; não declarar CI estendido verde.
+- Vercel ainda aponta para o último preview READY no commit `813cf1e287fc82fcf0dea8000d6834117ff7b3d9`; a branch atual não recebeu novo preview por `build-rate-limit`.
