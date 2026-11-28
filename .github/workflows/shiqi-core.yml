@@ -7,6 +7,10 @@ on:
       - "shiqi-parallel/services/core/**"
       - "shiqi-parallel/apps/web/**"
       - "shiqi-parallel/tests/**"
+      - "shiqi-parallel/supabase/**"
+      - "shiqi-parallel/docs/**"
+      - "shiqi-parallel/task.md"
+      - "task.md"
       - ".github/workflows/shiqi-core.yml"
   pull_request:
     branches: [shiqi-parallel-dev]
@@ -61,8 +65,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Check frontend JavaScript syntax
-        run: node --check apps/web/app.js
+      - name: Check all frontend JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            echo "Checking $file"
+            node --check "$file"
+          done < <(find apps/web -type f -name '*.js' -print0)
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check Supabase Auth Edge Function
+        run: deno check --no-lock supabase/functions/auth/index.ts
       - name: Check frontend/Rust upload contract
         run: node tests/rust-frontend-contract.js
       - name: Check Auth and database security contract
