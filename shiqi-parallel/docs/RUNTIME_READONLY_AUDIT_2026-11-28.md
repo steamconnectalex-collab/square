@@ -30,3 +30,9 @@ Escopo: catálogo PostgreSQL, RLS, ACLs, funções SECURITY DEFINER, publicaçã
 Construir e executar uma regressão controlada com duas identidades autenticadas, cobrindo isolamento de perfis, amizades pendentes/aceitas, bloqueios e DMs, associação a servidores/canais, mensagens/edição/exclusão, reações, convites/banimentos, eventos e presença/sinalização de voz. Incluir testes negativos (usuário A tentando ler ou alterar recursos exclusivos de B), transações de limpeza e verificação das policies Realtime. Não repetir o teste de 10 participantes em voz já feito pelo usuário.
 
 Limites: esta consulta ao catálogo confirma a configuração atual, mas não prova a autorização efetiva em requisições autenticadas, nem substitui testes de concorrência, Auth/JWT, Storage ou Realtime em runtime. A validação de `GET /v1/me` permanece pendente e foi colocada em segundo plano conforme decisão do usuário; upload de imagem permanece adiado.
+
+## Teste negativo executado no banco paralelo — 2026-11-28
+
+Foi executado no PostgreSQL remoto, dentro de uma transação finalizada com `ROLLBACK`, um teste usando o role `authenticated` sem identidade JWT (`auth.uid() = NULL`). Dez RPCs de escrita foram rejeitadas com `not_authenticated`: `block_user`, `create_server`, `create_invite`, `open_dm`, `send_friend_request`, `toggle_reaction`, `voice_join`, `save_my_settings`, `ban_member` e `kick_member`. Também foram confirmados os resultados sem identidade: `is_server_member` retorna false, `get_my_settings` retorna objeto vazio e `profiles_full` não retorna linhas para um UUID arbitrário.
+
+O roteiro reproduzível está em `shiqi-parallel/tests/supabase-auth-negative.sql`. Esse teste verifica caminhos sem identidade; não prova isolamento entre dois usuários reais nem substitui testes com JWT assinado. A transação foi revertida; nenhum dado persistente foi criado.
