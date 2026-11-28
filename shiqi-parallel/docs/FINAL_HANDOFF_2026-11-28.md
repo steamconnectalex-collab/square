@@ -75,3 +75,5 @@ Só marcar como final quando: CI estendido verde; Auth v3 health/401 confirmado;
 - Revisão estática manual dos novos testes passou, incluindo rollback, ausência de INSERT manual em `auth.users`, exclusão de QR e contratos de Auth/Storage.
 - A nova execução completa do GitHub Actions (Deno/Node/Playwright/HTTP Auth) ainda não foi confirmada; não declarar CI estendido verde.
 - Vercel ainda aponta para o último preview READY no commit `813cf1e287fc82fcf0dea8000d6834117ff7b3d9`; a branch atual não recebeu novo preview por `build-rate-limit`.
+
+- Plano técnico detalhado da lacuna MFA/AAL2 registrado em `docs/MFA_AAL2_ENFORCEMENT_PLAN.md`; cobre RLS, RPCs SECURITY DEFINER, Storage, Realtime e matriz AAL1/AAL2. Nenhum DDL foi aplicado.
