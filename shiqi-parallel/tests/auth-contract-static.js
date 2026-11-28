@@ -229,7 +229,7 @@ assert.ok(auth.includes('error: lastError') &&
   'Falha ao consultar cooldown não pode liberar envio de códigos.');
 assert.ok(auth.includes('async function revokeUserSessions(userId: string)') &&
   auth.includes('if (error) throw new HttpError(503, "session_revocation_failed"') &&
-  (auth.match(/await revokeUserSessions\\(user.id\\)/g) || []).length === 2,
+  (auth.match(/await revokeUserSessions\(user.id\\)/g) || []).length === 2,
   'Revogação de sessões deve ser verificada no reset e na desativação.');
 assert.ok(auth.includes('async function reactivate(userId: string)') &&
   auth.includes('account_unavailable'),
@@ -242,7 +242,7 @@ const negativeAuthSql = read('tests/supabase-auth-negative.sql');
 const rlsProbeSql = read('tests/supabase-rls-cross-identity-simulated.sql');
 assert.ok(negativeAuthSql.trim().endsWith('ROLLBACK;') && rlsProbeSql.trim().endsWith('ROLLBACK;'),
   'Os testes SQL remotos devem terminar com ROLLBACK.');
-assert.ok(!/INSERT\\s+INTO\\s+auth\\.users/i.test(negativeAuthSql + '\\n' + rlsProbeSql),
+assert.ok(!/INSERT\s+INTO\s+auth\.users/i.test(negativeAuthSql + '\\n' + rlsProbeSql),
   'Os testes não podem criar usuários manualmente em auth.users.');
 
 console.log('SHIQI static contract: OK (13 rotas Auth, 18 tabelas/RLS, 17 policies, 59 ACL revokes, privacidade de perfil/anexos, concorrência de voz e limites).');
