@@ -229,7 +229,7 @@ assert.ok(auth.includes('error: lastError') &&
   'Falha ao consultar cooldown não pode liberar envio de códigos.');
 assert.ok(auth.includes('async function revokeUserSessions(userId: string)') &&
   auth.includes('if (error) throw new HttpError(503, "session_revocation_failed"') &&
-  (auth.match(/await revokeUserSessions\(user.id\\)/g) || []).length === 2,
+  (auth.match(/await revokeUserSessions\(user.id\)/g) || []).length === 2,
   'Revogação de sessões deve ser verificada no reset e na desativação.');
 assert.ok(auth.includes('async function reactivate(userId: string)') &&
   auth.includes('account_unavailable'),
