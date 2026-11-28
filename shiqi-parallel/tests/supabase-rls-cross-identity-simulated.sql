@@ -36,7 +36,7 @@ BEGIN
   FROM public.profiles WHERE id = owner_id;
 
   UPDATE public.profiles
-  SET bio = coalesce(bio, '')
+  SET bio = '__shiqi_rls_probe__'
   WHERE id = owner_id;
   GET DIAGNOSTICS owner_update = ROW_COUNT;
 
