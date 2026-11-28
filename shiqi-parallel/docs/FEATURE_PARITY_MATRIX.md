@@ -254,3 +254,32 @@ Esta seção registra a leitura dos handlers dos módulos de configurações, pe
 - A lista de regressão por grupos já consta acima e será convertida em testes automatizados na etapa de testes. O smoke test existente na raiz aponta para ../site e contém mocks/fluxos legados; ele não é evidência de paridade da cópia paralela e não será executado/alterado para esta migração.
 - Não foi feito teste funcional real nesta etapa: o Supabase paralelo ainda tem schema incompatível e a autenticação paralela permanece stub. A etapa 1 encerra o levantamento, não declara a migração funcional.
 - Nenhuma tela, CSS, JS de produto, banco remoto, usuário, e-mail, Edge Function, deploy, domínio ou branch main foi alterado.
+
+## Atualização de estado — 2026-11-28
+
+> Esta seção supersede os estados antigos da primeira versão da matriz quando houver divergência. As seções anteriores permanecem como histórico do levantamento inicial.
+
+### Backend paralelo e evidências atuais
+- **Banco:** cutover canônico já aplicado no projeto Supabase paralelo `ujdosskjycrdkcgsswfa`. Auditoria de runtime confirmou 23/23 tabelas do schema `public` com RLS habilitado; cinco tabelas internas sem policies continuam sem grants diretos para `anon`/`authenticated`, portanto não devem receber policies genéricas.
+- **Auth:** Edge Function `auth` está ativa no projeto paralelo, agora versão 2. O cadastro real com e-mail e o login foram confirmados pelo usuário em sessão anterior. A versão 2 publicada contém configuração própria do paralelo e limpeza paginada do Storage na exclusão de conta. A checagem de health após a versão 2 ainda não foi executada por chamada HTTP nesta sessão.
+- **Rust:** serviço `shiqi-core` está publicado no Railway paralelo; `/healthz` e `/readyz` já responderam `ready`. O frontend chama `/v1/me`, mas a confirmação com JWT real permanece pendente; não declarar identidade validada até haver evidência. O upload de imagem pelo Rust está implementado no cliente/serviço, mas o upload real continua adiado.
+- **RPCs:** teste estático independente encontrou 30 nomes de RPC chamados pelos módulos web e confirmou que todos têm definição nos SQLs canônicos. Isso prova existência nominal, não assinatura/retorno em execução.
+- **RLS/ACL:** auditoria remota confirmou 45 funções SECURITY DEFINER no schema `public`, todas com `search_path` vazio; 39 são executáveis por `authenticated`, nenhuma por `anon`. A autorização de cada função continua sujeita à revisão individual e aos testes A-vs-B.
+- **Realtime:** publicação contém `friendships`, `messages` e `voice_members`; tópicos privados de voz usam policies específicas. Testes cruzados com duas contas reais ainda pendentes.
+
+### Recursos preservados como placeholders
+- Loja, pontos, missões, inventário, compras, resgates, assinatura Shiqi Plus, cobrança e pagamentos continuam sendo interface demonstrativa/local ou avisos de indisponibilidade. Não há integração comercial/transacional comprovada; não inventar persistência ou pagamentos.
+- GIFs e presentes continuam “em breve”. Música e QR permanecem fora do escopo, sem investigação ou testes específicos.
+- Não repetir o teste de voz com 10 participantes já realizado. Testes adicionais de voz devem focar autorização e sinalização, não repetir essa carga.
+
+### Bloqueios de segurança e validação ainda abertos
+- **MFA/AAL2:** a interface/Edge Function oferece TOTP, mas a auditoria dos SQLs canônicos não encontrou políticas RLS restritivas nem guards nas RPCs SECURITY DEFINER que exijam `aal2` para usuários com fator verificado. O banco atualmente tem zero fatores MFA verificados; ainda assim, isso precisa ser resolvido antes de considerar MFA resistente a chamadas diretas ao Supabase.
+- **Duas identidades:** o projeto tem uma única conta Auth. A regressão A-vs-B, isolamento de DMs e autorização cruzada completa continuam sem evidência real. Não criar usuários diretamente em `auth.users`.
+- **Upload real:** adiado conforme decisão anterior; somente contrato e mocks podem ser validados nesta fase.
+- **Vercel:** os deployments recentes foram bloqueados por `build-rate-limit`. O último preview READY conhecido é do commit `813cf1e287fc82fcf0dea8000d6834117ff7b3d9`; não contornar o limite. O frontend não teve alterações funcionais após esse preview, mas a publicação atual da branch ainda precisa ser renovada quando o limite permitir.
+- **CI:** o workflow foi ampliado para Deno check, sintaxe de todos os módulos web, paridade RPC/SQL e Playwright. A rodada anterior `46101145360` foi SUCCESS; o resultado da nova rodada com Playwright ainda precisa ser confirmado separadamente.
+
+### Novo harness de regressão
+- `tests/frontend-sql-contract.js` valida nomes de RPC entre frontend e SQL canônico.
+- `tests/smoke.js` dentro de `shiqi-parallel/tests` roda a cópia paralela com Supabase/Rust simulados; não modifica nem substitui o teste original da raiz. A seção QR foi removida e falhas agora encerram o processo com código diferente de zero.
+- O smoke com mocks não substitui os testes reais de Auth/JWT, Storage, RLS e Realtime.
