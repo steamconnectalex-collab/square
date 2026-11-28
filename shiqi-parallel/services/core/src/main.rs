@@ -136,7 +136,11 @@ fn browser_cors_layer() -> Option<CorsLayer> {
     Some(
         CorsLayer::new()
             .allow_origin(AllowOrigin::list(origins))
-            .allow_methods(AllowMethods::list([Method::GET, Method::POST, Method::OPTIONS]))
+            .allow_methods(AllowMethods::list([
+                Method::GET,
+                Method::POST,
+                Method::OPTIONS,
+            ]))
             .allow_headers(AllowHeaders::list([
                 header::AUTHORIZATION,
                 header::CONTENT_TYPE,
