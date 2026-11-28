@@ -49,3 +49,11 @@ O roteiro reproduzível está em `shiqi-parallel/tests/supabase-auth-negative.sq
 - Supabase docs MFA revisados: para usuários que optaram por MFA, a proteção precisa exigir `aal2` nas políticas/servidores, não apenas mostrar desafio TOTP na UI. Os SQLs canônicos atuais não têm cláusulas AAL2; consulta a `auth.mfa_factors` retornou zero fatores verificados. Não foi aplicado DDL.
 - A função de exclusão de conta foi corrigida na branch e publicada na versão 2; o teste estático exige paginação, recursão, lotes limitados e interrupção por erro.
 - O workflow de CI agora inclui checagem Deno, verificação de sintaxe de todos os JS, contrato frontend/SQL e Playwright. A nova execução ainda não foi confirmada; a execução anterior 46101145360 terminou SUCCESS.
+
+
+## Teste adicional de isolamento RLS — 2026-11-28
+
+- Executado `tests/supabase-rls-cross-identity-simulated.sql` em transação com `ROLLBACK`.
+- Identidade A: usuário Auth real existente. Identidade B: UUID sintético sem registro em `auth.users`.
+- Resultado: A lê e atualiza seu perfil; B não lê nem atualiza o perfil de A; `profiles_full([A])` não retorna dados para B sem servidor compartilhado.
+- Nenhuma linha foi persistida. Este é um teste de RLS com claims simulados, não um teste com dois JWTs reais ou duas contas Auth.
